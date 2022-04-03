@@ -39,5 +39,5 @@ visit http://127.0.0.1:4567/trade/BTC-USDT
 ## Demo
 You can view the demo website (deployed on the spot instance and may be released at any time)
 
-http://47.243.143.211:4567/trade/BTC-USDT
+http://47.243.120.30:4567/trade/BTC-USDT
 
