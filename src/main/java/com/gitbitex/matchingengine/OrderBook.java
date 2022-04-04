@@ -24,8 +24,8 @@ public class OrderBook {
     private final AtomicLong sequence;
     private final BookPage asks;
     private final BookPage bids;
-    private long matchingCommandOffset;
-    private long matchingLogOffset;
+    private long orderBookCommandOffset;
+    private long orderBookLogOffset;
 
     public OrderBook(String productId) {
         this(productId, new AtomicLong(), new AtomicLong(), 0, 0, new ArrayList<>(), new ArrayList<>());
@@ -45,13 +45,13 @@ public class OrderBook {
                         .collect(Collectors.toList()));
     }
 
-    public OrderBook(String productId, AtomicLong tradeId, AtomicLong sequence, long matchingCommandOffset,
-                     long matchingLogOffset, List<BookOrder> askOrders, List<BookOrder> bidOrders) {
+    public OrderBook(String productId, AtomicLong tradeId, AtomicLong sequence, long orderBookCommandOffset,
+                     long orderBookLogOffset, List<BookOrder> askOrders, List<BookOrder> bidOrders) {
         this.productId = productId;
         this.tradeId = tradeId;
         this.sequence = sequence;
-        this.matchingCommandOffset = matchingCommandOffset;
-        this.matchingLogOffset = matchingLogOffset;
+        this.orderBookCommandOffset = orderBookCommandOffset;
+        this.orderBookLogOffset = orderBookLogOffset;
         this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, askOrders);
         this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, bidOrders);
     }
@@ -80,15 +80,15 @@ public class OrderBook {
 
     public PageLine restoreLog(OrderReceivedLog message) {
         this.sequence.set(message.getSequence());
-        this.matchingLogOffset = message.getOffset();
-        this.matchingCommandOffset = message.getCommandOffset();
+        this.orderBookLogOffset = message.getOffset();
+        this.orderBookCommandOffset = message.getCommandOffset();
         return null;
     }
 
     public PageLine restoreLog(OrderOpenLog message) {
         this.sequence.set(message.getSequence());
-        this.matchingLogOffset = message.getOffset();
-        this.matchingCommandOffset = message.getCommandOffset();
+        this.orderBookLogOffset = message.getOffset();
+        this.orderBookCommandOffset = message.getCommandOffset();
         BookOrder order = new BookOrder();
         order.setOrderId(message.getOrderId());
         order.setPrice(message.getPrice());
@@ -100,16 +100,16 @@ public class OrderBook {
 
     public PageLine restoreLog(OrderMatchLog message) {
         this.sequence.set(message.getSequence());
-        this.matchingLogOffset = message.getOffset();
-        this.matchingCommandOffset = message.getCommandOffset();
+        this.orderBookLogOffset = message.getOffset();
+        this.orderBookCommandOffset = message.getCommandOffset();
         this.tradeId.set(message.getTradeId());
         return this.decreaseOrderSize(message.getMakerOrderId(), message.getSide(), message.getSize());
     }
 
     public PageLine restoreLog(OrderDoneLog message) {
         this.sequence.set(message.getSequence());
-        this.matchingLogOffset = message.getOffset();
-        this.matchingCommandOffset = message.getCommandOffset();
+        this.orderBookLogOffset = message.getOffset();
+        this.orderBookCommandOffset = message.getCommandOffset();
         if (message.getPrice() != null) {
             return this.removeOrderById(message.getOrderId(), message.getSide());
         }
@@ -138,7 +138,7 @@ public class OrderBook {
 
     public OrderBook copy() {
         return new OrderBook(this.productId, new AtomicLong(this.tradeId.get()), new AtomicLong(this.sequence.get()),
-                this.matchingCommandOffset, this.matchingLogOffset,
+                this.orderBookCommandOffset, this.orderBookLogOffset,
                 this.asks.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()),
                 this.bids.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()));
     }

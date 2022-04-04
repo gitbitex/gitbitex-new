@@ -79,8 +79,8 @@ public class OrderBookSnapshottingThread extends KafkaConsumerThread<String, Ord
                         orderBook = snapshot != null ? new OrderBook(productId, snapshot) : new OrderBook(productId);
 
                         for (TopicPartition partition : partitions) {
-                            if (orderBook.getMatchingLogOffset() > 0) {
-                                consumer.seek(partition, orderBook.getMatchingLogOffset() + 1);
+                            if (orderBook.getOrderBookLogOffset() > 0) {
+                                consumer.seek(partition, orderBook.getOrderBookLogOffset() + 1);
                             }
                         }
                     }

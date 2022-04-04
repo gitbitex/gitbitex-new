@@ -27,8 +27,8 @@ public class Level3OrderBookSnapshot extends MarketMessage {
         this.setProductId(orderBook.getProductId());
         this.sequence = orderBook.getSequence().get();
         this.lastTradeId = orderBook.getTradeId().get();
-        this.orderBookCommandOffset = orderBook.getMatchingCommandOffset();
-        this.orderBookLogOffset = orderBook.getMatchingLogOffset();
+        this.orderBookCommandOffset = orderBook.getOrderBookCommandOffset();
+        this.orderBookLogOffset = orderBook.getOrderBookLogOffset();
         orderBook.getAsks().getOrders().forEach(x -> asks.add(new Level3SnapshotLine(x)));
         orderBook.getBids().getOrders().forEach(x -> bids.add(new Level3SnapshotLine(x)));
     }
