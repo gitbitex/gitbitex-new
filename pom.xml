@@ -9,11 +9,11 @@
         <version>2.6.4</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.examplexx</groupId>
-    <artifactId>demo-exxxx</artifactId>
+    <groupId>com.gitbitex</groupId>
+    <artifactId>gitbitex</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>demo-exxxx</name>
-    <description>Demo project for Spring Boot</description>
+    <name>gitbitex</name>
+    <description>GitBitEx is an open source cryptocurrency exchange</description>
 
     <properties>
         <maven.compiler.target>1.8</maven.compiler.target>
