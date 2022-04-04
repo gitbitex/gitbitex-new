@@ -13,7 +13,7 @@ import java.util.List;
 @Setter
 public class Level3OrderBookSnapshot extends MarketMessage {
     private long sequence;
-    private long lastTradeId;
+    private long tradeId;
     private long orderBookCommandOffset;
     private long orderBookLogOffset;
     private List<Level3SnapshotLine> asks = new ArrayList<>();
@@ -26,7 +26,7 @@ public class Level3OrderBookSnapshot extends MarketMessage {
         this.setType("l3_snapshot");
         this.setProductId(orderBook.getProductId());
         this.sequence = orderBook.getSequence().get();
-        this.lastTradeId = orderBook.getTradeId().get();
+        this.tradeId = orderBook.getTradeId().get();
         this.orderBookCommandOffset = orderBook.getOrderBookCommandOffset();
         this.orderBookLogOffset = orderBook.getOrderBookLogOffset();
         orderBook.getAsks().getOrders().forEach(x -> asks.add(new Level3SnapshotLine(x)));

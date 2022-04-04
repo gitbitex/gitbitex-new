@@ -32,7 +32,7 @@ public class OrderBook {
     }
 
     public OrderBook(String productId, Level3OrderBookSnapshot snapshot) {
-        this(productId, new AtomicLong(snapshot.getLastTradeId()), new AtomicLong(snapshot.getSequence()),
+        this(productId, new AtomicLong(snapshot.getTradeId()), new AtomicLong(snapshot.getSequence()),
                 snapshot.getOrderBookCommandOffset(),
                 snapshot.getOrderBookLogOffset(),
                 snapshot.getAsks().stream()
