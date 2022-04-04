@@ -73,7 +73,7 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
 
                         for (TopicPartition partition : partitions) {
                             if (snapshot != null) {
-                                consumer.seek(partition, snapshot.getMatchingCommandOffset() + 1);
+                                consumer.seek(partition, snapshot.getOrderBookCommandOffset() + 1);
                             }
                         }
                     }

@@ -33,8 +33,8 @@ public class OrderBook {
 
     public OrderBook(String productId, Level3OrderBookSnapshot snapshot) {
         this(productId, new AtomicLong(snapshot.getLastTradeId()), new AtomicLong(snapshot.getSequence()),
-                snapshot.getMatchingCommandOffset(),
-                snapshot.getMatchingLogOffset(),
+                snapshot.getOrderBookCommandOffset(),
+                snapshot.getOrderBookLogOffset(),
                 snapshot.getAsks().stream()
                         .map(Level3OrderBookSnapshot.Level3SnapshotLine::getOrder)
                         .peek(x -> x.setSide(OrderSide.SELL))
