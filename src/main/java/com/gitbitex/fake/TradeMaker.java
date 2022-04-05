@@ -26,7 +26,7 @@ public class TradeMaker {
             while (true) {
                 try {
                     Request request = new Request.Builder()
-                            .url("https://api.binance.com/api/v3/trades?symbol=BTCUSDT&limit=3")
+                            .url("https://api.binance.com/api/v3/trades?symbol=BTCUSDT&limit=1")
                             .get()
                             .build();
                     Response response = httpClient.newCall(request).execute();
