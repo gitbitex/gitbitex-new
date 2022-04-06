@@ -65,7 +65,8 @@ public class BookPage {
             // results in taking liquidity, the order will be rejected and no part of it will execute.
             if (takerOrder.isPostOnly()) {
                 logs.add(orderDoneLog(command.getOffset(), takerOrder));
-                break;
+                logs.get(logs.size() - 1).setCommandFinished(true);
+                return logs;
             }
 
             for (BookOrder makerOrder : line.getOrders()) {

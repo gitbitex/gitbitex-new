@@ -123,7 +123,7 @@ public class Order {
         DENIED,
     }
 
-    public enum TimeInForce {
+    public enum TimeInForcePolicy {
         GTC,
         GTT,
         IOC,
