@@ -6,6 +6,7 @@ import com.gitbitex.entity.Candle;
 import com.gitbitex.kafka.KafkaConsumerThread;
 import com.gitbitex.matchingengine.log.OrderBookLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.marketmessage.CandleMessage;
 import com.gitbitex.matchingengine.marketmessage.MarketMessage;
 import com.gitbitex.matchingengine.marketmessage.MatchMessage;
 import com.gitbitex.matchingengine.marketmessage.TickerMessage;
@@ -33,10 +34,10 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
     private final String productId;
     private final CandleRepository candleRepository;
     private final Map<Integer, Candle> candles = new HashMap<>();
-    private final BlockingQueue<Candle> candleQueue = new LinkedBlockingQueue<>(10000);
-    private final BlockingQueue<MarketMessage> feedMessageQueue = new LinkedBlockingQueue<>(10000);
+    private final BlockingQueue<Candle> candleQueue = new LinkedBlockingQueue<>(100000);
+    private final BlockingQueue<MarketMessage> feedMessageQueue = new LinkedBlockingQueue<>(100000);
     private final CandlePersistenceThread candlePersistenceThread;
-    private final TickerPublishThread tickerPublishThread;
+    private final FeedMessagePublishThread feedMessagePublishThread;
     private final AppProperties appProperties;
 
     public MarketDataMakerThread(String productId, CandleRepository candleRepository, TickerManager tickerManager,
@@ -47,7 +48,7 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
         this.candleRepository = candleRepository;
         this.candlePersistenceThread = new CandlePersistenceThread(candleQueue, candleRepository);
         this.candlePersistenceThread.setName("CandlePersistence-" + productId + "-" + candlePersistenceThread.getId());
-        this.tickerPublishThread = new TickerPublishThread(marketMessagePublisher, tickerManager, feedMessageQueue);
+        this.feedMessagePublishThread = new FeedMessagePublishThread(marketMessagePublisher, tickerManager, feedMessageQueue);
         this.appProperties = appProperties;
     }
 
@@ -55,14 +56,14 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
     public void start() {
         super.start();
         this.candlePersistenceThread.start();
-        this.tickerPublishThread.start();
+        this.feedMessagePublishThread.start();
     }
 
     @Override
     public void shutdown() {
         super.shutdown();
         this.candlePersistenceThread.interrupt();
-        this.tickerPublishThread.interrupt();
+        this.feedMessagePublishThread.interrupt();
     }
 
     @Override
@@ -154,6 +155,19 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
         candle.setOrderBookLogOffset(offset);
         candle.setTradeId(log.getTradeId());
         candleQueue.put(candle);
+
+        CandleMessage candleMessage = new CandleMessage();
+        candleMessage.setProductId(productId);
+        candleMessage.setGranularity(granularity);
+        candleMessage.setTime(String.valueOf(candle.getTime()));
+        candleMessage.setOpen(candle.getOpen().stripTrailingZeros().toPlainString());
+        candleMessage.setClose(candle.getClose().stripTrailingZeros().toPlainString());
+        candleMessage.setHigh(candle.getHigh().stripTrailingZeros().toPlainString());
+        candleMessage.setLow(candle.getLow().stripTrailingZeros().toPlainString());
+        candleMessage.setVolume(candle.getVolume().stripTrailingZeros().toPlainString());
+        if (!feedMessageQueue.offer(candleMessage)) {
+            logger.warn("feedMessageQueue is full");
+        }
     }
 
     private void makeTickerMessage(OrderMatchLog log) {
@@ -230,7 +244,7 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
 
     @RequiredArgsConstructor
     @Slf4j
-    private static class TickerPublishThread extends Thread {
+    private static class FeedMessagePublishThread extends Thread {
         private final MarketMessagePublisher marketMessagePublisher;
         private final TickerManager tickerManager;
         private final BlockingQueue<MarketMessage> feedMessageQueue;

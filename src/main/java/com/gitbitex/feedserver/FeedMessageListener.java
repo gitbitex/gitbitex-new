@@ -3,6 +3,7 @@ package com.gitbitex.feedserver;
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.feedserver.message.AccountMessage;
 import com.gitbitex.feedserver.message.OrderMessage;
+import com.gitbitex.matchingengine.marketmessage.CandleMessage;
 import com.gitbitex.matchingengine.marketmessage.Level2UpdateMessage;
 import com.gitbitex.matchingengine.marketmessage.MatchMessage;
 import com.gitbitex.matchingengine.marketmessage.TickerMessage;
@@ -17,7 +18,7 @@ import javax.annotation.PostConstruct;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-public class FeedMessageDispatcherThread {
+public class FeedMessageListener {
     private final RedissonClient redissonClient;
     private final SessionManager sessionManager;
 
@@ -32,6 +33,12 @@ public class FeedMessageDispatcherThread {
         redissonClient.getTopic("ticker", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             TickerMessage message = JSON.parseObject(msg, TickerMessage.class);
             String channel = message.getProductId() + "." + message.getType();
+            sessionManager.sendMessageToChannel(channel, msg);
+        });
+
+        redissonClient.getTopic("candle", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
+            CandleMessage message = JSON.parseObject(msg, CandleMessage.class);
+            String channel = message.getProductId() + "." + message.getType() + "_" + message.getGranularity() * 60;
             sessionManager.sendMessageToChannel(channel, msg);
         });
 
