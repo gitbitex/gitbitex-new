@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import lombok.Getter;
 import lombok.Setter;
 import okhttp3.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -15,6 +16,8 @@ import java.util.concurrent.Executors;
 
 @Component
 public class TradeMaker {
+    @Value("${server.port}")
+    private int serverPort;
 
     @PostConstruct
     public void init() throws IOException, InterruptedException {
@@ -68,7 +71,7 @@ public class TradeMaker {
         RequestBody requestBody = RequestBody.create(MediaType.parse("application/json"), JSON.toJSONString(params));
         Request request = new Request.Builder()
                 .url(
-                        "http://127.0.0.1:4567/api/orders?accessToken=ad80fcfe-c3a1-46a1-acf8-1d6a909b2c5a:567AFF91EB9D0AEA362F25286B0FD9C8:5e221aa93950f87135672ca84b82e3bf")
+                        "http://127.0.0.1:"+serverPort+"/api/orders?accessToken=ad80fcfe-c3a1-46a1-acf8-1d6a909b2c5a:92B46C7FF1358CFCA5BC83E3C7E91E18:5e221aa93950f87135672ca84b82e3bf")
                 .post(requestBody)
                 .build();
         Response response = httpClient.newCall(request).execute();

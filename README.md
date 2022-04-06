@@ -5,21 +5,25 @@ GitBitEx is an open source cryptocurrency exchange.
 ## Quick Start
 
 ```shell
+# start zookeeper
 docker run -d --name zookeeper-server \
   --network host \
   -e ALLOW_ANONYMOUS_LOGIN=yes \
   bitnami/zookeeper:latest
 
+# start kafka
 docker run -d --name kafka-server \
   --network host \
   -e ALLOW_PLAINTEXT_LISTENER=yes \
   -e KAFKA_CFG_ZOOKEEPER_CONNECT=127.0.0.1:2181 \
   bitnami/kafka:latest
 
+# start redis
 docker run -d --name redis-server \
   --network=host \
   redis
 
+# start mysql
 docker run -d --name mysql \
   --network=host \
   -e MYSQL_ROOT_PASSWORD=123456 \
@@ -28,17 +32,18 @@ docker run -d --name mysql \
 # Please wait for MySQL to start before executing the following command
 docker exec -it mysql mysql -uroot -p123456 -e "create database gitbitex;"
 
+# start gitbitex
+# open the browser and visit http://127.0.0.1:4567/trade/BTC-USDT
 docker run -d --name gitbitex \
   --network=host \
   greensheng/gitbitex
 
 ```
 
-http://127.0.0.1:4567/trade/BTC-USDT
 
 ## Demo
 
-You can view the demo website (deployed on the spot instance and may be released at any time)
+You can view the demo website 
 
-http://47.243.120.30:4567/trade/BTC-USDT
+http://gitbitex.cloud/trade/BTC-USDT
 
