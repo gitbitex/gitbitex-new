@@ -159,7 +159,7 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
         CandleMessage candleMessage = new CandleMessage();
         candleMessage.setProductId(productId);
         candleMessage.setGranularity(granularity);
-        candleMessage.setTime(String.valueOf(candle.getTime()));
+        candleMessage.setTime(candle.getTime());
         candleMessage.setOpen(candle.getOpen().stripTrailingZeros().toPlainString());
         candleMessage.setClose(candle.getClose().stripTrailingZeros().toPlainString());
         candleMessage.setHigh(candle.getHigh().stripTrailingZeros().toPlainString());

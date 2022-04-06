@@ -8,7 +8,7 @@ import lombok.Setter;
 public class CandleMessage extends MarketMessage {
     private long sequence;
     private int granularity;
-    private String time;
+    private long time;
     private String open;
     private String close;
     private String high;
