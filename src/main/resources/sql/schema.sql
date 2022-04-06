@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS `trade` (
                          `taker_order_id` varchar(255) DEFAULT NULL,
                          `maker_order_id` varchar(255) DEFAULT NULL,
                          `side` varchar(255) NOT NULL,
-                         `price` decimal(19,2) DEFAULT NULL,
+                         `price` decimal(32,16) DEFAULT NULL,
                          `size` decimal(32,16) NOT NULL,
                          `time` datetime DEFAULT NULL,
                          PRIMARY KEY (`id`),
