@@ -61,6 +61,13 @@ public class BookPage {
                 break;
             }
 
+            // The post-only flag indicates that the order should only make liquidity. If any part of the order
+            // results in taking liquidity, the order will be rejected and no part of it will execute.
+            if (takerOrder.isPostOnly()) {
+                logs.add(orderDoneLog(command.getOffset(), takerOrder));
+                break;
+            }
+
             for (BookOrder makerOrder : line.getOrders()) {
                 // calculate the size of taker at current price
                 BigDecimal takerSize;
