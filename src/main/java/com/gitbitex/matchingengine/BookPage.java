@@ -65,7 +65,7 @@ public class BookPage {
                 // calculate the size of taker at current price
                 BigDecimal takerSize;
                 if (takerOrder.getSide() == Order.OrderSide.BUY && takerOrder.getType() == Order.OrderType.MARKET) {
-                    takerSize = takerOrder.getFunds().divide(price, 8, RoundingMode.DOWN);
+                    takerSize = takerOrder.getFunds().divide(price, 4, RoundingMode.DOWN);
                 } else {
                     takerSize = takerOrder.getSize();
                 }
