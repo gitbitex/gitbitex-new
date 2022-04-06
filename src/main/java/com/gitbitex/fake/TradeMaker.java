@@ -19,7 +19,7 @@ public class TradeMaker {
     @Value("${server.port}")
     private int serverPort;
 
-    @PostConstruct
+    //@PostConstruct
     public void init() throws IOException, InterruptedException {
         Executors.newFixedThreadPool(1).submit(() -> {
             OkHttpClient httpClient = new OkHttpClient();
