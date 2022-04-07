@@ -17,6 +17,14 @@ docker run -d --name kafka-server \
   -e ALLOW_PLAINTEXT_LISTENER=yes \
   -e KAFKA_CFG_ZOOKEEPER_CONNECT=127.0.0.1:2181 \
   bitnami/kafka:latest
+  
+
+docker exec -it kafka-server  /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic account-command --partitions=8  --bootstrap-server localhost:9092
+docker exec -it kafka-server  /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic order-command --partitions=8  --bootstrap-server localhost:9092
+# Note that the order book command must be ordered, so the partitions of topic must be 1
+docker exec -it kafka-server  /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic BTC-USDT-order-book-command --partitions=1  --bootstrap-server localhost:9092
+# Note that the order book log must be ordered, so the partitions of topic must be 1
+docker exec -it kafka-server  /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic BTC-USDT-order-book-log --partitions=1  --bootstrap-server localhost:9092
 
 # start redis
 docker run -d --name redis-server \
@@ -40,10 +48,9 @@ docker run -d --name gitbitex \
 
 ```
 
-
 ## Demo
 
-You can view the demo website 
+You can view the demo website
 
 http://gitbitex.cloud/trade/BTC-USDT
 

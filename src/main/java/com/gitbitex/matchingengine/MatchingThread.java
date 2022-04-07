@@ -57,7 +57,7 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
 
     @Override
     protected void doSubscribe(KafkaConsumer<String, OrderBookCommand> consumer) {
-        consumer.subscribe(Collections.singletonList(productId + "." + appProperties.getOrderBookCommandTopic()),
+        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookCommandTopic()),
                 new ConsumerRebalanceListener() {
                     @Override
                     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {

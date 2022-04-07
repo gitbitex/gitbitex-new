@@ -65,7 +65,7 @@ public class OrderBookSnapshottingThread extends KafkaConsumerThread<String, Ord
 
     @Override
     protected void doSubscribe(KafkaConsumer<String, OrderBookLog> consumer) {
-        consumer.subscribe(Collections.singletonList(productId + "." + appProperties.getOrderBookLogTopic()),
+        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()),
                 new ConsumerRebalanceListener() {
                     @Override
                     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
@@ -152,7 +152,6 @@ public class OrderBookSnapshottingThread extends KafkaConsumerThread<String, Ord
 
             // copy and put in the queue
             orderBookCopyQueue.put(orderBook.copy());
-
 
             logger.info("order book copy complete");
         }

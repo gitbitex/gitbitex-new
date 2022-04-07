@@ -10,11 +10,15 @@ import org.springframework.validation.annotation.Validated;
 @Setter
 @Validated
 public class AppProperties {
-    private String accountCommandTopic = "account_command1";
+    private String accountCommandTopic;
 
-    private String orderBookCommandTopic = "order_book_command1";
+    private String orderCommandTopic;
 
-    private String orderBookLogTopic = "order_book_log1";
+    private String orderBookCommandTopic;
 
-    private String orderCommandTopic = "order_command1";
+    private String orderBookLogTopic;
+
+    private int accountantThreadNum;
+
+    private int orderProcessorThreadNum;
 }

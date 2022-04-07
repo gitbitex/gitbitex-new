@@ -29,7 +29,7 @@
         </encoder>
 
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>app-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>logs/app-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>500MB</maxFileSize>
             <maxHistory>30</maxHistory>
             <totalSizeCap>10000MB</totalSizeCap>

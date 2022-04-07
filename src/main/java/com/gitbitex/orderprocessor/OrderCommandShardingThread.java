@@ -35,7 +35,7 @@ public class OrderCommandShardingThread extends KafkaConsumerThread<String, Orde
 
     @Override
     protected void doSubscribe(KafkaConsumer<String, OrderBookLog> consumer) {
-        consumer.subscribe(Collections.singletonList(productId + "." + appProperties.getOrderBookLogTopic()));
+        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()));
     }
 
     @Override

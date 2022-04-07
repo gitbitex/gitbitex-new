@@ -1,5 +1,11 @@
 package com.gitbitex.user;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
 import com.gitbitex.accountant.AccountManager;
 import com.gitbitex.entity.User;
 import com.gitbitex.repository.UserRepository;
@@ -8,12 +14,6 @@ import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
-
-import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Component
 @RequiredArgsConstructor
@@ -41,13 +41,13 @@ public class UserManager {
         // TODO: REMOVE
         // to demo, give each user some money
         accountManager.increaseAvailable(user.getUserId(), "LTC", BigDecimal.valueOf(10000000),
-                UUID.randomUUID().toString());
+            UUID.randomUUID().toString());
         accountManager.increaseAvailable(user.getUserId(), "ETH", BigDecimal.valueOf(10000000),
-                UUID.randomUUID().toString());
+            UUID.randomUUID().toString());
         accountManager.increaseAvailable(user.getUserId(), "BTC", BigDecimal.valueOf(10000000),
-                UUID.randomUUID().toString());
+            UUID.randomUUID().toString());
         accountManager.increaseAvailable(user.getUserId(), "USDT", BigDecimal.valueOf(10000000),
-                UUID.randomUUID().toString());
+            UUID.randomUUID().toString());
 
         return user;
     }
@@ -56,7 +56,7 @@ public class UserManager {
         String accessToken = user.getUserId() + ":" + sessionId + ":" + generateAccessTokenSecret(user);
 
         redissonClient.getBucket(redisKeyForAccessToken(accessToken))
-                .set(new Date().toString(), 14, TimeUnit.DAYS);
+            .set(new Date().toString(), 14, TimeUnit.DAYS);
 
         return accessToken;
     }

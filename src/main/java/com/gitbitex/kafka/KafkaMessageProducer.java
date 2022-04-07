@@ -28,7 +28,7 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
             throw new NullPointerException("productId");
         }
 
-        String topic = log.getProductId() + "." + appProperties.getOrderBookLogTopic();
+        String topic = log.getProductId() + "-" + appProperties.getOrderBookLogTopic();
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, log.getProductId(), JSON.toJSONString(log));
         //logger.info("+ {}: {} {} {}", message.getType(), record.topic(), record.key(), JSON.toJSONString(record.value
         // ()));
@@ -41,7 +41,7 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
             throw new NullPointerException("productId");
         }
 
-        String topic = command.getProductId() + "." + appProperties.getOrderBookCommandTopic();
+        String topic = command.getProductId() + "-" + appProperties.getOrderBookCommandTopic();
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, command.getProductId(),
                 JSON.toJSONString(command));
         //logger.info("+ {}: {} {} {}", message.getType(), record.topic(), record.key(),

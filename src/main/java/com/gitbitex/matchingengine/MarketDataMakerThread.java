@@ -68,7 +68,7 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
 
     @Override
     protected void doSubscribe(KafkaConsumer<String, OrderBookLog> consumer) {
-        consumer.subscribe(Collections.singletonList(productId + "." + appProperties.getOrderBookLogTopic()),
+        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()),
                 new ConsumerRebalanceListener() {
                     @Override
                     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
