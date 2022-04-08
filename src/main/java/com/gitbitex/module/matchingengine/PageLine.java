@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 
-import com.gitbitex.entity.Order.OrderSide;
+import com.gitbitex.module.order.entity.Order.OrderSide;
 import lombok.Getter;
 
 public class PageLine {

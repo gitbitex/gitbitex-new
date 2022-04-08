@@ -2,9 +2,9 @@ package com.gitbitex.module.matchingengine;
 
 import java.math.BigDecimal;
 
-import com.gitbitex.entity.Order;
-import com.gitbitex.entity.Order.OrderSide;
-import com.gitbitex.entity.Order.OrderType;
+import com.gitbitex.module.order.entity.Order;
+import com.gitbitex.module.order.entity.Order.OrderSide;
+import com.gitbitex.module.order.entity.Order.OrderType;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.BeanUtils;

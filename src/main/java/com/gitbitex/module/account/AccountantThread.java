@@ -6,9 +6,9 @@ import java.util.Collections;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.entity.Fill;
-import com.gitbitex.entity.Order;
-import com.gitbitex.entity.Product;
+import com.gitbitex.module.order.entity.Fill;
+import com.gitbitex.module.order.entity.Order;
+import com.gitbitex.module.product.entity.Product;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
 import com.gitbitex.kafka.KafkaConsumerThread;

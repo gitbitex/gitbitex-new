@@ -2,14 +2,14 @@ package com.gitbitex;
 
 import com.alibaba.fastjson.JSON;
 
-import com.gitbitex.entity.Order;
-import com.gitbitex.entity.Product;
+import com.gitbitex.module.order.entity.Order;
+import com.gitbitex.module.product.entity.Product;
 import com.gitbitex.module.order.OrderManager;
-import com.gitbitex.repository.OrderRepository;
-import com.gitbitex.repository.ProductRepository;
-import com.gitbitex.restserver.controller.OrderController;
-import com.gitbitex.restserver.model.OrderDto;
-import com.gitbitex.restserver.model.PlaceOrderRequest;
+import com.gitbitex.module.order.repository.OrderRepository;
+import com.gitbitex.module.product.repository.ProductRepository;
+import com.gitbitex.module.openapi.controller.OrderController;
+import com.gitbitex.module.openapi.model.OrderDto;
+import com.gitbitex.module.openapi.model.PlaceOrderRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

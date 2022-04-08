@@ -1,6 +1,6 @@
 package com.gitbitex.module.order.command;
 
-import com.gitbitex.entity.Order;
+import com.gitbitex.module.order.entity.Order;
 import lombok.Getter;
 import lombok.Setter;
 

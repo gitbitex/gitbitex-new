@@ -2,7 +2,7 @@ package com.gitbitex.module.matchingengine.log;
 
 import java.math.BigDecimal;
 
-import com.gitbitex.entity.Order.OrderSide;
+import com.gitbitex.module.order.entity.Order.OrderSide;
 import lombok.Getter;
 import lombok.Setter;
 

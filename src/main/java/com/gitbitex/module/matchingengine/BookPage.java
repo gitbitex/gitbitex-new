@@ -11,9 +11,9 @@ import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.gitbitex.entity.Order;
-import com.gitbitex.entity.Order.OrderSide;
-import com.gitbitex.entity.Order.OrderType;
+import com.gitbitex.module.order.entity.Order;
+import com.gitbitex.module.order.entity.Order.OrderSide;
+import com.gitbitex.module.order.entity.Order.OrderType;
 import com.gitbitex.module.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.module.matchingengine.command.NewOrderCommand;
 import com.gitbitex.module.matchingengine.log.OrderBookLog;

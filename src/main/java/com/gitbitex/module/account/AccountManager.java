@@ -4,13 +4,13 @@ import java.math.BigDecimal;
 
 import com.alibaba.fastjson.JSON;
 
-import com.gitbitex.entity.Account;
-import com.gitbitex.entity.Bill;
+import com.gitbitex.module.account.entity.Account;
+import com.gitbitex.module.account.entity.Bill;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
-import com.gitbitex.module.feedserver.message.AccountMessage;
-import com.gitbitex.repository.AccountRepository;
-import com.gitbitex.repository.BillRepository;
+import com.gitbitex.module.feed.message.AccountMessage;
+import com.gitbitex.module.account.repository.AccountRepository;
+import com.gitbitex.module.account.repository.BillRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;

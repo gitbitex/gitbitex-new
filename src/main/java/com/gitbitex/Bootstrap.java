@@ -7,13 +7,13 @@ import java.util.Properties;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
-import com.gitbitex.entity.Product;
+import com.gitbitex.module.product.entity.Product;
 import com.gitbitex.kafka.KafkaConsumerThread;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.module.account.AccountManager;
 import com.gitbitex.module.account.AccountantThread;
 import com.gitbitex.module.account.command.AccountCommandDeserializer;
-import com.gitbitex.module.matchingengine.MarketDataMakerThread;
+import com.gitbitex.module.marketdata.MarketDataMakerThread;
 import com.gitbitex.module.matchingengine.MarketMessagePublisher;
 import com.gitbitex.module.matchingengine.MatchingThread;
 import com.gitbitex.module.matchingengine.OrderBookSnapshotManager;
@@ -24,11 +24,12 @@ import com.gitbitex.module.matchingengine.log.OrderBookLogDeserializer;
 import com.gitbitex.module.order.OrderCommandShardingThread;
 import com.gitbitex.module.order.OrderManager;
 import com.gitbitex.module.order.OrderPersistenceThread;
-import com.gitbitex.module.order.TradePersistenceThread;
+import com.gitbitex.module.marketdata.TradePersistenceThread;
 import com.gitbitex.module.order.command.OrderCommandDeserializer;
-import com.gitbitex.repository.CandleRepository;
-import com.gitbitex.repository.ProductRepository;
-import com.gitbitex.repository.TradeRepository;
+import com.gitbitex.module.product.ProductManager;
+import com.gitbitex.module.marketdata.repository.CandleRepository;
+import com.gitbitex.module.product.repository.ProductRepository;
+import com.gitbitex.module.marketdata.repository.TradeRepository;
 import com.gitbitex.support.kafka.KafkaProperties;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -43,6 +44,7 @@ public class Bootstrap {
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final TradeRepository tradeRepository;
     private final ProductRepository productRepository;
+    private final ProductManager productManager;
     private final CandleRepository candleRepository;
     private final KafkaMessageProducer messageProducer;
     private final TickerManager tickerManager;
@@ -79,7 +81,7 @@ public class Bootstrap {
             String groupId = "Accountant";
             AccountantThread accountantThread = new AccountantThread(
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new AccountCommandDeserializer()),
-                accountManager, orderManager, productRepository, messageProducer, appProperties);
+                accountManager, orderManager, productManager, messageProducer, appProperties);
             accountantThread.setName(groupId + "-" + accountantThread.getId());
             accountantThread.start();
             threads.add(accountantThread);

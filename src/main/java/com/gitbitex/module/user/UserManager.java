@@ -6,9 +6,9 @@ import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import com.gitbitex.entity.User;
+import com.gitbitex.module.user.entity.User;
 import com.gitbitex.module.account.AccountManager;
-import com.gitbitex.repository.UserRepository;
+import com.gitbitex.module.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;

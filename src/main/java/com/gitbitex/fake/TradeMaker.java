@@ -9,8 +9,8 @@ import javax.annotation.PostConstruct;
 
 import com.alibaba.fastjson.JSON;
 
-import com.gitbitex.entity.Order.OrderSide;
-import com.gitbitex.entity.Order.OrderType;
+import com.gitbitex.module.order.entity.Order.OrderSide;
+import com.gitbitex.module.order.entity.Order.OrderType;
 import com.gitbitex.module.order.OrderManager;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

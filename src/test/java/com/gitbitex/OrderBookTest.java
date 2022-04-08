@@ -3,10 +3,10 @@ package com.gitbitex;
 
 import com.alibaba.fastjson.JSON;
 
-import com.gitbitex.entity.Order;
-import com.gitbitex.entity.Order.OrderSide;
-import com.gitbitex.entity.Order.OrderStatus;
-import com.gitbitex.entity.Order.OrderType;
+import com.gitbitex.module.order.entity.Order;
+import com.gitbitex.module.order.entity.Order.OrderSide;
+import com.gitbitex.module.order.entity.Order.OrderStatus;
+import com.gitbitex.module.order.entity.Order.OrderType;
 
 
 import com.gitbitex.module.matchingengine.OrderBook;

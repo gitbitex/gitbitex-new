@@ -2,8 +2,8 @@ package com.gitbitex.module.matchingengine.log;
 
 import java.math.BigDecimal;
 
-import com.gitbitex.entity.Order.OrderSide;
-import com.gitbitex.entity.Order.OrderType;
+import com.gitbitex.module.order.entity.Order.OrderSide;
+import com.gitbitex.module.order.entity.Order.OrderType;
 import lombok.Getter;
 import lombok.Setter;
 
