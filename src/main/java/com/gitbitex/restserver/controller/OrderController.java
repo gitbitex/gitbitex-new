@@ -10,7 +10,7 @@ import com.gitbitex.entity.Order.OrderSide;
 import com.gitbitex.entity.Order.OrderType;
 import com.gitbitex.entity.Order.TimeInForcePolicy;
 import com.gitbitex.entity.User;
-import com.gitbitex.orderprocessor.OrderManager;
+import com.gitbitex.module.order.OrderManager;
 import com.gitbitex.repository.OrderRepository;
 import com.gitbitex.restserver.model.OrderDto;
 import com.gitbitex.restserver.model.PagedList;

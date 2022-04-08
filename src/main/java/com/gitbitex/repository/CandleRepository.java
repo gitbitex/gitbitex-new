@@ -1,5 +1,10 @@
 package com.gitbitex.repository;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.persistence.criteria.Predicate;
+
 import com.gitbitex.entity.Candle;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -10,12 +15,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.CrudRepository;
 
-import javax.persistence.criteria.Predicate;
-import java.util.ArrayList;
-import java.util.List;
-
 public interface CandleRepository extends JpaRepository<Candle, Long>, CrudRepository<Candle, Long>,
-        JpaSpecificationExecutor<Candle> {
+    JpaSpecificationExecutor<Candle> {
 
     Candle findTopByProductIdAndGranularityOrderByTimeDesc(String productId, int granularity);
 
@@ -29,7 +30,7 @@ public interface CandleRepository extends JpaRepository<Candle, Long>, CrudRepos
             if (productId != null) {
                 predicates.add(cb.equal(root.get("productId"), productId));
             }
-            return cb.and(predicates.toArray(new Predicate[]{}));
+            return cb.and(predicates.toArray(new Predicate[] {}));
         };
 
         Pageable pager = PageRequest.of(pageIndex - 1, pageSize, Sort.by("time").descending());

@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.CrudRepository;
 
 public interface ProductRepository extends JpaRepository<Product, Long>, CrudRepository<Product, Long>,
-        JpaSpecificationExecutor<Product> {
+    JpaSpecificationExecutor<Product> {
 
     Product findByProductId(String productId);
 }

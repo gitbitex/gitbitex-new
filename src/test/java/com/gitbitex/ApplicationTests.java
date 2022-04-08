@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.entity.Order;
 import com.gitbitex.entity.Product;
-import com.gitbitex.orderprocessor.OrderManager;
+import com.gitbitex.module.order.OrderManager;
 import com.gitbitex.repository.OrderRepository;
 import com.gitbitex.repository.ProductRepository;
 import com.gitbitex.restserver.controller.OrderController;

@@ -9,9 +9,9 @@ import com.gitbitex.entity.Order.OrderStatus;
 import com.gitbitex.entity.Order.OrderType;
 
 
-import com.gitbitex.matchingengine.OrderBook;
-import com.gitbitex.matchingengine.command.NewOrderCommand;
-import com.gitbitex.matchingengine.log.OrderBookLog;
+import com.gitbitex.module.matchingengine.OrderBook;
+import com.gitbitex.module.matchingengine.command.NewOrderCommand;
+import com.gitbitex.module.matchingengine.log.OrderBookLog;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

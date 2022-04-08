@@ -1,13 +1,13 @@
 package com.gitbitex.kafka;
 
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
 import org.slf4j.Logger;
-
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * https://kafka.apache.org/23/javadoc/index.html?org/apache/kafka/clients/consumer/KafkaConsumer.html

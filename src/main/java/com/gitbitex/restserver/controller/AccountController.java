@@ -1,5 +1,8 @@
 package com.gitbitex.restserver.controller;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.gitbitex.entity.Account;
 import com.gitbitex.entity.User;
 import com.gitbitex.repository.AccountRepository;
@@ -8,21 +11,20 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.List;
-
 @RestController
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class AccountController {
     private final AccountRepository accountRepository;
 
-    @GetMapping("/api/accounts")
+    @GetMapping("/accounts")
     public List<AccountDto> getAccounts(@RequestParam(name = "currency") List<String> currencies,
-                                        @RequestAttribute(required = false) User currentUser) {
+        @RequestAttribute(required = false) User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }

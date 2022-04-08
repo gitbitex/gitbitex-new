@@ -1,14 +1,14 @@
 package com.gitbitex.restserver;
 
-import com.gitbitex.entity.User;
-import com.gitbitex.user.UserManager;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import org.springframework.web.servlet.HandlerInterceptor;
-
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.gitbitex.entity.User;
+import com.gitbitex.module.user.UserManager;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
 @RequiredArgsConstructor

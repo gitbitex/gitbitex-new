@@ -11,7 +11,7 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.entity.Order.OrderSide;
 import com.gitbitex.entity.Order.OrderType;
-import com.gitbitex.orderprocessor.OrderManager;
+import com.gitbitex.module.order.OrderManager;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;

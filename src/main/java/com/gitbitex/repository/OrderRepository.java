@@ -1,5 +1,10 @@
 package com.gitbitex.repository;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.persistence.criteria.Predicate;
+
 import com.gitbitex.entity.Order;
 import com.gitbitex.entity.Order.OrderSide;
 import com.gitbitex.entity.Order.OrderStatus;
@@ -12,17 +17,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.CrudRepository;
 
-import javax.persistence.criteria.Predicate;
-import java.util.ArrayList;
-import java.util.List;
-
 public interface OrderRepository extends JpaRepository<Order, Long>, CrudRepository<Order, Long>,
-        JpaSpecificationExecutor<Order> {
+    JpaSpecificationExecutor<Order> {
 
     Order findByOrderId(String orderId);
 
     default Page<Order> findAll(String userId, String productId, OrderStatus status, OrderSide side,
-                                int pageIndex, int pageSize) {
+        int pageIndex, int pageSize) {
         Specification<Order> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -38,7 +39,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, CrudReposit
             if (side != null) {
                 predicates.add(cb.equal(root.get("side"), side));
             }
-            return cb.and(predicates.toArray(new Predicate[]{}));
+            return cb.and(predicates.toArray(new Predicate[] {}));
         };
 
         Pageable pager = PageRequest.of(pageIndex - 1, pageSize, Sort.by("id").descending());

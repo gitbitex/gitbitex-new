@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.CrudRepository;
 
 public interface BillRepository extends JpaRepository<Bill, Long>, CrudRepository<Bill, Long>,
-        JpaSpecificationExecutor<Bill> {
+    JpaSpecificationExecutor<Bill> {
     boolean existsByBillId(String billId);
 
     Bill findByBillId(String billId);

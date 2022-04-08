@@ -1,17 +1,18 @@
 package com.gitbitex.kafka;
 
+import java.util.Properties;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.AppProperties;
-import com.gitbitex.accountant.command.AccountCommand;
-import com.gitbitex.matchingengine.command.OrderBookCommand;
-import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.orderprocessor.command.OrderCommand;
+import com.gitbitex.module.account.command.AccountCommand;
+import com.gitbitex.module.matchingengine.command.OrderBookCommand;
+import com.gitbitex.module.matchingengine.log.OrderBookLog;
+import com.gitbitex.module.order.command.OrderCommand;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-
-import java.util.Properties;
 
 @Slf4j
 public class KafkaMessageProducer extends KafkaProducer<String, String> {
@@ -43,7 +44,7 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
 
         String topic = command.getProductId() + "-" + appProperties.getOrderBookCommandTopic();
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, command.getProductId(),
-                JSON.toJSONString(command));
+            JSON.toJSONString(command));
         //logger.info("+ {}: {} {} {}", message.getType(), record.topic(), record.key(),
         //  JSON.toJSONString(record.value()));
         super.send(record).get();
@@ -57,7 +58,7 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
 
         String topic = appProperties.getOrderCommandTopic();
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, command.getOrderId(),
-                JSON.toJSONString(command));
+            JSON.toJSONString(command));
         //logger.info("+ {}: {} {} {}", message.getType(), record.topic(), record.key(),JSON.toJSONString(record
         // .value()));
         super.send(record).get();
@@ -71,7 +72,7 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
 
         String topic = appProperties.getAccountCommandTopic();
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, command.getUserId(),
-                JSON.toJSONString(command));
+            JSON.toJSONString(command));
         //logger.info("+ {}: {} {} {}", message.getType(), record.topic(), record.key(),JSON.toJSONString(record
         // .value()));
         super.send(record).get();

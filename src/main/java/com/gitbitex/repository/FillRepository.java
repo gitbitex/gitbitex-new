@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.CrudRepository;
 
 public interface FillRepository extends JpaRepository<Fill, Long>, CrudRepository<Fill, Long>,
-        JpaSpecificationExecutor<Fill> {
+    JpaSpecificationExecutor<Fill> {
 
     boolean existsByOrderIdAndTradeId(String orderId, long traderId);
 
