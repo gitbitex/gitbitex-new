@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @RequiredArgsConstructor
 @EnableConfigurationProperties(AppProperties.class)
-public class AppConfig {
+public class AppConfiguration {
 
     @Bean
     public KafkaMessageProducer kafkaMessageProducer(AppProperties appProperties, KafkaProperties kafkaProperties) {
