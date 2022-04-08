@@ -11,7 +11,7 @@ import com.gitbitex.module.order.entity.Order;
 import com.gitbitex.module.product.entity.Product;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
-import com.gitbitex.kafka.KafkaConsumerThread;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.module.account.command.AccountCommand;
 import com.gitbitex.module.account.command.AccountCommandDispatcher;

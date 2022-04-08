@@ -1,4 +1,4 @@
-package com.gitbitex.kafka;
+package com.gitbitex.support.kafka;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -11,6 +11,14 @@ import org.slf4j.Logger;
 
 /**
  * https://kafka.apache.org/23/javadoc/index.html?org/apache/kafka/clients/consumer/KafkaConsumer.html
+ *
+ * Multi-threaded Processing
+ * The Kafka consumer is NOT thread-safe. All network I/O happens in the thread of the application making the call.
+ * It is the responsibility of the user to ensure that multi-threaded access is properly synchronized.
+ * Un-synchronized access will result in ConcurrentModificationException.
+ * The only exception to this rule is wakeup(), which can safely be used from an external thread to interrupt an
+ * active operation. In this case, a WakeupException will be thrown from the thread blocking on the operation. This
+ * can be used to shutdown the consumer from another thread. The following snippet shows the typical pattern:
  *
  * @param <K>
  * @param <V>

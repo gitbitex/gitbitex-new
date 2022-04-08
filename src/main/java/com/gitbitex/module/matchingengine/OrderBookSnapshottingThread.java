@@ -13,7 +13,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.kafka.KafkaConsumerThread;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.module.matchingengine.log.OrderBookLog;
 import com.gitbitex.module.matchingengine.log.OrderBookLogDispatcher;
 import com.gitbitex.module.matchingengine.log.OrderBookLogHandler;

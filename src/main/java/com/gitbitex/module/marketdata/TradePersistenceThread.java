@@ -6,7 +6,7 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.module.marketdata.entity.Trade;
-import com.gitbitex.kafka.KafkaConsumerThread;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.module.matchingengine.log.OrderBookLog;
 import com.gitbitex.module.matchingengine.log.OrderMatchLog;
 import com.gitbitex.module.marketdata.repository.TradeRepository;

@@ -15,7 +15,7 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.module.marketdata.entity.Candle;
-import com.gitbitex.kafka.KafkaConsumerThread;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.module.matchingengine.MarketMessagePublisher;
 import com.gitbitex.module.matchingengine.TickerManager;
 import com.gitbitex.module.matchingengine.log.OrderBookLog;

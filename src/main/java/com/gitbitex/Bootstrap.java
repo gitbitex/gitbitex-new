@@ -8,7 +8,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
 import com.gitbitex.module.product.entity.Product;
-import com.gitbitex.kafka.KafkaConsumerThread;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.module.account.AccountManager;
 import com.gitbitex.module.account.AccountantThread;

@@ -9,7 +9,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.kafka.KafkaConsumerThread;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.module.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.module.matchingengine.command.NewOrderCommand;

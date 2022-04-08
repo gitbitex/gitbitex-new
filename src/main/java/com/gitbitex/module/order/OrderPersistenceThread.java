@@ -6,7 +6,7 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.module.order.entity.Order;
-import com.gitbitex.kafka.KafkaConsumerThread;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.module.account.command.SettleOrderCommand;
 import com.gitbitex.module.account.command.SettleOrderFillCommand;

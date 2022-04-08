@@ -4,7 +4,7 @@ import java.util.Collections;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.module.order.entity.Order;
-import com.gitbitex.kafka.KafkaConsumerThread;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.module.matchingengine.log.OrderBookLog;
 import com.gitbitex.module.matchingengine.log.OrderBookLogDispatcher;
