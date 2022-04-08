@@ -34,6 +34,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.redisson.client.codec.StringCodec;
 
 @Slf4j
 public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBookLog> {

@@ -16,8 +16,6 @@ public class MarketMessagePublisher {
     private final RedissonClient redissonClient;
 
     public void publish(MarketMessage message) {
-        logger.info("publish {}", JSON.toJSONString(message));
-        redissonClient.getTopic(message.getType(), StringCodec.INSTANCE)
-            .publish(JSON.toJSONString(message));
+        redissonClient.getTopic(message.getType(), StringCodec.INSTANCE).publish(JSON.toJSONString(message));
     }
 }
