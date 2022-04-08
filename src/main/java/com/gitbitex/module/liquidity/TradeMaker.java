@@ -1,4 +1,4 @@
-package com.gitbitex.fake;
+package com.gitbitex.module.liquidity;
 
 import java.io.IOException;
 import java.math.BigDecimal;

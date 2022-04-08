@@ -31,8 +31,6 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
 
         String topic = log.getProductId() + "-" + appProperties.getOrderBookLogTopic();
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, log.getProductId(), JSON.toJSONString(log));
-        //logger.info("+ {}: {} {} {}", message.getType(), record.topic(), record.key(), JSON.toJSONString(record.value
-        // ()));
         super.send(record).get();
     }
 
@@ -45,8 +43,6 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         String topic = command.getProductId() + "-" + appProperties.getOrderBookCommandTopic();
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, command.getProductId(),
             JSON.toJSONString(command));
-        //logger.info("+ {}: {} {} {}", message.getType(), record.topic(), record.key(),
-        //  JSON.toJSONString(record.value()));
         super.send(record).get();
     }
 
@@ -59,8 +55,6 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         String topic = appProperties.getOrderCommandTopic();
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, command.getOrderId(),
             JSON.toJSONString(command));
-        //logger.info("+ {}: {} {} {}", message.getType(), record.topic(), record.key(),JSON.toJSONString(record
-        // .value()));
         super.send(record).get();
     }
 
@@ -73,8 +67,6 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         String topic = appProperties.getAccountCommandTopic();
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, command.getUserId(),
             JSON.toJSONString(command));
-        //logger.info("+ {}: {} {} {}", message.getType(), record.topic(), record.key(),JSON.toJSONString(record
-        // .value()));
         super.send(record).get();
     }
 }
