@@ -127,11 +127,16 @@ public class OrderManager {
         order.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().add(size) : size);
         order.setExecutedValue(order.getExecutedValue() != null ? order.getExecutedValue().add(funds) : funds);
 
-        if (order.getFilledSize().compareTo(order.getSize()) > 0 ||
-                order.getExecutedValue().compareTo(order.getFunds()) > 0) {
-            throw new RuntimeException("bad order: " + JSON.toJSONString(order));
+        /*if (order.getSide() == OrderSide.BUY) {
+            if (order.getExecutedValue().compareTo(order.getFunds()) > 0) {
+                throw new RuntimeException("bad order: " + JSON.toJSONString(order));
+            }
+        } else {
+            if (order.getExecutedValue().compareTo(order.getFunds()) > 0) {
+                throw new RuntimeException("bad order: " + JSON.toJSONString(order));
+            }
         }
-
+*/
         save(order);
 
         fill = new Fill();
