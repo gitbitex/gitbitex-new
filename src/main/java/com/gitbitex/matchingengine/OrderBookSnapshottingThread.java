@@ -13,10 +13,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
+import com.gitbitex.matchingengine.log.OrderBookLog;
 import com.gitbitex.matchingengine.log.OrderBookLogDispatcher;
 import com.gitbitex.matchingengine.log.OrderBookLogHandler;
-import com.gitbitex.support.kafka.KafkaConsumerThread;
-import com.gitbitex.matchingengine.log.OrderBookLog;
 import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.OrderOpenLog;
@@ -24,6 +23,7 @@ import com.gitbitex.matchingengine.log.OrderReceivedLog;
 import com.gitbitex.matchingengine.marketmessage.Level2OrderBookSnapshot;
 import com.gitbitex.matchingengine.marketmessage.Level2UpdateMessage;
 import com.gitbitex.matchingengine.marketmessage.Level3OrderBookSnapshot;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -40,10 +40,10 @@ public class OrderBookSnapshottingThread extends KafkaConsumerThread<String, Ord
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final SnapshotPersistenceThread snapshotPersistenceThread;
     private final Level2UpdatePublishThread level2UpdatePublishThread;
-    private final BlockingQueue<OrderBook> orderBookCopyQueue = new LinkedBlockingQueue<>(10);
-    private final BlockingQueue<PageLine> pageLineQueue = new LinkedBlockingQueue<>(1000);
     private final OrderBookLogDispatcher messageDispatcher;
     private final AppProperties appProperties;
+    private final BlockingQueue<OrderBook> orderBookCopyQueue = new LinkedBlockingQueue<>(10);
+    private final BlockingQueue<PageLine> pageLineQueue = new LinkedBlockingQueue<>(1000);
     private OrderBook orderBook;
 
     public OrderBookSnapshottingThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
@@ -152,8 +152,6 @@ public class OrderBookSnapshottingThread extends KafkaConsumerThread<String, Ord
     @SneakyThrows
     private void takeSnapshot(OrderBookLog log) {
         if (log.isCommandFinished()) {
-            logger.info("Start copying order book");
-
             // do not perform the copy operation if queue is full, because copy is a very time-consuming operation and
             // will block the consuming thread
             if (orderBookCopyQueue.remainingCapacity() == 0) {
@@ -162,8 +160,8 @@ public class OrderBookSnapshottingThread extends KafkaConsumerThread<String, Ord
             }
 
             // copy and put in the queue
+            logger.info("Start copying order book");
             orderBookCopyQueue.put(orderBook.copy());
-
             logger.info("order book copy complete");
         }
     }
@@ -190,16 +188,7 @@ public class OrderBookSnapshottingThread extends KafkaConsumerThread<String, Ord
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     OrderBook orderBookCopy = orderBookCopyQueue.take();
-                    CompletableFuture.allOf(
-                        CompletableFuture.runAsync(() -> orderBookSnapshotManager
-                                .saveLevel1BookSnapshot(productId, new Level2OrderBookSnapshot(orderBookCopy, true)),
-                            worker),
-                        CompletableFuture.runAsync(() -> orderBookSnapshotManager
-                                .saveLevel2BookSnapshot(productId, new Level2OrderBookSnapshot(orderBookCopy, false)),
-                            worker),
-                        CompletableFuture.runAsync(() -> orderBookSnapshotManager
-                            .saveLevel3BookSnapshot(productId, new Level3OrderBookSnapshot(orderBookCopy)), worker)
-                    ).join();
+                    saveSnapshot(orderBookCopy);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (Exception e) {
@@ -207,6 +196,19 @@ public class OrderBookSnapshottingThread extends KafkaConsumerThread<String, Ord
                 }
             }
             logger.info("exiting...");
+        }
+
+        private void saveSnapshot(OrderBook orderBookCopy) {
+            CompletableFuture.allOf(
+                CompletableFuture.runAsync(() -> orderBookSnapshotManager.saveLevel1BookSnapshot(productId,
+                        new Level2OrderBookSnapshot(orderBookCopy, true)),
+                    worker),
+                CompletableFuture.runAsync(() -> orderBookSnapshotManager
+                        .saveLevel2BookSnapshot(productId, new Level2OrderBookSnapshot(orderBookCopy, false)),
+                    worker),
+                CompletableFuture.runAsync(() -> orderBookSnapshotManager
+                    .saveLevel3BookSnapshot(productId, new Level3OrderBookSnapshot(orderBookCopy)), worker)
+            ).join();
         }
     }
 
