@@ -1,10 +1,17 @@
 package com.gitbitex.orderprocessor;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.accountant.AccountManager;
 import com.gitbitex.accountant.command.PlaceOrderCommand;
 import com.gitbitex.entity.Fill;
 import com.gitbitex.entity.Order;
+import com.gitbitex.entity.Order.OrderSide;
 import com.gitbitex.entity.Product;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
@@ -20,11 +27,6 @@ import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 
 @Service
 @Slf4j
@@ -82,12 +84,12 @@ public class OrderManager {
         // check account
         if (order.getSide() == Order.OrderSide.BUY) {
             if (accountManager.getAvailable(order.getUserId(), product.getQuoteCurrency()).compareTo(order.getFunds())
-                    < 0) {
+                < 0) {
                 throw new ServiceException(ErrorCode.INSUFFICIENT_BALANCE);
             }
         } else {
             if (accountManager.getAvailable(order.getUserId(), product.getBaseCurrency()).compareTo(order.getFunds())
-                    < 0) {
+                < 0) {
                 throw new ServiceException(ErrorCode.INSUFFICIENT_BALANCE);
             }
         }
@@ -117,7 +119,7 @@ public class OrderManager {
 
         Order order = orderRepository.findByOrderId(orderId);
         order.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().add(size) : size);
-        order.setExecutedValue(order.getExecutedValue() != null ? order.getExecutedValue().add(funds) : size);
+        order.setExecutedValue(order.getExecutedValue() != null ? order.getExecutedValue().add(funds) : funds);
         save(order);
 
         fill = new Fill();
@@ -134,6 +136,15 @@ public class OrderManager {
     }
 
     public void save(Order order) {
+        if (order.getFilledSize().compareTo(order.getSize()) > 0) {
+            throw new RuntimeException("bad order: " + JSON.toJSONString(order));
+        }
+        if (order.getSide() == OrderSide.BUY) {
+            if (order.getExecutedValue().compareTo(order.getFunds()) > 0) {
+                throw new RuntimeException("bad order: " + JSON.toJSONString(order));
+            }
+        }
+
         orderRepository.save(order);
 
         // send order update notify
@@ -152,7 +163,7 @@ public class OrderManager {
             orderMessage.setFillFees(order.getFillFees() != null ? order.getFillFees().toPlainString() : "0");
             orderMessage.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().toPlainString() : "0");
             orderMessage.setExecutedValue(
-                    order.getExecutedValue() != null ? order.getExecutedValue().toPlainString() : "0");
+                order.getExecutedValue() != null ? order.getExecutedValue().toPlainString() : "0");
             orderMessage.setStatus(order.getStatus().name().toLowerCase());
             redissonClient.getTopic("order", StringCodec.INSTANCE).publish(JSON.toJSONString(orderMessage));
         } catch (Exception e) {
