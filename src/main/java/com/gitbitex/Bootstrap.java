@@ -169,7 +169,6 @@ public class Bootstrap {
         properties.put("enable.auto.commit", "false");
         properties.put("session.timeout.ms", "30000");
         properties.put("auto.offset.reset", "earliest");
-        properties.put("compression.type", "zstd");
         return properties;
     }
 }

@@ -1,6 +1,14 @@
 package com.gitbitex.restserver.controller;
 
+import java.math.BigDecimal;
+import java.util.stream.Collectors;
+
+import javax.validation.Valid;
+
 import com.gitbitex.entity.Order;
+import com.gitbitex.entity.Order.OrderSide;
+import com.gitbitex.entity.Order.OrderType;
+import com.gitbitex.entity.Order.TimeInForcePolicy;
 import com.gitbitex.entity.User;
 import com.gitbitex.orderprocessor.OrderManager;
 import com.gitbitex.repository.OrderRepository;
@@ -11,12 +19,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-
-import javax.validation.Valid;
-import java.math.BigDecimal;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -28,27 +40,25 @@ public class OrderController {
     @PostMapping(value = "/orders")
     @SneakyThrows
     public OrderDto placeOrder(@RequestBody @Valid PlaceOrderRequest request,
-                               @RequestAttribute(required = false) User currentUser) {
+        @RequestAttribute(required = false) User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        Order order = new Order();
-        order.setUserId(currentUser.getUserId());
-        order.setProductId(request.getProductId());
-        order.setType(Order.OrderType.valueOf(request.getType().toUpperCase()));
-        order.setSide(Order.OrderSide.valueOf(request.getSide().toUpperCase()));
-        if (request.getPrice() != null) {
-            order.setPrice(new BigDecimal(request.getPrice()));
-        }
-        order.setSize(new BigDecimal(request.getSize()));
-        order.setTimeInForce(request.getTimeInForce());
-        order.setClientOid(request.getClientOid());
-        if (request.getFunds() != null) {
-            order.setFunds(new BigDecimal(request.getFunds()));
-        }
-        orderManager.placeOrder(order);
-        return orderDto(order);
+        OrderType type = Order.OrderType.valueOf(request.getType().toUpperCase());
+        OrderSide side = Order.OrderSide.valueOf(request.getSide().toUpperCase());
+        BigDecimal size = new BigDecimal(request.getSize());
+        BigDecimal price = request.getPrice() != null ? new BigDecimal(request.getPrice()) : null;
+        BigDecimal funds = request.getFunds() != null ? new BigDecimal(request.getFunds()) : null;
+        TimeInForcePolicy timeInForcePolicy = request.getTimeInForce() != null ? TimeInForcePolicy.valueOf(
+            request.getTimeInForce().toUpperCase()) : null;
+
+        String orderId = orderManager.placeOrder(currentUser.getUserId(), request.getProductId(), type, side, size,
+            price, funds, request.getClientOid(), timeInForcePolicy);
+
+        OrderDto orderDto = new OrderDto();
+        orderDto.setId(orderId);
+        return orderDto;
     }
 
     @DeleteMapping("/orders/{orderId}")
@@ -76,8 +86,10 @@ public class OrderController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
+        OrderSide orderSide = side != null ? Order.OrderSide.valueOf(side.toUpperCase()) : null;
+
         Page<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, Order.OrderStatus.OPEN,
-                side != null ? Order.OrderSide.valueOf(side.toUpperCase()) : null, 1, 10000);
+            orderSide, 1, 10000);
 
         for (Order order : orderPage.getContent()) {
             orderManager.cancelOrder(order);
@@ -86,10 +98,10 @@ public class OrderController {
 
     @GetMapping("/orders")
     public PagedList<OrderDto> listOrders(@RequestParam(required = false) String productId,
-                                          @RequestParam(required = false) String status,
-                                          @RequestParam(defaultValue = "1") int page,
-                                          @RequestParam(defaultValue = "50") int pageSize,
-                                          @RequestAttribute(required = false) User currentUser) {
+        @RequestParam(required = false) String status,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "50") int pageSize,
+        @RequestAttribute(required = false) User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
@@ -97,10 +109,10 @@ public class OrderController {
         Order.OrderStatus orderStatus = status != null ? Order.OrderStatus.valueOf(status.toUpperCase()) : null;
 
         Page<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, orderStatus, null, page,
-                pageSize);
+            pageSize);
         return new PagedList<>(
-                orderPage.getContent().stream().map(this::orderDto).collect(Collectors.toList()),
-                orderPage.getTotalElements());
+            orderPage.getContent().stream().map(this::orderDto).collect(Collectors.toList()),
+            orderPage.getTotalElements());
     }
 
     private OrderDto orderDto(Order order) {

@@ -1,37 +1,52 @@
 package com.gitbitex.fake;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.concurrent.Executors;
+
+import javax.annotation.PostConstruct;
+
 import com.alibaba.fastjson.JSON;
+
+import com.gitbitex.entity.Order.OrderSide;
+import com.gitbitex.entity.Order.OrderType;
+import com.gitbitex.orderprocessor.OrderManager;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import okhttp3.*;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executors;
-
 @Component
+@RequiredArgsConstructor
 public class TradeMaker {
-    @Value("${server.port}")
-    private int serverPort;
+    private final OrderManager orderManager;
+    @Value("${gbe.trade-maker-enabled:false}")
+    private boolean tradeMakerEnabled;
 
-    //@PostConstruct
+    @PostConstruct
     public void init() throws IOException, InterruptedException {
+        if (!tradeMakerEnabled) {
+            return;
+        }
+
         Executors.newFixedThreadPool(1).submit(() -> {
             OkHttpClient httpClient = new OkHttpClient();
 
-            long maxTradeId = 0;
+            String productId = "BTC-USDT";
+            String userId = "ad80fcfe-c3a1-46a1-acf8-1d6a909b2c5a";
 
+            long maxTradeId = 0;
             while (true) {
                 try {
                     Request request = new Request.Builder()
-                            .url("https://api.binance.com/api/v3/trades?symbol=BTCUSDT&limit=1")
-                            .get()
-                            .build();
+                        .url("https://api.binance.com/api/v3/trades?symbol=BTCUSDT&limit=1")
+                        .get()
+                        .build();
                     Response response = httpClient.newCall(request).execute();
                     String responseBody = response.body().string();
 
@@ -45,10 +60,14 @@ public class TradeMaker {
                         maxTradeId = Long.max(maxTradeId, trade.getId());
 
                         System.out.println(JSON.toJSONString(trade));
-                        placeOrder(httpClient, "BTC-USDT", trade.getPrice(), trade.getQty(),
-                                trade.isBuyerMaker ? "buy" : "sell");
-                        placeOrder(httpClient, "BTC-USDT", trade.getPrice(), trade.getQty(),
-                                trade.isBuyerMaker ? "sell" : "buy");
+
+                        BigDecimal size = new BigDecimal(trade.getQty());
+                        BigDecimal price = new BigDecimal(trade.getPrice());
+
+                        orderManager.placeOrder(userId, productId, OrderType.LIMIT,
+                            OrderSide.BUY, size, price, null, null, null);
+                        orderManager.placeOrder(userId, productId, OrderType.LIMIT,
+                            OrderSide.SELL, size, price, null, null, null);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -58,25 +77,6 @@ public class TradeMaker {
             }
 
         });
-    }
-
-    private void placeOrder(OkHttpClient httpClient, String productId, String price, String size, String side)
-            throws IOException {
-        Map<String, String> params = new HashMap<>();
-        params.put("productId", productId);
-        params.put("price", price);
-        params.put("size", size);
-        params.put("side", side);
-        params.put("type", "limit");
-        RequestBody requestBody = RequestBody.create(MediaType.parse("application/json"), JSON.toJSONString(params));
-        Request request = new Request.Builder()
-                .url(
-                        "http://127.0.0.1:"+serverPort+"/api/orders?accessToken=ad80fcfe-c3a1-46a1-acf8-1d6a909b2c5a:92B46C7FF1358CFCA5BC83E3C7E91E18:5e221aa93950f87135672ca84b82e3bf")
-                .post(requestBody)
-                .build();
-        Response response = httpClient.newCall(request).execute();
-        String responseBody = response.body().string();
-        System.out.println(responseBody);
     }
 
     @Getter

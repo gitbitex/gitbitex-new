@@ -18,5 +18,4 @@ public class OrderDto {
     private String filledSize;
     private String executedValue;
     private String status;
-    private boolean settled;
 }

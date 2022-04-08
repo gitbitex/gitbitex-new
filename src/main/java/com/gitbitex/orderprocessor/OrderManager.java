@@ -11,6 +11,9 @@ import com.gitbitex.accountant.AccountManager;
 import com.gitbitex.accountant.command.PlaceOrderCommand;
 import com.gitbitex.entity.Fill;
 import com.gitbitex.entity.Order;
+import com.gitbitex.entity.Order.OrderSide;
+import com.gitbitex.entity.Order.OrderType;
+import com.gitbitex.entity.Order.TimeInForcePolicy;
 import com.gitbitex.entity.Product;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
@@ -38,22 +41,21 @@ public class OrderManager {
     private final KafkaMessageProducer messageProducer;
     private final AccountManager accountManager;
 
-    public void placeOrder(Order order) throws ExecutionException, InterruptedException {
-        Product product = productRepository.findByProductId(order.getProductId());
+    public String placeOrder(String userId, String productId, OrderType orderType, OrderSide side, BigDecimal size,
+        BigDecimal price, BigDecimal funds, String clientOrderId, TimeInForcePolicy timeInForcePolicy)
+        throws ExecutionException, InterruptedException {
+        Product product = productRepository.findByProductId(productId);
 
-        // format order
-        BigDecimal size = order.getSize();
-        BigDecimal price = order.getPrice();
-        BigDecimal funds = order.getFunds();
-        switch (order.getType()) {
+        // calculate size or funds
+        switch (orderType) {
             case LIMIT:
                 size = size.setScale(product.getBaseScale(), RoundingMode.DOWN);
                 price = price.setScale(product.getQuoteScale(), RoundingMode.DOWN);
-                funds = order.getSide() == Order.OrderSide.BUY ? size.multiply(price) : BigDecimal.ZERO;
+                funds = side == Order.OrderSide.BUY ? size.multiply(price) : BigDecimal.ZERO;
                 break;
             case MARKET:
                 price = BigDecimal.ZERO;
-                if (order.getSide() == Order.OrderSide.BUY) {
+                if (side == Order.OrderSide.BUY) {
                     size = BigDecimal.ZERO;
                     funds = funds.setScale(product.getQuoteScale(), RoundingMode.DOWN);
                 } else {
@@ -62,42 +64,48 @@ public class OrderManager {
                 }
                 break;
             default:
-                throw new RuntimeException("unknown order type: " + order.getType());
+                throw new RuntimeException("unknown order type: " + orderType);
         }
+
+        // check size or funds
+        if (side == Order.OrderSide.SELL) {
+            if (size.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("bad SELL order: size must be positive");
+            }
+
+            if (accountManager.getAvailable(userId, product.getBaseCurrency()).compareTo(size) < 0) {
+                throw new ServiceException(ErrorCode.INSUFFICIENT_BALANCE);
+            }
+        } else {
+            if (funds.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("bad BUY order: funds must be positive");
+            }
+
+            if (accountManager.getAvailable(userId, product.getQuoteCurrency()).compareTo(funds) < 0) {
+                throw new ServiceException(ErrorCode.INSUFFICIENT_BALANCE);
+            }
+        }
+
+        // build order
+        Order order = new Order();
         order.setOrderId(UUID.randomUUID().toString());
+        order.setUserId(userId);
+        order.setProductId(productId);
+        order.setType(orderType);
+        order.setSide(side);
+        order.setSize(size);
+        order.setClientOid(clientOrderId);
         order.setSize(size);
         order.setFunds(funds);
         order.setPrice(price);
-
-        // check order
-        if (order.getSide() == Order.OrderSide.SELL) {
-            if (order.getSize().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new RuntimeException("bad SELL order: size must be positive");
-            }
-        } else {
-            if (order.getFunds().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new RuntimeException("bad BUY order: funds must be positive");
-            }
-        }
-
-        // check account
-        if (order.getSide() == Order.OrderSide.BUY) {
-            if (accountManager.getAvailable(order.getUserId(), product.getQuoteCurrency()).compareTo(order.getFunds())
-                < 0) {
-                throw new ServiceException(ErrorCode.INSUFFICIENT_BALANCE);
-            }
-        } else {
-            if (accountManager.getAvailable(order.getUserId(), product.getBaseCurrency()).compareTo(order.getFunds())
-                < 0) {
-                throw new ServiceException(ErrorCode.INSUFFICIENT_BALANCE);
-            }
-        }
 
         // send order to matching-engine
         PlaceOrderCommand placeOrderCommand = new PlaceOrderCommand();
         placeOrderCommand.setUserId(order.getUserId());
         placeOrderCommand.setOrder(order);
         messageProducer.sendToAccountant(placeOrderCommand);
+
+        return order.getOrderId();
     }
 
     public void cancelOrder(Order order) throws ExecutionException, InterruptedException {

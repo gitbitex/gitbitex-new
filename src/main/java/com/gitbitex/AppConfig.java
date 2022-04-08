@@ -22,6 +22,7 @@ public class AppConfig {
         properties.put("bootstrap.servers", kafkaProperties.getBootstrapServers());
         properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        properties.put("compression.type", "zstd");
         return new KafkaMessageProducer(properties, appProperties);
     }
 }
