@@ -1,12 +1,6 @@
 package com.gitbitex.order;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.account.AccountManager;
 import com.gitbitex.account.command.PlaceOrderCommand;
 import com.gitbitex.exception.ErrorCode;
@@ -30,6 +24,11 @@ import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -42,8 +41,8 @@ public class OrderManager {
     private final AccountManager accountManager;
 
     public String placeOrder(String userId, String productId, OrderType orderType, OrderSide side, BigDecimal size,
-        BigDecimal price, BigDecimal funds, String clientOrderId, TimeInForcePolicy timeInForcePolicy)
-        throws ExecutionException, InterruptedException {
+                             BigDecimal price, BigDecimal funds, String clientOrderId, TimeInForcePolicy timeInForcePolicy)
+            throws ExecutionException, InterruptedException {
         Product product = productManager.getProductById(productId);
 
         // calculate size or funds
@@ -127,6 +126,12 @@ public class OrderManager {
         Order order = orderRepository.findByOrderId(orderId);
         order.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().add(size) : size);
         order.setExecutedValue(order.getExecutedValue() != null ? order.getExecutedValue().add(funds) : funds);
+
+        if (order.getFilledSize().compareTo(order.getSize()) > 0 ||
+                order.getExecutedValue().compareTo(order.getFunds()) > 0) {
+            throw new RuntimeException("bad order: " + JSON.toJSONString(order));
+        }
+
         save(order);
 
         fill = new Fill();
