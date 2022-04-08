@@ -5,10 +5,10 @@ import java.util.Properties;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.module.account.command.AccountCommand;
-import com.gitbitex.module.matchingengine.command.OrderBookCommand;
-import com.gitbitex.module.matchingengine.log.OrderBookLog;
-import com.gitbitex.module.order.command.OrderCommand;
+import com.gitbitex.account.command.AccountCommand;
+import com.gitbitex.matchingengine.command.OrderBookCommand;
+import com.gitbitex.matchingengine.log.OrderBookLog;
+import com.gitbitex.order.command.OrderCommand;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;

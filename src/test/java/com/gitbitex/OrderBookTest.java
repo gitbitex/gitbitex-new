@@ -3,15 +3,15 @@ package com.gitbitex;
 
 import com.alibaba.fastjson.JSON;
 
-import com.gitbitex.module.order.entity.Order;
-import com.gitbitex.module.order.entity.Order.OrderSide;
-import com.gitbitex.module.order.entity.Order.OrderStatus;
-import com.gitbitex.module.order.entity.Order.OrderType;
+import com.gitbitex.order.entity.Order;
+import com.gitbitex.order.entity.Order.OrderSide;
+import com.gitbitex.order.entity.Order.OrderStatus;
+import com.gitbitex.order.entity.Order.OrderType;
 
 
-import com.gitbitex.module.matchingengine.OrderBook;
-import com.gitbitex.module.matchingengine.command.NewOrderCommand;
-import com.gitbitex.module.matchingengine.log.OrderBookLog;
+import com.gitbitex.matchingengine.OrderBook;
+import com.gitbitex.matchingengine.command.NewOrderCommand;
+import com.gitbitex.matchingengine.log.OrderBookLog;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
