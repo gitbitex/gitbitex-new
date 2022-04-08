@@ -16,16 +16,16 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.repository.CandleRepository;
+import com.gitbitex.marketdata.util.DateUtil;
 import com.gitbitex.matchingengine.MarketMessagePublisher;
 import com.gitbitex.matchingengine.TickerManager;
-import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.matchingengine.log.OrderBookLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.marketmessage.CandleMessage;
 import com.gitbitex.matchingengine.marketmessage.MarketMessage;
 import com.gitbitex.matchingengine.marketmessage.MatchMessage;
 import com.gitbitex.matchingengine.marketmessage.TickerMessage;
-import com.gitbitex.marketdata.util.DateUtil;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -264,8 +264,6 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     MarketMessage message = feedMessageQueue.take();
-                    logger.info("{}", JSON.toJSONString(message));
-
                     marketMessagePublisher.publish(message);
 
                     if (message instanceof TickerMessage) {
