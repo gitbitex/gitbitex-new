@@ -9,20 +9,20 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.account.AccountManager;
 import com.gitbitex.account.command.PlaceOrderCommand;
+import com.gitbitex.exception.ErrorCode;
+import com.gitbitex.exception.ServiceException;
 import com.gitbitex.feed.message.OrderMessage;
+import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.order.entity.Fill;
 import com.gitbitex.order.entity.Order;
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
 import com.gitbitex.order.entity.Order.TimeInForcePolicy;
-import com.gitbitex.product.entity.Product;
-import com.gitbitex.exception.ErrorCode;
-import com.gitbitex.exception.ServiceException;
-import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.product.ProductManager;
 import com.gitbitex.order.repository.FillRepository;
 import com.gitbitex.order.repository.OrderRepository;
+import com.gitbitex.product.ProductManager;
+import com.gitbitex.product.entity.Product;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
@@ -147,23 +147,22 @@ public class OrderManager {
 
         // send order update notify
         try {
-            OrderMessage orderMessage = new OrderMessage();
-            orderMessage.setType("order");
-            orderMessage.setUserId(order.getUserId());
-            orderMessage.setProductId(order.getProductId());
-            orderMessage.setId(order.getOrderId());
-            orderMessage.setPrice(order.getPrice().toPlainString());
-            orderMessage.setSize(order.getSize().toPlainString());
-            orderMessage.setFunds(order.getFunds().toPlainString());
-            orderMessage.setSide(order.getSide().name().toLowerCase());
-            orderMessage.setOrderType(order.getType().name().toLowerCase());
-            orderMessage.setCreatedAt(order.getCreatedAt().toInstant().toString());
-            orderMessage.setFillFees(order.getFillFees() != null ? order.getFillFees().toPlainString() : "0");
-            orderMessage.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().toPlainString() : "0");
-            orderMessage.setExecutedValue(
-                order.getExecutedValue() != null ? order.getExecutedValue().toPlainString() : "0");
-            orderMessage.setStatus(order.getStatus().name().toLowerCase());
-            redissonClient.getTopic("order", StringCodec.INSTANCE).publish(JSON.toJSONString(orderMessage));
+            OrderMessage message = new OrderMessage();
+            message.setType("order");
+            message.setUserId(order.getUserId());
+            message.setProductId(order.getProductId());
+            message.setId(order.getOrderId());
+            message.setPrice(order.getPrice().toPlainString());
+            message.setSize(order.getSize().toPlainString());
+            message.setFunds(order.getFunds().toPlainString());
+            message.setSide(order.getSide().name().toLowerCase());
+            message.setOrderType(order.getType().name().toLowerCase());
+            message.setCreatedAt(order.getCreatedAt().toInstant().toString());
+            message.setFillFees(order.getFillFees() != null ? order.getFillFees().toPlainString() : "0");
+            message.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().toPlainString() : "0");
+            message.setExecutedValue(order.getExecutedValue() != null ? order.getExecutedValue().toPlainString() : "0");
+            message.setStatus(order.getStatus().name().toLowerCase());
+            redissonClient.getTopic("order", StringCodec.INSTANCE).publish(JSON.toJSONString(message));
         } catch (Exception e) {
             logger.error("notify error: {}", e.getMessage(), e);
         }

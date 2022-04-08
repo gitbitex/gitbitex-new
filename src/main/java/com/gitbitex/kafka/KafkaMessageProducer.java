@@ -23,16 +23,6 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         this.appProperties = appProperties;
     }
 
-    @SneakyThrows
-    public void sendToMatchingLogTopic(OrderBookLog log) {
-        if (log.getProductId() == null) {
-            throw new NullPointerException("productId");
-        }
-
-        String topic = log.getProductId() + "-" + appProperties.getOrderBookLogTopic();
-        ProducerRecord<String, String> record = new ProducerRecord<>(topic, log.getProductId(), JSON.toJSONString(log));
-        super.send(record).get();
-    }
 
     @SneakyThrows
     public void sendToMatchingEngine(OrderBookCommand command) {
@@ -42,18 +32,6 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
 
         String topic = command.getProductId() + "-" + appProperties.getOrderBookCommandTopic();
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, command.getProductId(),
-            JSON.toJSONString(command));
-        super.send(record).get();
-    }
-
-    @SneakyThrows
-    public void sendToOrderProcessor(OrderCommand command) {
-        if (command.getOrderId() == null) {
-            throw new NullPointerException("orderId");
-        }
-
-        String topic = appProperties.getOrderCommandTopic();
-        ProducerRecord<String, String> record = new ProducerRecord<>(topic, command.getOrderId(),
             JSON.toJSONString(command));
         super.send(record).get();
     }

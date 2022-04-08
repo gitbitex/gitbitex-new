@@ -2,7 +2,10 @@ package com.gitbitex.order;
 
 import java.util.Collections;
 
+import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.AppProperties;
+import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.matchingengine.log.OrderBookLog;
 import com.gitbitex.matchingengine.log.OrderBookLogDispatcher;
 import com.gitbitex.matchingengine.log.OrderBookLogHandler;
@@ -10,17 +13,18 @@ import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.OrderOpenLog;
 import com.gitbitex.matchingengine.log.OrderReceivedLog;
-import com.gitbitex.order.entity.Order;
-import com.gitbitex.support.kafka.KafkaConsumerThread;
-import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.order.command.FillOrderCommand;
+import com.gitbitex.order.command.OrderCommand;
 import com.gitbitex.order.command.SaveOrderCommand;
 import com.gitbitex.order.command.UpdateOrderStatusCommand;
+import com.gitbitex.order.entity.Order;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
 @Slf4j
 public class OrderCommandShardingThread extends KafkaConsumerThread<String, OrderBookLog>
@@ -58,7 +62,7 @@ public class OrderCommandShardingThread extends KafkaConsumerThread<String, Orde
         SaveOrderCommand saveOrderCommand = new SaveOrderCommand();
         saveOrderCommand.setOrderId(log.getOrder().getOrderId());
         saveOrderCommand.setOrder(log.getOrder());
-        messageProducer.sendToOrderProcessor(saveOrderCommand);
+        sendCommand(saveOrderCommand);
     }
 
     @Override
@@ -66,11 +70,10 @@ public class OrderCommandShardingThread extends KafkaConsumerThread<String, Orde
         UpdateOrderStatusCommand updateOrderStatusCommand = new UpdateOrderStatusCommand();
         updateOrderStatusCommand.setOrderId(log.getOrderId());
         updateOrderStatusCommand.setOrderStatus(Order.OrderStatus.OPEN);
-        messageProducer.sendToOrderProcessor(updateOrderStatusCommand);
+        sendCommand(updateOrderStatusCommand);
     }
 
     @Override
-    @SneakyThrows
     public void on(OrderMatchLog log) {
         FillOrderCommand fillTakerOrderCommand = new FillOrderCommand();
         fillTakerOrderCommand.setOrderId(log.getTakerOrderId());
@@ -80,7 +83,7 @@ public class OrderCommandShardingThread extends KafkaConsumerThread<String, Orde
         fillTakerOrderCommand.setPrice(log.getPrice());
         fillTakerOrderCommand.setFunds(log.getFunds());
         fillTakerOrderCommand.setTradeId(log.getTradeId());
-        messageProducer.sendToOrderProcessor(fillTakerOrderCommand);
+        sendCommand(fillTakerOrderCommand);
 
         FillOrderCommand fillMakerOrderCommand = new FillOrderCommand();
         fillMakerOrderCommand.setOrderId(log.getMakerOrderId());
@@ -90,16 +93,27 @@ public class OrderCommandShardingThread extends KafkaConsumerThread<String, Orde
         fillMakerOrderCommand.setPrice(log.getPrice());
         fillMakerOrderCommand.setFunds(log.getFunds());
         fillMakerOrderCommand.setTradeId(log.getTradeId());
-        messageProducer.sendToOrderProcessor(fillMakerOrderCommand);
+        sendCommand(fillMakerOrderCommand);
     }
 
     @Override
-    @SneakyThrows
     public void on(OrderDoneLog log) {
         UpdateOrderStatusCommand updateOrderStatusCommand = new UpdateOrderStatusCommand();
         updateOrderStatusCommand.setOrderId(log.getOrderId());
         updateOrderStatusCommand.setOrderStatus(Order.OrderStatus.CANCELLED);
         updateOrderStatusCommand.setDoneReason(log.getDoneReason());
-        messageProducer.sendToOrderProcessor(updateOrderStatusCommand);
+        sendCommand(updateOrderStatusCommand);
+    }
+
+    @SneakyThrows
+    private void sendCommand(OrderCommand command) {
+        if (command.getOrderId() == null) {
+            throw new NullPointerException("bad OrderCommand: orderId is null");
+        }
+
+        String topic = appProperties.getOrderCommandTopic();
+        String key = command.getOrderId();
+        ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, JSON.toJSONString(command));
+        messageProducer.send(record).get();
     }
 }

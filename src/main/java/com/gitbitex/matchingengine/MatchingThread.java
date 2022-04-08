@@ -9,7 +9,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.NewOrderCommand;
@@ -18,6 +17,7 @@ import com.gitbitex.matchingengine.command.OrderBookCommandDispatcher;
 import com.gitbitex.matchingengine.command.OrderBookCommandHandler;
 import com.gitbitex.matchingengine.log.OrderBookLog;
 import com.gitbitex.matchingengine.marketmessage.Level3OrderBookSnapshot;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +25,7 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 
 @Slf4j
@@ -43,7 +44,8 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
         super(messageKafkaConsumer, logger);
         this.productId = productId;
         this.orderBookSnapshotManager = orderBookSnapshotManager;
-        this.orderBookLogPersistenceThread = new OrderBookLogPersistenceThread(orderBookLogQueue, messageProducer);
+        this.orderBookLogPersistenceThread = new OrderBookLogPersistenceThread(orderBookLogQueue, messageProducer,
+            appProperties);
         this.orderBookCommandDispatcher = new OrderBookCommandDispatcher(this);
         this.appProperties = appProperties;
     }
@@ -66,7 +68,9 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
             new ConsumerRebalanceListener() {
                 @Override
                 public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-
+                    for (TopicPartition partition : partitions) {
+                        logger.warn("partition revoked: {}", partition);
+                    }
                 }
 
                 @Override
@@ -127,6 +131,7 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
     public static class OrderBookLogPersistenceThread extends Thread {
         private final BlockingQueue<OrderBookLog> orderBookLogQueue;
         private final KafkaMessageProducer messageProducer;
+        private final AppProperties appProperties;
 
         @Override
         public void run() {
@@ -134,7 +139,7 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     OrderBookLog log = orderBookLogQueue.take();
-                    messageProducer.sendToMatchingLogTopic(log);
+                    sendOrderBookLog(log);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (Exception e) {
@@ -143,6 +148,18 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
                 }
             }
             logger.warn("exiting...");
+        }
+
+        @SneakyThrows
+        public void sendOrderBookLog(OrderBookLog log) {
+            if (log.getProductId() == null) {
+                throw new NullPointerException("bad OrderBookLog: productId is null");
+            }
+
+            String topic = log.getProductId() + "-" + appProperties.getOrderBookLogTopic();
+            String key = log.getProductId();
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, JSON.toJSONString(log));
+            messageProducer.send(record).get();
         }
     }
 
