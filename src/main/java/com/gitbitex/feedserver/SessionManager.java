@@ -1,6 +1,12 @@
 package com.gitbitex.feedserver;
 
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.feedserver.message.PongMessage;
 import com.gitbitex.matchingengine.OrderBookSnapshotManager;
 import com.gitbitex.matchingengine.TickerManager;
@@ -13,26 +19,21 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class SessionManager {
     private final ConcurrentHashMap<String, ConcurrentSkipListSet<String>> sessionIdsByChannel
-            = new ConcurrentHashMap<>();
+        = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ConcurrentSkipListSet<String>> channelsBySessionId
-            = new ConcurrentHashMap<>();
+        = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, WebSocketSession> sessionById = new ConcurrentHashMap<>();
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final TickerManager tickerManager;
 
     @SneakyThrows
     public void subOrUnSub(WebSocketSession session, List<String> productIds, List<String> currencies,
-                           List<String> channels, boolean isSub) {
+        List<String> channels, boolean isSub) {
         for (String channel : channels) {
             switch (channel) {
                 case "level2":
@@ -44,7 +45,7 @@ public class SessionManager {
 
                             try {
                                 Level2OrderBookSnapshot snapshot = orderBookSnapshotManager.getLevel2BookSnapshot(
-                                        productId);
+                                    productId);
                                 if (snapshot != null) {
                                     session.sendMessage(new TextMessage(JSON.toJSONString(snapshot)));
                                 }
@@ -162,15 +163,17 @@ public class SessionManager {
     private void subscribeChannel(WebSocketSession session, String channel) {
         logger.info("sub: {} {}", session.getId(), channel);
         sessionIdsByChannel
-                .computeIfAbsent(channel, k -> new ConcurrentSkipListSet<>())
-                .add(session.getId());
+            .computeIfAbsent(channel, k -> new ConcurrentSkipListSet<>())
+            .add(session.getId());
         channelsBySessionId.computeIfAbsent(session.getId(), k -> new ConcurrentSkipListSet<>())
-                .add(channel);
+            .add(channel);
         sessionById.put(session.getId(), session);
     }
 
     public void unsubscribeChannel(WebSocketSession session, String channel) {
-        sessionIdsByChannel.get(channel).remove(session.getId());
+        if (sessionIdsByChannel.containsKey(channel)) {
+            sessionIdsByChannel.get(channel).remove(session.getId());
+        }
         channelsBySessionId.computeIfPresent(session.getId(), (k, v) -> {
             v.remove(channel);
             return v;

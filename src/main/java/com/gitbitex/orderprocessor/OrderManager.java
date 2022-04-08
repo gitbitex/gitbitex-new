@@ -11,7 +11,6 @@ import com.gitbitex.accountant.AccountManager;
 import com.gitbitex.accountant.command.PlaceOrderCommand;
 import com.gitbitex.entity.Fill;
 import com.gitbitex.entity.Order;
-import com.gitbitex.entity.Order.OrderSide;
 import com.gitbitex.entity.Product;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
@@ -136,15 +135,6 @@ public class OrderManager {
     }
 
     public void save(Order order) {
-        if (order.getFilledSize().compareTo(order.getSize()) > 0) {
-            throw new RuntimeException("bad order: " + JSON.toJSONString(order));
-        }
-        if (order.getSide() == OrderSide.BUY) {
-            if (order.getExecutedValue().compareTo(order.getFunds()) > 0) {
-                throw new RuntimeException("bad order: " + JSON.toJSONString(order));
-            }
-        }
-
         orderRepository.save(order);
 
         // send order update notify
