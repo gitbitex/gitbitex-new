@@ -1,4 +1,4 @@
-package com.gitbitex.util;
+package com.gitbitex.module.marketdata.util;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalField;

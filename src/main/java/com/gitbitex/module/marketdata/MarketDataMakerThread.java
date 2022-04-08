@@ -25,7 +25,7 @@ import com.gitbitex.module.matchingengine.marketmessage.MarketMessage;
 import com.gitbitex.module.matchingengine.marketmessage.MatchMessage;
 import com.gitbitex.module.matchingengine.marketmessage.TickerMessage;
 import com.gitbitex.module.marketdata.repository.CandleRepository;
-import com.gitbitex.util.DateUtil;
+import com.gitbitex.module.marketdata.util.DateUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
