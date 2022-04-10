@@ -12,16 +12,16 @@ import java.util.stream.Collectors;
 
 @Getter
 @Setter
-public class Level2OrderBookSnapshot extends MarketMessage {
+public class L2OrderBookSnapshot extends MarketMessage {
     private long sequence;
     private List<Level2SnapshotLine> asks = new ArrayList<>();
     private List<Level2SnapshotLine> bids = new ArrayList<>();
 
-    public Level2OrderBookSnapshot() {
+    public L2OrderBookSnapshot() {
 
     }
 
-    public Level2OrderBookSnapshot(OrderBook orderBook, boolean onlyLevel1) {
+    public L2OrderBookSnapshot(OrderBook orderBook, boolean onlyLevel1) {
         this.setType("snapshot");
         this.setProductId(orderBook.getProductId());
         this.sequence = orderBook.getSequence().get();
@@ -34,7 +34,7 @@ public class Level2OrderBookSnapshot extends MarketMessage {
         }
     }
 
-    public Level2OrderBookSnapshot(String productId, long sequence, Collection<PageLine> asks, Collection<PageLine> bids) {
+    public L2OrderBookSnapshot(String productId, long sequence, Collection<PageLine> asks, Collection<PageLine> bids) {
         this.setProductId(productId);
         this.sequence = sequence;
         this.asks = asks.stream().map(Level2SnapshotLine::new).collect(Collectors.toList());

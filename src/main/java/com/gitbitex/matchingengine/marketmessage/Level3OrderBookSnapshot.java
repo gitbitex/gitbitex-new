@@ -37,7 +37,6 @@ public class Level3OrderBookSnapshot extends MarketMessage {
             this.add(order.getOrderId());
             this.add(order.getPrice().stripTrailingZeros().toPlainString());
             this.add(order.getSize().stripTrailingZeros().toPlainString());
-            this.add(order.getUserId());
         }
     }
 

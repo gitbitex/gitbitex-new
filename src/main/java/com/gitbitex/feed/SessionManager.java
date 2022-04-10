@@ -10,7 +10,7 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.feed.message.PongMessage;
 import com.gitbitex.matchingengine.OrderBookSnapshotManager;
 import com.gitbitex.matchingengine.TickerManager;
-import com.gitbitex.matchingengine.marketmessage.Level2OrderBookSnapshot;
+import com.gitbitex.matchingengine.marketmessage.L2OrderBookSnapshot;
 import com.gitbitex.matchingengine.marketmessage.TickerMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -44,7 +44,7 @@ public class SessionManager {
                             subscribeChannel(session, productChannel);
 
                             try {
-                                Level2OrderBookSnapshot snapshot = orderBookSnapshotManager.getLevel2BookSnapshot(
+                                L2OrderBookSnapshot snapshot = orderBookSnapshotManager.getLevel2BookSnapshot(
                                     productId);
                                 if (snapshot != null) {
                                     session.sendMessage(new TextMessage(JSON.toJSONString(snapshot)));

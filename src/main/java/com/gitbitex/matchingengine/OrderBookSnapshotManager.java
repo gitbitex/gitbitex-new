@@ -1,7 +1,7 @@
 package com.gitbitex.matchingengine;
 
 import com.alibaba.fastjson.JSON;
-import com.gitbitex.matchingengine.marketmessage.Level2OrderBookSnapshot;
+import com.gitbitex.matchingengine.marketmessage.L2OrderBookSnapshot;
 import com.gitbitex.matchingengine.marketmessage.Level3OrderBookSnapshot;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,30 +42,30 @@ public class OrderBookSnapshotManager {
         return JSON.parseObject(o.toString(), Level3OrderBookSnapshot.class);
     }
 
-    public void saveLevel2BookSnapshot(String productId, Level2OrderBookSnapshot level2OrderBookSnapshot) {
+    public void saveLevel2BookSnapshot(String productId, L2OrderBookSnapshot l2OrderBookSnapshot) {
         String key = productId + ".level2_book_snapshot";
-        redissonClient.getBucket(key).set(JSON.toJSONString(level2OrderBookSnapshot));
+        redissonClient.getBucket(key).set(JSON.toJSONString(l2OrderBookSnapshot));
     }
 
-    public Level2OrderBookSnapshot getLevel2BookSnapshot(String productId) {
+    public L2OrderBookSnapshot getLevel2BookSnapshot(String productId) {
         String key = productId + ".level2_book_snapshot";
         Object o = redissonClient.getBucket(key).get();
         if (o == null) {
             return null;
         }
-        return JSON.parseObject(o.toString(), Level2OrderBookSnapshot.class);
+        return JSON.parseObject(o.toString(), L2OrderBookSnapshot.class);
     }
 
-    public Level2OrderBookSnapshot getLevel1BookSnapshot(String productId) {
+    public L2OrderBookSnapshot getLevel1BookSnapshot(String productId) {
         String key = productId + ".level1_book_snapshot";
         Object o = redissonClient.getBucket(key).get();
         if (o == null) {
             return null;
         }
-        return JSON.parseObject(o.toString(), Level2OrderBookSnapshot.class);
+        return JSON.parseObject(o.toString(), L2OrderBookSnapshot.class);
     }
 
-    public void saveLevel1BookSnapshot(String productId, Level2OrderBookSnapshot level1OrderBookSnapshot) {
+    public void saveLevel1BookSnapshot(String productId, L2OrderBookSnapshot level1OrderBookSnapshot) {
         String key = productId + ".level1_book_snapshot";
         redissonClient.getBucket(key).set(JSON.toJSONString(level1OrderBookSnapshot));
     }

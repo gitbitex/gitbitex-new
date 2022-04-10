@@ -3,8 +3,8 @@ package com.gitbitex.matchingengine;
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.log.*;
-import com.gitbitex.matchingengine.marketmessage.Level2OrderBookSnapshot;
-import com.gitbitex.matchingengine.marketmessage.Level2UpdateMessage;
+import com.gitbitex.matchingengine.marketmessage.L2OrderBookSnapshot;
+import com.gitbitex.matchingengine.marketmessage.L2UpdateMessage;
 import com.gitbitex.matchingengine.marketmessage.Level3OrderBookSnapshot;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.RequiredArgsConstructor;
@@ -189,9 +189,9 @@ public class OrderBookSnapshottingThread extends KafkaConsumerThread<String, Ord
                     CompletableFuture.runAsync(() -> orderBookSnapshotManager.saveOrderBookSnapshot(productId,
                             new OrderBookSnapshot(orderBookCopy)), worker),
                     CompletableFuture.runAsync(() -> orderBookSnapshotManager.saveLevel1BookSnapshot(productId,
-                            new Level2OrderBookSnapshot(orderBookCopy, true)), worker),
+                            new L2OrderBookSnapshot(orderBookCopy, true)), worker),
                     CompletableFuture.runAsync(() -> orderBookSnapshotManager.saveLevel2BookSnapshot(productId,
-                            new Level2OrderBookSnapshot(orderBookCopy, false)), worker),
+                            new L2OrderBookSnapshot(orderBookCopy, false)), worker),
                     CompletableFuture.runAsync(() -> orderBookSnapshotManager.saveLevel3BookSnapshot(productId,
                             new Level3OrderBookSnapshot(orderBookCopy)), worker)
             ).join();
@@ -221,8 +221,8 @@ public class OrderBookSnapshottingThread extends KafkaConsumerThread<String, Ord
                         continue;
                     }
 
-                    Level2UpdateMessage level2UpdateMessage = new Level2UpdateMessage(productId, lines);
-                    marketMessagePublisher.publish(level2UpdateMessage);
+                    //L2UpdateMessage l2UpdateMessage = new L2UpdateMessage(productId, lines);
+                    //marketMessagePublisher.publish(l2UpdateMessage);
 
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();

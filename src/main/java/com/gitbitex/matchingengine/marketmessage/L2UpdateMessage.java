@@ -25,26 +25,25 @@ import java.util.stream.Collectors;
  */
 @Getter
 @Setter
-public class Level2UpdateMessage extends MarketMessage {
+public class L2UpdateMessage extends MarketMessage {
     private String time;
-    private List<Level2UpdateLine> changes;
+    private List<L2Change> changes;
 
-    public Level2UpdateMessage() {
+    public L2UpdateMessage() {
     }
 
-    public Level2UpdateMessage(String productId, List<PageLine> lines) {
+    public L2UpdateMessage(String productId, List<L2Change> changes) {
         this.setType("l2update");
         this.setProductId(productId);
         this.time = new Date().toInstant().toString();
-        this.changes = new ArrayList<>();
-        this.changes = lines.stream().map(Level2UpdateLine::new).collect(Collectors.toList());
+        this.changes = changes;
     }
 
-    public static class Level2UpdateLine extends ArrayList<Object> {
-        public Level2UpdateLine() {
+    public static class L2Change extends ArrayList<Object> {
+        public L2Change() {
         }
 
-        public Level2UpdateLine(PageLine line) {
+        public L2Change(PageLine line) {
             this.add(line.getSide().name().toLowerCase());
             this.add(line.getPrice().stripTrailingZeros().toPlainString());
             this.add(line.getTotalSize().stripTrailingZeros().toPlainString());

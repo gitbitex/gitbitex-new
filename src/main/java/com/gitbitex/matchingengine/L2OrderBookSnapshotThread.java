@@ -2,25 +2,23 @@ package com.gitbitex.matchingengine;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.matchingengine.marketmessage.Level2OrderBookSnapshot;
-import com.gitbitex.matchingengine.marketmessage.Level2UpdateMessage;
+import com.gitbitex.matchingengine.marketmessage.L2OrderBookSnapshot;
+import com.gitbitex.matchingengine.marketmessage.L2UpdateMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 @Slf4j
 public class L2OrderBookSnapshotThread extends OrderBookListener {
-    private OrderBookSnapshotManager orderBookSnapshotManager;
-    private ThreadPoolExecutor snapshotPersistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new ArrayBlockingQueue<>(1), new RejectedExecutionHandler() {
-        @Override
-        public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
-
-        }
-    });
+    private final OrderBookSnapshotManager orderBookSnapshotManager;
+    private final BlockingQueue<L2OrderBookSnapshot> l2OrderBookSnapshotQueue = new LinkedBlockingQueue<>(10);
+    private final BlockingQueue<L2UpdateMessage.L2Change> l2ChangeQueue = new LinkedBlockingQueue<>(1000);
 
     public L2OrderBookSnapshotThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
                                      KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
@@ -29,16 +27,45 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
     }
 
     @Override
+    @SneakyThrows
     protected void onOrderBookChange(OrderBook orderBook, boolean stable, PageLine line) {
         if (stable) {
-
-            Level2OrderBookSnapshot snapshot = new Level2OrderBookSnapshot(orderBook.getProductId(),
-                    orderBook.getSequence().get(), orderBook.getAsks().getLines(), orderBook.getBids().getLines());
-            orderBookSnapshotManager.saveLevel2BookSnapshot(snapshot.getProductId(), snapshot);
+            if (l2OrderBookSnapshotQueue.remainingCapacity() == 0) {
+                logger.warn("l2OrderBookSnapshotQueue is full");
+            } else {
+                L2OrderBookSnapshot snapshot = new L2OrderBookSnapshot(orderBook, false);
+                l2OrderBookSnapshotQueue.put(snapshot);
+            }
         }
 
-        Level2UpdateMessage.Level2UpdateLine change = new Level2UpdateMessage.Level2UpdateLine(line);
+        L2UpdateMessage.L2Change change = new L2UpdateMessage.L2Change(line);
+        if (!l2ChangeQueue.offer(change)) {
+            logger.warn("offer failed, l2ChangeQueue is full");
+        }
+    }
 
+    @RequiredArgsConstructor
+    @Slf4j
+    public static class SnapshotPersistenceThread extends Thread {
+        private final String productId;
+        private final BlockingQueue<L2OrderBookSnapshot> l2OrderBookSnapshotQueue;
+        private final OrderBookSnapshotManager orderBookSnapshotManager;
+
+        @Override
+        public void run() {
+            logger.info("starting...");
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    L2OrderBookSnapshot l2OrderBookSnapshot = l2OrderBookSnapshotQueue.take();
+                    orderBookSnapshotManager.saveLevel2BookSnapshot(productId, l2OrderBookSnapshot);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (Exception e) {
+                    logger.error("error: {}", e.getMessage(), e);
+                }
+            }
+            logger.info("exiting...");
+        }
     }
 
 
@@ -47,33 +74,33 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
     public static class Level2UpdatePublishThread extends Thread {
         private static final int BUF_SIZE = 100;
         private final String productId;
-        private final BlockingQueue<PageLine> updatedPageLineQueue;
+        private final BlockingQueue<L2UpdateMessage.L2Change> l2ChangeQueue;
         private final MarketMessagePublisher marketMessagePublisher;
 
         @Override
         public void run() {
             logger.info("starting...");
-            List<PageLine> lines = new ArrayList<>(BUF_SIZE);
+            List<L2UpdateMessage.L2Change> changes = new ArrayList<>(BUF_SIZE);
 
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    PageLine line = updatedPageLineQueue.take();
+                    L2UpdateMessage.L2Change change = l2ChangeQueue.take();
 
                     // fill the line buffer
-                    lines.add(line);
-                    if (!updatedPageLineQueue.isEmpty() && lines.size() < BUF_SIZE) {
+                    changes.add(change);
+                    if (!l2ChangeQueue.isEmpty() && changes.size() < BUF_SIZE) {
                         continue;
                     }
 
-                    Level2UpdateMessage level2UpdateMessage = new Level2UpdateMessage(productId, lines);
-                    marketMessagePublisher.publish(level2UpdateMessage);
+                    L2UpdateMessage l2UpdateMessage = new L2UpdateMessage(productId, changes);
+                    marketMessagePublisher.publish(l2UpdateMessage);
 
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (Exception e) {
                     logger.error("error: {}", e.getMessage(), e);
                 } finally {
-                    lines.clear();
+                    changes.clear();
                 }
             }
             logger.info("exiting...");

@@ -7,7 +7,7 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.feed.message.AccountMessage;
 import com.gitbitex.feed.message.OrderMessage;
 import com.gitbitex.matchingengine.marketmessage.CandleMessage;
-import com.gitbitex.matchingengine.marketmessage.Level2UpdateMessage;
+import com.gitbitex.matchingengine.marketmessage.L2UpdateMessage;
 import com.gitbitex.matchingengine.marketmessage.MatchMessage;
 import com.gitbitex.matchingengine.marketmessage.TickerMessage;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +44,7 @@ public class FeedMessageListener {
         });
 
         redissonClient.getTopic("l2update", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            Level2UpdateMessage message = JSON.parseObject(msg, Level2UpdateMessage.class);
+            L2UpdateMessage message = JSON.parseObject(msg, L2UpdateMessage.class);
             String channel = message.getProductId() + ".level2";
             sessionManager.sendMessageToChannel(channel, msg);
         });
