@@ -19,17 +19,15 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class L2OrderBookSnapshotThread extends OrderBookListener {
     private final OrderBookSnapshotManager orderBookSnapshotManager;
+    private final ThreadPoolExecutor l2UpdatePublishExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>(10));
     private final ThreadPoolExecutor persistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>(10));
-
     private final BlockingQueue<L2UpdateMessage.L2Change> l2ChangeQueue = new LinkedBlockingQueue<>(1000);
 
     public L2OrderBookSnapshotThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
                                      KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties, MarketMessagePublisher marketMessagePublisher) {
         super(productId, orderBookSnapshotManager, kafkaConsumer, appProperties);
         this.orderBookSnapshotManager = orderBookSnapshotManager;
-
-        ThreadPoolExecutor l2UpdatePublishExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>(10));
-        l2UpdatePublishExecutor.execute(new Level2UpdatePublishRunnable(productId, l2ChangeQueue, marketMessagePublisher));
+        this.l2UpdatePublishExecutor.execute(new Level2UpdatePublishRunnable(productId, l2ChangeQueue, marketMessagePublisher));
     }
 
     @Override

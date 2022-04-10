@@ -34,7 +34,7 @@ public class FullOrderBookSnapshotThread extends OrderBookListener {
 
                 persistenceExecutor.execute(() -> {
                     try {
-                        orderBookSnapshotManager.saveOrderBookSnapshot(snapshot.getProductId(), snapshot);
+                        orderBookSnapshotManager.saveOrderBookSnapshot(snapshot);
                     } catch (Exception e) {
                         logger.error("save snapshot error: {}", e.getMessage(), e);
                     }

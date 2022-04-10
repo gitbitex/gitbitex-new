@@ -14,8 +14,8 @@ import org.springframework.stereotype.Component;
 public class OrderBookSnapshotManager {
     private final RedissonClient redissonClient;
 
-    public void saveOrderBookSnapshot(String productId, OrderBookSnapshot snapshot) {
-        String key = productId + ".order_book_snapshot";
+    public void saveOrderBookSnapshot( OrderBookSnapshot snapshot) {
+        String key = snapshot.getProductId() + ".order_book_snapshot";
         redissonClient.getBucket(key).set(JSON.toJSONString(snapshot));
     }
 
