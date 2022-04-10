@@ -78,33 +78,27 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
     @Override
     public void on(OrderReceivedLog log) {
         PageLine line = orderBook.restoreLog(log);
-        enqueuePageLine(line);
+        onOrderBookChange(orderBook, log.isCommandFinished(), line);
     }
 
     @Override
     public void on(OrderOpenLog log) {
         PageLine line = orderBook.restoreLog(log);
-        enqueuePageLine(line);
+        onOrderBookChange(orderBook, log.isCommandFinished(), line);
     }
 
     @Override
     public void on(OrderMatchLog log) {
         PageLine line = orderBook.restoreLog(log);
-        enqueuePageLine(line);
+        onOrderBookChange(orderBook, log.isCommandFinished(), line);
     }
 
     @Override
     public void on(OrderDoneLog log) {
         PageLine line = orderBook.restoreLog(log);
-        enqueuePageLine(line);
+        onOrderBookChange(orderBook, log.isCommandFinished(), line);
     }
 
-    protected abstract void onOrderBookChange(OrderBook orderBook, boolean stable, PageLine line) ;
-
-    private void enqueuePageLine(PageLine line) {
-        if (line != null) {
-            onOrderBookChange(orderBook,true, line);
-        }
-    }
+    protected abstract void onOrderBookChange(OrderBook orderBook, boolean stable, PageLine line);
 
 }
