@@ -28,7 +28,7 @@ public class FullOrderBookSnapshotThread extends OrderBookListener {
             if (persistenceExecutor.getQueue().remainingCapacity() == 0) {
                 logger.warn("persistenceExecutor is full");
             } else {
-                logger.info("start take snapshot");
+                logger.info("start take full snapshot");
                 OrderBookSnapshot snapshot = new OrderBookSnapshot(orderBook);
                 logger.info("done");
 

@@ -24,9 +24,12 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
     private final BlockingQueue<L2UpdateMessage.L2Change> l2ChangeQueue = new LinkedBlockingQueue<>(1000);
 
     public L2OrderBookSnapshotThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
-                                     KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
+                                     KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties, MarketMessagePublisher marketMessagePublisher) {
         super(productId, orderBookSnapshotManager, kafkaConsumer, appProperties);
         this.orderBookSnapshotManager = orderBookSnapshotManager;
+
+        ThreadPoolExecutor l2UpdatePublishExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>(10));
+        l2UpdatePublishExecutor.execute(new Level2UpdatePublishRunnable(productId, l2ChangeQueue, marketMessagePublisher));
     }
 
     @Override
@@ -36,7 +39,7 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
             if (persistenceExecutor.getQueue().remainingCapacity() == 0) {
                 logger.warn("persistenceExecutor is full");
             } else {
-                logger.info("start take snapshot");
+                logger.info("start take level2 snapshot");
                 L2OrderBookSnapshot snapshot = new L2OrderBookSnapshot(orderBook, false);
                 logger.info("done");
 
@@ -62,7 +65,7 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
 
     @RequiredArgsConstructor
     @Slf4j
-    public static class Level2UpdatePublishThread extends Thread {
+    public static class Level2UpdatePublishRunnable implements Runnable {
         private static final int BUF_SIZE = 100;
         private final String productId;
         private final BlockingQueue<L2UpdateMessage.L2Change> l2ChangeQueue;
@@ -85,7 +88,6 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
 
                     L2UpdateMessage l2UpdateMessage = new L2UpdateMessage(productId, changes);
                     marketMessagePublisher.publish(l2UpdateMessage);
-
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (Exception e) {

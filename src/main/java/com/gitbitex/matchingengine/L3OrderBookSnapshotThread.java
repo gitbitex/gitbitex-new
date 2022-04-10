@@ -29,7 +29,7 @@ public class L3OrderBookSnapshotThread extends OrderBookListener {
             if (persistenceExecutor.getQueue().remainingCapacity() == 0) {
                 logger.warn("persistenceExecutor is full");
             } else {
-                logger.info("start take snapshot");
+                logger.info("start take level3 snapshot");
                 Level3OrderBookSnapshot snapshot = new Level3OrderBookSnapshot(orderBook);
                 logger.info("done");
 
