@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,6 +40,19 @@ public class L2OrderBookSnapshot extends MarketMessage {
         this.sequence = sequence;
         this.asks = asks.stream().map(Level2SnapshotLine::new).collect(Collectors.toList());
         this.bids = bids.stream().map(Level2SnapshotLine::new).collect(Collectors.toList());
+    }
+
+    public L2OrderBookSnapshot makeL1OrderBookSnapshot() {
+        L2OrderBookSnapshot snapshot = new L2OrderBookSnapshot();
+        snapshot.setProductId(this.getProductId());
+        snapshot.sequence = this.sequence;
+        if (!this.asks.isEmpty()) {
+            snapshot.asks = Collections.singletonList(this.asks.get(0));
+        }
+        if (!this.bids.isEmpty()) {
+            snapshot.bids = Collections.singletonList(this.bids.get(0));
+        }
+        return snapshot;
     }
 
     public static class Level2SnapshotLine extends ArrayList<Object> {

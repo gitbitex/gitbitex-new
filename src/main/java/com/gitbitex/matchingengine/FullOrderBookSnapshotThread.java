@@ -2,18 +2,18 @@ package com.gitbitex.matchingengine;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.log.OrderBookLog;
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class FullOrderBookSnapshotThread extends OrderBookListener {
     private final OrderBookSnapshotManager orderBookSnapshotManager;
-    private final BlockingQueue<OrderBookSnapshot> orderBookSnapshotQueue = new LinkedBlockingQueue<>(10);
+    private final ThreadPoolExecutor persistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS, new LinkedBlockingQueue<>(10));
 
     public FullOrderBookSnapshotThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
                                        KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
@@ -25,37 +25,21 @@ public class FullOrderBookSnapshotThread extends OrderBookListener {
     @SneakyThrows
     protected void onOrderBookChange(OrderBook orderBook, boolean stable, PageLine line) {
         if (stable) {
-            if (orderBookSnapshotQueue.remainingCapacity() == 0) {
-                logger.warn("orderBookSnapshotQueue is full");
+            if (persistenceExecutor.getQueue().remainingCapacity() == 0) {
+                logger.warn("persistenceExecutor is full");
             } else {
+                logger.info("start take snapshot");
                 OrderBookSnapshot snapshot = new OrderBookSnapshot(orderBook);
-                orderBookSnapshotQueue.put(snapshot);
+                logger.info("done");
+
+                persistenceExecutor.execute(() -> {
+                    try {
+                        orderBookSnapshotManager.saveOrderBookSnapshot(snapshot.getProductId(), snapshot);
+                    } catch (Exception e) {
+                        logger.error("save snapshot error: {}", e.getMessage(), e);
+                    }
+                });
             }
         }
     }
-
-    @RequiredArgsConstructor
-    @Slf4j
-    public static class SnapshotPersistenceThread extends Thread {
-        private final String productId;
-        private final BlockingQueue<OrderBookSnapshot> orderBookSnapshotQueue;
-        private final OrderBookSnapshotManager orderBookSnapshotManager;
-
-        @Override
-        public void run() {
-            logger.info("starting...");
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    OrderBookSnapshot snapshot = orderBookSnapshotQueue.take();
-                    orderBookSnapshotManager.saveOrderBookSnapshot(productId, snapshot);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                } catch (Exception e) {
-                    logger.error("error: {}", e.getMessage(), e);
-                }
-            }
-            logger.info("exiting...");
-        }
-    }
-
 }
