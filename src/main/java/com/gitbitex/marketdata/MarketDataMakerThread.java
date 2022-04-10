@@ -1,18 +1,6 @@
 package com.gitbitex.marketdata;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoField;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.repository.CandleRepository;
@@ -34,11 +22,17 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.redisson.client.codec.StringCodec;
+
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
+import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 @Slf4j
 public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBookLog> {
-    private static final int[] MINUTES = new int[] {1, 3, 5, 15, 30, 60, 120, 240, 360, 720, 1440, 43200};
+    private static final int[] MINUTES = new int[]{1, 3, 5, 15, 30, 60, 120, 240, 360, 720, 1440, 43200};
     private final String productId;
     private final CandleRepository candleRepository;
     private final Map<Integer, Candle> candles = new HashMap<>();
@@ -49,15 +43,15 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
     private final AppProperties appProperties;
 
     public MarketDataMakerThread(String productId, CandleRepository candleRepository, TickerManager tickerManager,
-        MarketMessagePublisher marketMessagePublisher, KafkaConsumer<String, OrderBookLog> consumer,
-        AppProperties appProperties) {
+                                 MarketMessagePublisher marketMessagePublisher, KafkaConsumer<String, OrderBookLog> consumer,
+                                 AppProperties appProperties) {
         super(consumer, logger);
         this.productId = productId;
         this.candleRepository = candleRepository;
         this.candlePersistenceThread = new CandlePersistenceThread(candleQueue, candleRepository);
         this.candlePersistenceThread.setName("CandlePersistence-" + productId + "-" + candlePersistenceThread.getId());
         this.feedMessagePublishThread = new FeedMessagePublishThread(marketMessagePublisher, tickerManager,
-            feedMessageQueue);
+                feedMessageQueue);
         this.appProperties = appProperties;
     }
 
@@ -78,43 +72,43 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
     @Override
     protected void doSubscribe(KafkaConsumer<String, OrderBookLog> consumer) {
         consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()),
-            new ConsumerRebalanceListener() {
-                @Override
-                public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                new ConsumerRebalanceListener() {
+                    @Override
+                    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 
-                }
-
-                @Override
-                public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                    for (int minute : MINUTES) {
-                        Candle candle = candleRepository.findTopByProductIdAndGranularityOrderByTimeDesc(productId,
-                            minute);
-                        if (candle != null) {
-                            candles.put(minute, candle);
-                        }
                     }
 
-                    Candle minOffsetCandle = candles.values().stream().min(
-                        Comparator.comparingLong(Candle::getOrderBookLogOffset)).orElse(null);
+                    @Override
+                    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                        for (int minute : MINUTES) {
+                            Candle candle = candleRepository.findTopByProductIdAndGranularityOrderByTimeDesc(productId,
+                                    minute);
+                            if (candle != null) {
+                                candles.put(minute, candle);
+                            }
+                        }
 
-                    for (TopicPartition partition : partitions) {
-                        if (minOffsetCandle != null) {
-                            consumer.seek(partition, minOffsetCandle.getOrderBookLogOffset() + 1);
+                        Candle minOffsetCandle = candles.values().stream().min(
+                                Comparator.comparingLong(Candle::getOrderBookLogOffset)).orElse(null);
+
+                        for (TopicPartition partition : partitions) {
+                            if (minOffsetCandle != null) {
+                                consumer.seek(partition, minOffsetCandle.getOrderBookLogOffset() + 1);
+                            }
                         }
                     }
-                }
-            });
+                });
     }
 
     @Override
     @SneakyThrows
     protected void processRecords(KafkaConsumer<String, OrderBookLog> consumer,
-        ConsumerRecords<String, OrderBookLog> records) {
+                                  ConsumerRecords<String, OrderBookLog> records) {
         for (ConsumerRecord<String, OrderBookLog> record : records) {
             OrderBookLog log = record.value();
 
             if (log instanceof OrderMatchLog) {
-                OrderMatchLog orderMatchLog = ((OrderMatchLog)log);
+                OrderMatchLog orderMatchLog = ((OrderMatchLog) log);
                 orderMatchLog.setOffset(record.offset());
                 logger.info(JSON.toJSONString(orderMatchLog));
 
@@ -141,8 +135,8 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
         }
 
         long candleTime = DateUtil.round(
-            ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
-            ChronoField.MINUTE_OF_DAY, granularity).toEpochSecond();
+                ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
+                ChronoField.MINUTE_OF_DAY, granularity).toEpochSecond();
 
         if (candle == null || candle.getTime() != candleTime) {
             candle = new Candle();
@@ -268,7 +262,7 @@ public class MarketDataMakerThread extends KafkaConsumerThread<String, OrderBook
                     marketMessagePublisher.publish(message);
 
                     if (message instanceof TickerMessage) {
-                        TickerMessage tickerMessage = (TickerMessage)message;
+                        TickerMessage tickerMessage = (TickerMessage) message;
                         tickerManager.setTicker(tickerMessage.getProductId(), tickerMessage);
                     }
                 } catch (InterruptedException e) {

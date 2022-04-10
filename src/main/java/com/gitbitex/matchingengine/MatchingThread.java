@@ -16,7 +16,6 @@ import com.gitbitex.matchingengine.command.OrderBookCommand;
 import com.gitbitex.matchingengine.command.OrderBookCommandDispatcher;
 import com.gitbitex.matchingengine.command.OrderBookCommandHandler;
 import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.matchingengine.marketmessage.Level3OrderBookSnapshot;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -75,14 +74,14 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
 
                 @Override
                 public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                    Level3OrderBookSnapshot snapshot = orderBookSnapshotManager.getLevel3Snapshot(productId);
+                    OrderBookSnapshot snapshot = orderBookSnapshotManager.getOrderBookSnapshot(productId);
                     orderBook = snapshot != null
-                        ? new OrderBook(productId, snapshot)
+                        ? snapshot.restore()
                         : new OrderBook(productId);
 
                     for (TopicPartition partition : partitions) {
                         if (snapshot != null) {
-                            consumer.seek(partition, snapshot.getOrderBookCommandOffset() + 1);
+                            consumer.seek(partition, snapshot.getCommandOffset() + 1);
                         }
                     }
                 }
@@ -104,9 +103,11 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
     @SneakyThrows
     public void on(NewOrderCommand command) {
         List<OrderBookLog> logs = orderBook.executeCommand(command);
-        for (OrderBookLog log : logs) {
-            checkOrderBookLogQueueCapacity();
-            orderBookLogQueue.put(log);
+        if (logs!=null) {
+            for (OrderBookLog log : logs) {
+                checkOrderBookLogQueueCapacity();
+                orderBookLogQueue.put(log);
+            }
         }
     }
 

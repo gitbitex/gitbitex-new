@@ -1,14 +1,13 @@
 package com.gitbitex.matchingengine.marketmessage;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.gitbitex.matchingengine.PageLine;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * {
@@ -28,10 +27,9 @@ import lombok.Setter;
 @Setter
 public class Level2UpdateMessage extends MarketMessage {
     private String time;
-    private List<List<String>> changes;
+    private List<Level2UpdateLine> changes;
 
     public Level2UpdateMessage() {
-
     }
 
     public Level2UpdateMessage(String productId, List<PageLine> lines) {
@@ -39,19 +37,18 @@ public class Level2UpdateMessage extends MarketMessage {
         this.setProductId(productId);
         this.time = new Date().toInstant().toString();
         this.changes = new ArrayList<>();
+        this.changes = lines.stream().map(Level2UpdateLine::new).collect(Collectors.toList());
+    }
 
-        Map<String, PageLine> lineByKey = new HashMap<>();
-        for (PageLine line : lines) {
-            lineByKey.put(line.getSide().name() + line.getPrice().stripTrailingZeros().toPlainString(), line);
+    public static class Level2UpdateLine extends ArrayList<Object> {
+        public Level2UpdateLine() {
         }
 
-        lineByKey.values().forEach(x -> {
-            List<String> change = new ArrayList<>(3);
-            change.add(x.getSide().name().toLowerCase());
-            change.add(x.getPrice().stripTrailingZeros().toPlainString());
-            change.add(x.getTotalSize().stripTrailingZeros().toPlainString());
-            this.changes.add(change);
-        });
+        public Level2UpdateLine(PageLine line) {
+            this.add(line.getSide().name().toLowerCase());
+            this.add(line.getPrice().stripTrailingZeros().toPlainString());
+            this.add(line.getTotalSize().stripTrailingZeros().toPlainString());
+        }
     }
 
 }

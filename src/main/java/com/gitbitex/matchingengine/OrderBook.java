@@ -1,5 +1,13 @@
 package com.gitbitex.matchingengine;
 
+import com.gitbitex.matchingengine.command.CancelOrderCommand;
+import com.gitbitex.matchingengine.command.NewOrderCommand;
+import com.gitbitex.matchingengine.log.*;
+import com.gitbitex.order.entity.Order;
+import com.gitbitex.order.entity.Order.OrderSide;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -7,61 +15,47 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import com.gitbitex.order.entity.Order;
-import com.gitbitex.order.entity.Order.OrderSide;
-import com.gitbitex.matchingengine.command.CancelOrderCommand;
-import com.gitbitex.matchingengine.command.NewOrderCommand;
-import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.matchingengine.log.OrderDoneLog;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderOpenLog;
-import com.gitbitex.matchingengine.log.OrderReceivedLog;
-import com.gitbitex.matchingengine.marketmessage.Level3OrderBookSnapshot;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-
 @Getter
-@RequiredArgsConstructor
+@Slf4j
 public class OrderBook {
     private final String productId;
     private final AtomicLong tradeId;
     private final AtomicLong sequence;
+    private final SlidingBloomFilter orderIdFilter;
     private final BookPage asks;
     private final BookPage bids;
-    private long orderBookCommandOffset;
-    private long orderBookLogOffset;
+    private long commandOffset;
+    private long logOffset;
 
     public OrderBook(String productId) {
-        this(productId, new AtomicLong(), new AtomicLong(), 0, 0, new ArrayList<>(), new ArrayList<>());
+        this(productId, new AtomicLong(), new AtomicLong(), 0, 0, new ArrayList<>(), new ArrayList<>(), new SlidingBloomFilter(100000, 2));
     }
 
-    public OrderBook(String productId, Level3OrderBookSnapshot snapshot) {
-        this(productId, new AtomicLong(snapshot.getTradeId()), new AtomicLong(snapshot.getSequence()),
-            snapshot.getOrderBookCommandOffset(),
-            snapshot.getOrderBookLogOffset(),
-            snapshot.getAsks().stream()
-                .map(Level3OrderBookSnapshot.Level3SnapshotLine::getOrder)
-                .peek(x -> x.setSide(OrderSide.SELL))
-                .collect(Collectors.toList()),
-            snapshot.getBids().stream()
-                .map(Level3OrderBookSnapshot.Level3SnapshotLine::getOrder)
-                .peek(x -> x.setSide(OrderSide.BUY))
-                .collect(Collectors.toList()));
-    }
-
-    public OrderBook(String productId, AtomicLong tradeId, AtomicLong sequence, long orderBookCommandOffset,
-        long orderBookLogOffset, List<BookOrder> askOrders, List<BookOrder> bidOrders) {
+    public OrderBook(String productId, AtomicLong tradeId, AtomicLong sequence,
+                     long commandOffset, long logOffset,
+                     List<BookOrder> askOrders, List<BookOrder> bidOrders,
+                     SlidingBloomFilter orderIdFilter) {
         this.productId = productId;
         this.tradeId = tradeId;
         this.sequence = sequence;
-        this.orderBookCommandOffset = orderBookCommandOffset;
-        this.orderBookLogOffset = orderBookLogOffset;
+        this.commandOffset = commandOffset;
+        this.logOffset = logOffset;
+        this.orderIdFilter = orderIdFilter;
         this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, askOrders);
         this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, bidOrders);
     }
 
     public List<OrderBookLog> executeCommand(NewOrderCommand command) {
         Order order = command.getOrder();
+
+        // We must ensure that the order will not be processed repeatedly, but only partially.
+        // If there is a wide range of order ID duplication, we need to increase the capacity of orderIdFilter
+        if (orderIdFilter.contains(order.getOrderId())) {
+            logger.warn("received repeated order: {}", order.getOrderId());
+            return null;
+        }
+        orderIdFilter.put(order.getOrderId());
+
         if (order.getSide() == OrderSide.BUY) {
             return (asks.executeCommand(command, bids));
         } else {
@@ -82,42 +76,59 @@ public class OrderBook {
         return (order.getSide() == OrderSide.BUY ? bids : asks).executeCommand(message);
     }
 
-    public PageLine restoreLog(OrderReceivedLog message) {
-        this.sequence.set(message.getSequence());
-        this.orderBookLogOffset = message.getOffset();
-        this.orderBookCommandOffset = message.getCommandOffset();
+    public PageLine restoreLog(OrderReceivedLog log) {
+        this.sequence.set(log.getSequence());
+        this.logOffset = log.getOffset();
+        this.commandOffset = log.getCommandOffset();
         return null;
     }
 
-    public PageLine restoreLog(OrderOpenLog message) {
-        this.sequence.set(message.getSequence());
-        this.orderBookLogOffset = message.getOffset();
-        this.orderBookCommandOffset = message.getCommandOffset();
+    public PageLine restoreLog(OrderOpenLog log) {
+        this.sequence.set(log.getSequence());
+        this.logOffset = log.getOffset();
+        this.commandOffset = log.getCommandOffset();
         BookOrder order = new BookOrder();
-        order.setOrderId(message.getOrderId());
-        order.setPrice(message.getPrice());
-        order.setSize(message.getRemainingSize());
-        order.setSide(message.getSide());
-        order.setUserId(message.getUserId());
+        order.setOrderId(log.getOrderId());
+        order.setPrice(log.getPrice());
+        order.setSize(log.getRemainingSize());
+        order.setSide(log.getSide());
+        order.setUserId(log.getUserId());
         return this.addOrder(order);
     }
 
-    public PageLine restoreLog(OrderMatchLog message) {
-        this.sequence.set(message.getSequence());
-        this.orderBookLogOffset = message.getOffset();
-        this.orderBookCommandOffset = message.getCommandOffset();
-        this.tradeId.set(message.getTradeId());
-        return this.decreaseOrderSize(message.getMakerOrderId(), message.getSide(), message.getSize());
+    public PageLine restoreLog(OrderMatchLog log) {
+        this.sequence.set(log.getSequence());
+        this.logOffset = log.getOffset();
+        this.commandOffset = log.getCommandOffset();
+        this.tradeId.set(log.getTradeId());
+        return this.decreaseOrderSize(log.getMakerOrderId(), log.getSide(), log.getSize());
     }
 
-    public PageLine restoreLog(OrderDoneLog message) {
-        this.sequence.set(message.getSequence());
-        this.orderBookLogOffset = message.getOffset();
-        this.orderBookCommandOffset = message.getCommandOffset();
-        if (message.getPrice() != null) {
-            return this.removeOrderById(message.getOrderId(), message.getSide());
+    public PageLine restoreLog(OrderDoneLog log) {
+        this.sequence.set(log.getSequence());
+        this.logOffset = log.getOffset();
+        this.commandOffset = log.getCommandOffset();
+        if (log.getPrice() != null) {
+            return this.removeOrderById(log.getOrderId(), log.getSide());
         }
         return null;
+    }
+
+    public BookOrder getOrderById(String orderId) {
+        BookOrder order = this.asks.getOrderById(orderId);
+        if (order != null) {
+            return order;
+        }
+        return this.bids.getOrderById(orderId);
+    }
+
+    public OrderBook copy() {
+        return new OrderBook(this.productId,
+                new AtomicLong(this.tradeId.get()), new AtomicLong(this.sequence.get()),
+                this.commandOffset, this.logOffset,
+                this.asks.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()),
+                this.bids.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()),
+                this.orderIdFilter.copy());
     }
 
     private PageLine addOrder(BookOrder order) {
@@ -130,20 +141,5 @@ public class OrderBook {
 
     private PageLine removeOrderById(String orderId, OrderSide side) {
         return (side == OrderSide.BUY ? bids : asks).removeOrderById(orderId);
-    }
-
-    public BookOrder getOrderById(String orderId) {
-        BookOrder order = this.asks.getOrderById(orderId);
-        if (order != null) {
-            return order;
-        }
-        return this.bids.getOrderById(orderId);
-    }
-
-    public OrderBook copy() {
-        return new OrderBook(this.productId, new AtomicLong(this.tradeId.get()), new AtomicLong(this.sequence.get()),
-            this.orderBookCommandOffset, this.orderBookLogOffset,
-            this.asks.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()),
-            this.bids.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()));
     }
 }

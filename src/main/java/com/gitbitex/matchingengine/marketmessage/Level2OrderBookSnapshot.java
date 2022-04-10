@@ -1,12 +1,14 @@
 package com.gitbitex.matchingengine.marketmessage;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-
 import com.gitbitex.matchingengine.OrderBook;
+import com.gitbitex.matchingengine.PageLine;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -24,30 +26,29 @@ public class Level2OrderBookSnapshot extends MarketMessage {
         this.setProductId(orderBook.getProductId());
         this.sequence = orderBook.getSequence().get();
         if (onlyLevel1) {
-            orderBook.getAsks().getLines().stream().findFirst().ifPresent(line -> {
-                this.asks.add(new Level2SnapshotLine(line.getPrice(), line.getTotalSize(), line.getOrders().size()));
-            });
-            orderBook.getBids().getLines().stream().findFirst().ifPresent(line -> {
-                this.bids.add(new Level2SnapshotLine(line.getPrice(), line.getTotalSize(), line.getOrders().size()));
-            });
+            orderBook.getAsks().getLines().stream().findFirst().ifPresent(x -> this.asks.add(new Level2SnapshotLine(x)));
+            orderBook.getBids().getLines().stream().findFirst().ifPresent(x -> this.bids.add(new Level2SnapshotLine(x)));
         } else {
-            orderBook.getAsks().getLines()
-                .forEach(
-                    x -> this.asks.add(new Level2SnapshotLine(x.getPrice(), x.getTotalSize(), x.getOrders().size())));
-            orderBook.getBids().getLines()
-                .forEach(
-                    x -> this.bids.add(new Level2SnapshotLine(x.getPrice(), x.getTotalSize(), x.getOrders().size())));
+            this.asks = orderBook.getAsks().getLines().stream().map(Level2SnapshotLine::new).collect(Collectors.toList());
+            this.bids = orderBook.getBids().getLines().stream().map(Level2SnapshotLine::new).collect(Collectors.toList());
         }
+    }
+
+    public Level2OrderBookSnapshot(String productId, long sequence, Collection<PageLine> asks, Collection<PageLine> bids) {
+        this.setProductId(productId);
+        this.sequence = sequence;
+        this.asks = asks.stream().map(Level2SnapshotLine::new).collect(Collectors.toList());
+        this.bids = bids.stream().map(Level2SnapshotLine::new).collect(Collectors.toList());
     }
 
     public static class Level2SnapshotLine extends ArrayList<Object> {
         public Level2SnapshotLine() {
         }
 
-        public Level2SnapshotLine(BigDecimal price, BigDecimal size, long count) {
-            add(price.stripTrailingZeros().toPlainString());
-            add(size.stripTrailingZeros().toPlainString());
-            add(count);
+        public Level2SnapshotLine(PageLine line) {
+            add(line.getPrice().stripTrailingZeros().toPlainString());
+            add(line.getTotalSize().stripTrailingZeros().toPlainString());
+            add(line.getOrders().size());
         }
     }
 }
