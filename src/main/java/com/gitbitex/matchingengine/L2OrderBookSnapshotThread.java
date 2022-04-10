@@ -31,6 +31,13 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
     }
 
     @Override
+    public void shutdown() {
+        super.shutdown();
+        this.l2UpdatePublishExecutor.shutdown();
+        this.persistenceExecutor.shutdown();
+    }
+
+    @Override
     @SneakyThrows
     protected void onOrderBookChange(OrderBook orderBook, boolean stable, PageLine line) {
         if (stable) {
@@ -96,6 +103,7 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
             }
             logger.info("exiting...");
         }
+
 
     }
 
