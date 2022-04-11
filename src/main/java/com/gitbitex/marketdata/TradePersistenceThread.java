@@ -5,28 +5,34 @@ import java.util.Collections;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
+import com.gitbitex.marketdata.entity.Trade;
 import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.log.OrderBookLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.marketdata.entity.Trade;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.redisson.api.RTopic;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 
 @Slf4j
 public class TradePersistenceThread extends KafkaConsumerThread<String, OrderBookLog> {
     private final String productId;
     private final TradeRepository tradeRepository;
     private final AppProperties appProperties;
+    private final RTopic tradeTopic;
 
     public TradePersistenceThread(String productId, TradeRepository tradeRepository,
+        RedissonClient redissonClient,
         KafkaConsumer<String, OrderBookLog> consumer, AppProperties appProperties) {
         super(consumer, logger);
         this.productId = productId;
         this.tradeRepository = tradeRepository;
         this.appProperties = appProperties;
+        this.tradeTopic = redissonClient.getTopic("trade", StringCodec.INSTANCE);
     }
 
     @Override
@@ -58,7 +64,10 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, OrderBoo
                 trade.setMakerOrderId(orderMatchLog.getMakerOrderId());
                 trade.setTakerOrderId(orderMatchLog.getTakerOrderId());
                 trade.setSide(orderMatchLog.getSide());
+                trade.setSequence(log.getSequence());
                 tradeRepository.save(trade);
+
+                tradeTopic.publish(JSON.toJSONString(trade));
             }
         }
         consumer.commitSync();

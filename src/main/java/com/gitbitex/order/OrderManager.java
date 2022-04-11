@@ -156,22 +156,7 @@ public class OrderManager {
 
         // send order update notify
         try {
-            OrderMessage message = new OrderMessage();
-            message.setType("order");
-            message.setUserId(order.getUserId());
-            message.setProductId(order.getProductId());
-            message.setId(order.getOrderId());
-            message.setPrice(order.getPrice().toPlainString());
-            message.setSize(order.getSize().toPlainString());
-            message.setFunds(order.getFunds().toPlainString());
-            message.setSide(order.getSide().name().toLowerCase());
-            message.setOrderType(order.getType().name().toLowerCase());
-            message.setCreatedAt(order.getCreatedAt().toInstant().toString());
-            message.setFillFees(order.getFillFees() != null ? order.getFillFees().toPlainString() : "0");
-            message.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().toPlainString() : "0");
-            message.setExecutedValue(order.getExecutedValue() != null ? order.getExecutedValue().toPlainString() : "0");
-            message.setStatus(order.getStatus().name().toLowerCase());
-            redissonClient.getTopic("order", StringCodec.INSTANCE).publish(JSON.toJSONString(message));
+            redissonClient.getTopic("order", StringCodec.INSTANCE).publish(JSON.toJSONString(order));
         } catch (Exception e) {
             logger.error("notify error: {}", e.getMessage(), e);
         }

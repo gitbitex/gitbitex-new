@@ -7,11 +7,13 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 import com.alibaba.fastjson.JSON;
 
+import com.gitbitex.feed.message.L2OrderBookSnapshotMessage;
 import com.gitbitex.feed.message.PongMessage;
+import com.gitbitex.feed.message.TickerMessage;
+import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.matchingengine.OrderBookSnapshotManager;
 import com.gitbitex.matchingengine.TickerManager;
 import com.gitbitex.matchingengine.marketmessage.L2OrderBookSnapshot;
-import com.gitbitex.matchingengine.marketmessage.TickerMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +49,8 @@ public class SessionManager {
                                 L2OrderBookSnapshot snapshot = orderBookSnapshotManager.getLevel2BookSnapshot(
                                     productId);
                                 if (snapshot != null) {
-                                    session.sendMessage(new TextMessage(JSON.toJSONString(snapshot)));
+                                    session.sendMessage(
+                                        new TextMessage(JSON.toJSONString(new L2OrderBookSnapshotMessage(snapshot))));
                                 }
                             } catch (Exception e) {
                                 logger.error("send level2 snapshot error: {}", e.getMessage(), e);
@@ -65,9 +68,9 @@ public class SessionManager {
                             subscribeChannel(session, productChannel);
 
                             try {
-                                TickerMessage tickerMessage = tickerManager.getTicker(productId);
-                                if (tickerMessage != null) {
-                                    session.sendMessage(new TextMessage(JSON.toJSONString(tickerMessage)));
+                                Ticker ticker = tickerManager.getTicker(productId);
+                                if (ticker != null) {
+                                    session.sendMessage(new TextMessage(JSON.toJSONString(new TickerMessage(ticker))));
                                 }
                             } catch (Exception e) {
                                 logger.error("send ticker error: {}", e.getMessage(), e);

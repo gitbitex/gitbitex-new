@@ -27,7 +27,7 @@ public class L3OrderBookSnapshotThread extends OrderBookListener {
     protected void onOrderBookChange(OrderBook orderBook, boolean stable, PageLine line) {
         if (stable) {
             if (persistenceExecutor.getQueue().remainingCapacity() == 0) {
-                logger.warn("persistenceExecutor is full");
+                logger.warn("persistenceExecutor is busy");
             } else {
                 logger.info("start take level3 snapshot");
                 Level3OrderBookSnapshot snapshot = new Level3OrderBookSnapshot(orderBook);

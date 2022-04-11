@@ -30,14 +30,7 @@ public class BookOrder {
 
     public BookOrder copy() {
         BookOrder order = new BookOrder();
-        order.setUserId(this.userId);
-        order.setOrderId(this.orderId);
-        order.setType(this.type);
-        order.setSide(this.side);
-        order.setPostOnly(this.postOnly);
-        order.setSize(size != null ? new BigDecimal(size.toPlainString()) : null);
-        order.setPrice(price != null ? new BigDecimal(price.toPlainString()) : null);
-        order.setFunds(funds != null ? new BigDecimal(funds.toPlainString()) : null);
+        BeanUtils.copyProperties(this,order);
         return order;
     }
 }

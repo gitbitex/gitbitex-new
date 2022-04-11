@@ -46,4 +46,6 @@ public class Trade {
     private OrderSide side;
 
     private Date time;
+
+    private long sequence;
 }

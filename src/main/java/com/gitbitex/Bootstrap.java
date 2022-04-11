@@ -13,11 +13,9 @@ import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.account.AccountManager;
 import com.gitbitex.account.AccountantThread;
 import com.gitbitex.account.command.AccountCommandDeserializer;
-import com.gitbitex.marketdata.MarketDataMakerThread;
-import com.gitbitex.matchingengine.MarketMessagePublisher;
+import com.gitbitex.marketdata.CandleMakerThread;
 import com.gitbitex.matchingengine.MatchingThread;
 import com.gitbitex.matchingengine.OrderBookSnapshotManager;
-import com.gitbitex.matchingengine.OrderBookSnapshottingThread;
 import com.gitbitex.matchingengine.TickerManager;
 import com.gitbitex.matchingengine.command.OrderBookCommandDeserializer;
 import com.gitbitex.matchingengine.log.OrderBookLogDeserializer;
@@ -48,7 +46,6 @@ public class Bootstrap {
     private final CandleRepository candleRepository;
     private final KafkaMessageProducer messageProducer;
     private final TickerManager tickerManager;
-    private final MarketMessagePublisher marketMessagePublisher;
     private final AppProperties appProperties;
     private final KafkaProperties kafkaProperties;
     private final List<Thread> threads = new ArrayList<>();
@@ -142,13 +139,13 @@ public class Bootstrap {
     private void startMarketDataMaker(String productId, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "MarketDataMaker-" + productId;
-            MarketDataMakerThread marketDataMakerThread = new MarketDataMakerThread(productId, candleRepository,
+            CandleMakerThread candleMakerThread = new CandleMakerThread(productId, candleRepository,
                 tickerManager, marketMessagePublisher,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
                     new OrderBookLogDeserializer()), appProperties);
-            marketDataMakerThread.setName(groupId + "-" + marketDataMakerThread.getId());
-            marketDataMakerThread.start();
-            threads.add(marketDataMakerThread);
+            candleMakerThread.setName(groupId + "-" + candleMakerThread.getId());
+            candleMakerThread.start();
+            threads.add(candleMakerThread);
         }
     }
 

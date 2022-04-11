@@ -5,7 +5,10 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderMessage extends FeedMessage {
+public class OrderMessage {
+    private String type;
+    private String productId;
+    private String userId;
     private String sequence;
     private String id;
     private String price;
