@@ -5,9 +5,7 @@ import com.gitbitex.account.entity.Account;
 import com.gitbitex.feed.message.*;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Ticker;
-import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.matchingengine.log.*;
 import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdate;
 import com.gitbitex.order.entity.Order;
 import lombok.RequiredArgsConstructor;
@@ -72,8 +70,12 @@ public class FeedMessageListener {
                     sessionManager.sendMessageToChannel(fullChannel, JSON.toJSONString(matchMessage(orderMatchLog)));
                     break;
                 case OPEN:
+                    OrderOpenLog orderOpenLog = JSON.parseObject(msg, OrderOpenLog.class);
+                    sessionManager.sendMessageToChannel(fullChannel, JSON.toJSONString(orderOpenMessage(orderOpenLog)));
                     break;
                 case DONE:
+                    OrderDoneLog orderDoneLog = JSON.parseObject(msg, OrderDoneLog.class);
+                    sessionManager.sendMessageToChannel(fullChannel, JSON.toJSONString(orderDoneMessage(orderDoneLog)));
                     break;
                 default:
             }
@@ -105,6 +107,29 @@ public class FeedMessageListener {
         message.setSize(log.getSize().toPlainString());
         message.setPrice(log.getPrice().toPlainString());
         message.setSide(log.getSide().name().toLowerCase());
+        return message;
+    }
+
+    private OrderOpenMessage orderOpenMessage(OrderOpenLog log) {
+        OrderOpenMessage message = new OrderOpenMessage();
+        message.setSequence(log.getSequence());
+        message.setTime(log.getTime().toInstant().toString());
+        message.setProductId(log.getProductId());
+        message.setPrice(log.getPrice().toPlainString());
+        message.setSide(log.getSide().name().toLowerCase());
+        message.setRemainingSize(log.getRemainingSize().toPlainString());
+        return message;
+    }
+
+    private OrderDoneMessage orderDoneMessage(OrderDoneLog log) {
+        OrderDoneMessage message = new OrderDoneMessage();
+        message.setSequence(log.getSequence());
+        message.setTime(log.getTime().toInstant().toString());
+        message.setProductId(log.getProductId());
+        message.setPrice(log.getPrice().toPlainString());
+        message.setSide(log.getSide().name().toLowerCase());
+        message.setReason(log.getDoneReason().name().toUpperCase());
+        message.setRemainingSize(log.getRemainingSize().toPlainString());
         return message;
     }
 

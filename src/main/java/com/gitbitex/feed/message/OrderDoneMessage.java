@@ -19,7 +19,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class OrderDoneMessage extends OrderBookLog {
+public class OrderDoneMessage  {
     private String type;
     private String productId;
     private long sequence;
@@ -28,6 +28,7 @@ public class OrderDoneMessage extends OrderBookLog {
     private String price;
     private String side;
     private String reason;
+    private String time;
 
     public OrderDoneMessage() {
         this.setType("done");
