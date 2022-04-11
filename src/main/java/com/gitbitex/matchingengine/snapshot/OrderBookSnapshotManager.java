@@ -1,8 +1,6 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.matchingengine.snapshot;
 
 import com.alibaba.fastjson.JSON;
-import com.gitbitex.matchingengine.snapshot.L2OrderBookSnapshot;
-import com.gitbitex.matchingengine.snapshot.L3OrderBookSnapshot;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;

@@ -1,5 +1,8 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.matchingengine.snapshot;
 
+import com.gitbitex.matchingengine.BookOrder;
+import com.gitbitex.matchingengine.OrderBook;
+import com.gitbitex.matchingengine.SlidingBloomFilterSnapshot;
 import lombok.Getter;
 import lombok.Setter;
 

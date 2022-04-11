@@ -7,8 +7,6 @@ import java.util.concurrent.TimeUnit;
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.OrderBook;
 import com.gitbitex.matchingengine.OrderBookListener;
-import com.gitbitex.matchingengine.OrderBookSnapshot;
-import com.gitbitex.matchingengine.OrderBookSnapshotManager;
 import com.gitbitex.matchingengine.PageLine;
 import com.gitbitex.matchingengine.log.OrderBookLog;
 import lombok.SneakyThrows;

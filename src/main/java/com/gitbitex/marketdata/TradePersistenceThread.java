@@ -58,7 +58,6 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, OrderBoo
                     }
                 }
             });
-
     }
 
     @Override

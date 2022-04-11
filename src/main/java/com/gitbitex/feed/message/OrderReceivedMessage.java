@@ -5,19 +5,19 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class MatchMessage {
+public class OrderReceivedMessage {
     private String type;
-    private String productId;
-    private long tradeId;
-    private long sequence;
-    private String takerOrderId;
-    private String makerOrderId;
     private String time;
+    private String productId;
+    private long sequence;
+    private String orderId;
     private String size;
     private String price;
+    private String funds;
     private String side;
+    private String orderType;
 
-    public MatchMessage() {
-        this.setType("match");
+    public OrderReceivedMessage() {
+        this.setType("received");
     }
 }
