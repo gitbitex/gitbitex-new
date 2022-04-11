@@ -16,7 +16,7 @@ import com.gitbitex.feed.message.TickerMessage;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.marketdata.entity.Trade;
-import com.gitbitex.matchingengine.marketmessage.L2Change;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookChange;
 import com.gitbitex.order.entity.Order;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,7 +64,7 @@ public class FeedMessageListener {
         });
 
         redissonClient.getTopic("l2change", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            L2Change change = JSON.parseObject(msg, L2Change.class);
+            L2OrderBookChange change = JSON.parseObject(msg, L2OrderBookChange.class);
             String channel = change.getProductId() + ".level2";
             sessionManager.sendMessageToChannel(channel,
                 JSON.toJSONString(new L2UpdateMessage(change.getProductId(), Collections.singletonList(change))));

@@ -5,8 +5,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.gitbitex.matchingengine.PageLine;
-import com.gitbitex.matchingengine.marketmessage.L2Change;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookChange;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -34,7 +33,7 @@ public class L2UpdateMessage {
     public L2UpdateMessage() {
     }
 
-    public L2UpdateMessage(String productId, List<L2Change> changes) {
+    public L2UpdateMessage(String productId, List<L2OrderBookChange> changes) {
         this.productId = "l2update";
         this.setProductId(productId);
         this.time = new Date().toInstant().toString();
@@ -45,7 +44,7 @@ public class L2UpdateMessage {
         public Change() {
         }
 
-        public Change(L2Change change) {
+        public Change(L2OrderBookChange change) {
             this.add(change.getSide().name().toLowerCase());
             this.add(change.getPrice().stripTrailingZeros().toPlainString());
             this.add(change.getSize().stripTrailingZeros().toPlainString());

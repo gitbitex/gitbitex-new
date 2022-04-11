@@ -1,6 +1,5 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.matchingengine.snapshot;
 
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -8,10 +7,11 @@ import java.util.concurrent.TimeUnit;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.feed.message.L2UpdateMessage.Change;
+import com.gitbitex.matchingengine.OrderBook;
+import com.gitbitex.matchingengine.OrderBookListener;
+import com.gitbitex.matchingengine.OrderBookSnapshotManager;
+import com.gitbitex.matchingengine.PageLine;
 import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.matchingengine.marketmessage.L2Change;
-import com.gitbitex.matchingengine.marketmessage.L2OrderBookSnapshot;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +25,6 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final ThreadPoolExecutor persistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS,
         new LinkedBlockingQueue<>(10), new ThreadFactoryBuilder().setNameFormat("L2-P-Executor-%s").build());
-    private final BlockingQueue<Change> changeQueue = new LinkedBlockingQueue<>(1000);
     private final RTopic l2ChangeTopic;
 
     public L2OrderBookSnapshotThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
@@ -66,7 +65,7 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
             }
         }
 
-        L2Change change = new L2Change();
+        L2OrderBookChange change = new L2OrderBookChange();
         change.setProductId(orderBook.getProductId());
         change.setSide(line.getSide());
         change.setPrice(line.getPrice());

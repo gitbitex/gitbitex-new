@@ -13,7 +13,7 @@ import com.gitbitex.feed.message.TickerMessage;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.matchingengine.OrderBookSnapshotManager;
 import com.gitbitex.matchingengine.TickerManager;
-import com.gitbitex.matchingengine.marketmessage.L2OrderBookSnapshot;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookSnapshot;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;

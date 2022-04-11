@@ -1,8 +1,11 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.matchingengine.snapshot;
 
 import com.gitbitex.AppProperties;
+import com.gitbitex.matchingengine.OrderBook;
+import com.gitbitex.matchingengine.OrderBookListener;
+import com.gitbitex.matchingengine.OrderBookSnapshotManager;
+import com.gitbitex.matchingengine.PageLine;
 import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.matchingengine.marketmessage.Level3OrderBookSnapshot;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -30,7 +33,7 @@ public class L3OrderBookSnapshotThread extends OrderBookListener {
                 logger.warn("persistenceExecutor is busy");
             } else {
                 logger.info("start take level3 snapshot");
-                Level3OrderBookSnapshot snapshot = new Level3OrderBookSnapshot(orderBook);
+                L3OrderBookSnapshot snapshot = new L3OrderBookSnapshot(orderBook);
                 logger.info("done");
 
                 persistenceExecutor.execute(() -> {

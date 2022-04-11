@@ -1,4 +1,4 @@
-package com.gitbitex.matchingengine.marketmessage;
+package com.gitbitex.matchingengine.snapshot;
 
 import java.util.ArrayList;
 import java.util.Collection;

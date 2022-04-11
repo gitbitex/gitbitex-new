@@ -1,4 +1,4 @@
-package com.gitbitex.matchingengine.marketmessage;
+package com.gitbitex.matchingengine.snapshot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,17 +11,17 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class Level3OrderBookSnapshot {
+public class L3OrderBookSnapshot {
     private String productId;
     private long sequence;
     private long tradeId;
     private List<SnapshotLine> asks = new ArrayList<>();
     private List<SnapshotLine> bids = new ArrayList<>();
 
-    public Level3OrderBookSnapshot() {
+    public L3OrderBookSnapshot() {
     }
 
-    public Level3OrderBookSnapshot(OrderBook orderBook) {
+    public L3OrderBookSnapshot(OrderBook orderBook) {
         this.productId = orderBook.getProductId();
         this.sequence = orderBook.getSequence().get();
         this.tradeId = orderBook.getTradeId().get();

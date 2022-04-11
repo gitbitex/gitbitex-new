@@ -1,4 +1,4 @@
-package com.gitbitex.matchingengine.marketmessage;
+package com.gitbitex.matchingengine.snapshot;
 
 import java.math.BigDecimal;
 
@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class L2Change {
+public class L2OrderBookChange {
     private String productId;
     private OrderSide side;
     private BigDecimal price;

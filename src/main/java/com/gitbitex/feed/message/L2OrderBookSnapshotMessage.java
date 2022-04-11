@@ -1,6 +1,6 @@
 package com.gitbitex.feed.message;
 
-import com.gitbitex.matchingengine.marketmessage.L2OrderBookSnapshot;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookSnapshot;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.BeanUtils;

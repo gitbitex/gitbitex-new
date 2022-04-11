@@ -4,7 +4,7 @@ package com.gitbitex.matchingengine;
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.log.*;
-import com.gitbitex.matchingengine.marketmessage.L2OrderBookSnapshot;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookSnapshot;
 import com.gitbitex.feed.message.L2UpdateMessage;
 import com.gitbitex.matchingengine.marketmessage.Level3OrderBookSnapshot;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
