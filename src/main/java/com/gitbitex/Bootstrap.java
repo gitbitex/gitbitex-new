@@ -196,7 +196,7 @@ public class Bootstrap {
 
     private void startOrderBookLogPublish(String productId, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "TradePersistence-" + productId;
+            String groupId = "OrderBookLogPublish-" + productId;
             TradePersistenceThread tradePersistenceThread = new TradePersistenceThread(productId, tradeRepository,
                     redissonClient,
                     new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookLogDeserializer()),

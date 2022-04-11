@@ -86,8 +86,6 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, OrderBoo
                 trade.setSide(orderMatchLog.getSide());
                 trade.setSequence(log.getSequence());
                 tradeRepository.save(trade);
-
-                tradeTopic.publish(JSON.toJSONString(trade));
             }
         }
         consumer.commitSync();
