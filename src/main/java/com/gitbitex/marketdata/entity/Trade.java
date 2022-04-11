@@ -48,4 +48,5 @@ public class Trade {
     private Date time;
 
     private long sequence;
+    private long orderBookLogOffset;
 }

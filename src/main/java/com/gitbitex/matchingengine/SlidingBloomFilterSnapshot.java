@@ -1,26 +1,25 @@
 package com.gitbitex.matchingengine;
 
-import com.google.common.hash.BloomFilter;
-import com.google.common.hash.Funnels;
-import lombok.Getter;
-import lombok.SneakyThrows;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
+import lombok.Getter;
+import lombok.SneakyThrows;
+
 @Getter
 public class SlidingBloomFilterSnapshot {
-    private int expectedInsertions;
-    private int idx;
-    private List<String> bloomFilterEncodedDataList = new ArrayList<>();
+    private final int expectedInsertions;
+    private final int idx;
+    private final List<String> bloomFilterEncodedDataList = new ArrayList<>();
 
-    public SlidingBloomFilterSnapshot(SlidingBloomFilter filter)  {
+    public SlidingBloomFilterSnapshot(SlidingBloomFilter filter) {
         this.expectedInsertions = filter.getExpectedInsertions();
         this.idx = filter.getIdx();
         for (BloomFilter<String> bloomFilter : filter.getFilters()) {
@@ -30,15 +29,8 @@ public class SlidingBloomFilterSnapshot {
         }
     }
 
-    public SlidingBloomFilter restore() {
-        List<BloomFilter<String>> filters = this.bloomFilterEncodedDataList.stream()
-                .map(x -> decodeBloomFilter(x))
-                .collect(Collectors.toList());
-        return new SlidingBloomFilter(this.expectedInsertions, this.idx, filters);
-    }
-
     @SneakyThrows
-    private static String encodeBloomFilter(BloomFilter<String> filter)  {
+    private static String encodeBloomFilter(BloomFilter<String> filter) {
         try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
             filter.writeTo(stream);
             byte[] bytes = stream.toByteArray();
@@ -52,5 +44,12 @@ public class SlidingBloomFilterSnapshot {
         try (ByteArrayInputStream stream = new ByteArrayInputStream(bytes)) {
             return BloomFilter.readFrom(stream, Funnels.stringFunnel(StandardCharsets.UTF_8));
         }
+    }
+
+    public SlidingBloomFilter restore() {
+        List<BloomFilter<String>> filters = this.bloomFilterEncodedDataList.stream()
+            .map(x -> decodeBloomFilter(x))
+            .collect(Collectors.toList());
+        return new SlidingBloomFilter(this.expectedInsertions, this.idx, filters);
     }
 }

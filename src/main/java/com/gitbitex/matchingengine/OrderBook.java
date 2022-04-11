@@ -1,19 +1,23 @@
 package com.gitbitex.matchingengine;
 
-import com.gitbitex.matchingengine.command.CancelOrderCommand;
-import com.gitbitex.matchingengine.command.NewOrderCommand;
-import com.gitbitex.matchingengine.log.*;
-import com.gitbitex.order.entity.Order;
-import com.gitbitex.order.entity.Order.OrderSide;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+
+import com.gitbitex.matchingengine.command.CancelOrderCommand;
+import com.gitbitex.matchingengine.command.NewOrderCommand;
+import com.gitbitex.matchingengine.log.OrderBookLog;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.order.entity.Order;
+import com.gitbitex.order.entity.Order.OrderSide;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 @Getter
 @Slf4j
@@ -28,13 +32,14 @@ public class OrderBook {
     private long logOffset;
 
     public OrderBook(String productId) {
-        this(productId, new AtomicLong(), new AtomicLong(), 0, 0, new ArrayList<>(), new ArrayList<>(), new SlidingBloomFilter(100000, 2));
+        this(productId, new AtomicLong(), new AtomicLong(), 0, 0, new ArrayList<>(), new ArrayList<>(),
+            new SlidingBloomFilter(100000, 2));
     }
 
     public OrderBook(String productId, AtomicLong tradeId, AtomicLong sequence,
-                     long commandOffset, long logOffset,
-                     List<BookOrder> askOrders, List<BookOrder> bidOrders,
-                     SlidingBloomFilter orderIdFilter) {
+        long commandOffset, long logOffset,
+        List<BookOrder> askOrders, List<BookOrder> bidOrders,
+        SlidingBloomFilter orderIdFilter) {
         this.productId = productId;
         this.tradeId = tradeId;
         this.sequence = sequence;
@@ -124,11 +129,11 @@ public class OrderBook {
 
     public OrderBook copy() {
         return new OrderBook(this.productId,
-                new AtomicLong(this.tradeId.get()), new AtomicLong(this.sequence.get()),
-                this.commandOffset, this.logOffset,
-                this.asks.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()),
-                this.bids.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()),
-                this.orderIdFilter.copy());
+            new AtomicLong(this.tradeId.get()), new AtomicLong(this.sequence.get()),
+            this.commandOffset, this.logOffset,
+            this.asks.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()),
+            this.bids.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()),
+            this.orderIdFilter.copy());
     }
 
     private PageLine addOrder(BookOrder order) {

@@ -12,6 +12,8 @@ public interface TradeRepository extends JpaRepository<Trade, Long>, CrudReposit
 
     List<Trade> findFirst50ByProductIdOrderByTimeDesc(String productId);
 
+    Trade findFirstByProductIdOrderByTimeDesc(String productId);
+
     Trade findByProductIdAndTradeId(String productId, long tradeId);
 
 }

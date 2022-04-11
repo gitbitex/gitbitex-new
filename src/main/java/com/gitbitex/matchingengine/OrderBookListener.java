@@ -1,8 +1,20 @@
 package com.gitbitex.matchingengine;
 
+import java.util.Collection;
+import java.util.Collections;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.AppProperties;
-import com.gitbitex.matchingengine.log.*;
+import com.gitbitex.matchingengine.log.OrderBookLog;
+import com.gitbitex.matchingengine.log.OrderBookLogDispatcher;
+import com.gitbitex.matchingengine.log.OrderBookLogHandler;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.matchingengine.snapshot.OrderBookSnapshot;
+import com.gitbitex.matchingengine.snapshot.OrderBookSnapshotManager;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -11,11 +23,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
-import java.util.Collection;
-import java.util.Collections;
-
 @Slf4j
-public abstract class OrderBookListener extends KafkaConsumerThread<String, OrderBookLog> implements OrderBookLogHandler {
+public abstract class OrderBookListener extends KafkaConsumerThread<String, OrderBookLog>
+    implements OrderBookLogHandler {
     private final String productId;
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final OrderBookLogDispatcher messageDispatcher;
@@ -23,7 +33,7 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
     private OrderBook orderBook;
 
     public OrderBookListener(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
-                             KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
+        KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
         super(kafkaConsumer, logger);
         this.productId = productId;
         this.orderBookSnapshotManager = orderBookSnapshotManager;
@@ -34,30 +44,31 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
     @Override
     protected void doSubscribe(KafkaConsumer<String, OrderBookLog> consumer) {
         consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()),
-                new ConsumerRebalanceListener() {
-                    @Override
-                    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+            new ConsumerRebalanceListener() {
+                @Override
+                public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 
-                    }
+                }
 
-                    @Override
-                    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                        OrderBookSnapshot snapshot = orderBookSnapshotManager.getOrderBookSnapshot(productId);
-                        orderBook = snapshot != null
-                                ? snapshot.restore()
-                                : new OrderBook(productId);
+                @Override
+                public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                    OrderBookSnapshot snapshot = orderBookSnapshotManager.getOrderBookSnapshot(productId);
+                    orderBook = snapshot != null
+                        ? snapshot.restore()
+                        : new OrderBook(productId);
 
-                        for (TopicPartition partition : partitions) {
-                            if (snapshot != null) {
-                                consumer.seek(partition, snapshot.getLogOffset() + 1);
-                            }
+                    for (TopicPartition partition : partitions) {
+                        if (snapshot != null) {
+                            consumer.seek(partition, snapshot.getLogOffset() + 1);
                         }
                     }
-                });
+                }
+            });
     }
 
     @Override
-    protected void processRecords(KafkaConsumer<String, OrderBookLog> consumer, ConsumerRecords<String, OrderBookLog> records) {
+    protected void processRecords(KafkaConsumer<String, OrderBookLog> consumer,
+        ConsumerRecords<String, OrderBookLog> records) {
         for (ConsumerRecord<String, OrderBookLog> record : records) {
             OrderBookLog orderBookLog = record.value();
             orderBookLog.setOffset(record.offset());

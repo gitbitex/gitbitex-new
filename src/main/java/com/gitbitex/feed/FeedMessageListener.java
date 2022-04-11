@@ -1,7 +1,5 @@
 package com.gitbitex.feed;
 
-import java.util.Collections;
-
 import javax.annotation.PostConstruct;
 
 import com.alibaba.fastjson.JSON;
@@ -16,7 +14,7 @@ import com.gitbitex.feed.message.TickerMessage;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.marketdata.entity.Trade;
-import com.gitbitex.matchingengine.snapshot.L2OrderBookChange;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdate;
 import com.gitbitex.order.entity.Order;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,10 +62,9 @@ public class FeedMessageListener {
         });
 
         redissonClient.getTopic("l2change", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            L2OrderBookChange change = JSON.parseObject(msg, L2OrderBookChange.class);
-            String channel = change.getProductId() + ".level2";
-            sessionManager.sendMessageToChannel(channel,
-                JSON.toJSONString(new L2UpdateMessage(change.getProductId(), Collections.singletonList(change))));
+            L2OrderBookUpdate l2OrderBookUpdate = JSON.parseObject(msg, L2OrderBookUpdate.class);
+            String channel = l2OrderBookUpdate.getProductId() + ".level2";
+            sessionManager.sendMessageToChannel(channel, JSON.toJSONString(new L2UpdateMessage(l2OrderBookUpdate)));
         });
     }
 

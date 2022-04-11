@@ -1,11 +1,10 @@
 package com.gitbitex.feed.message;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
-import java.util.List;
-import java.util.stream.Collectors;
 
-import com.gitbitex.matchingengine.snapshot.L2OrderBookChange;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdate;
+import com.gitbitex.matchingengine.snapshot.L2PageLineChange;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -28,27 +27,15 @@ import lombok.Setter;
 public class L2UpdateMessage {
     private String productId;
     private String time;
-    private List<Change> changes;
+    private Collection<L2PageLineChange> changes;
 
     public L2UpdateMessage() {
     }
 
-    public L2UpdateMessage(String productId, List<L2OrderBookChange> changes) {
+    public L2UpdateMessage(L2OrderBookUpdate l2OrderBookUpdate) {
         this.productId = "l2update";
-        this.setProductId(productId);
+        this.productId = l2OrderBookUpdate.getProductId();
+        this.changes = l2OrderBookUpdate.getChanges();
         this.time = new Date().toInstant().toString();
-        this.changes = changes.stream().map(x->new Change(x)).collect(Collectors.toList());
     }
-
-    public static class Change extends ArrayList<Object> {
-        public Change() {
-        }
-
-        public Change(L2OrderBookChange change) {
-            this.add(change.getSide().name().toLowerCase());
-            this.add(change.getPrice().stripTrailingZeros().toPlainString());
-            this.add(change.getSize().stripTrailingZeros().toPlainString());
-        }
-    }
-
 }

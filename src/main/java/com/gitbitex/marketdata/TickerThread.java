@@ -11,7 +11,6 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.marketdata.util.DateUtil;
-import com.gitbitex.matchingengine.TickerManager;
 import com.gitbitex.matchingengine.log.OrderBookLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
@@ -129,32 +128,14 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
             ticker.setVolume30d(ticker.getVolume30d().add(log.getSize()));
         }
         ticker.setLastSize(log.getSize());
-        ticker.setTime(log.getTime().toInstant().toString());
+        ticker.setTime(log.getTime());
         ticker.setPrice(log.getPrice());
-        ticker.setSide(log.getSide().name().toLowerCase());
+        ticker.setSide(log.getSide());
         ticker.setTradeId(log.getTradeId());
         ticker.setSequence(log.getSequence());
 
         tickerManager.saveTicker(ticker);
-        tickerTopic.publish(JSON.toJSONString(ticker));
 
-        /*TickerMessage tickerMessage = new TickerMessage();
-        tickerMessage.setProductId(productId);
-        tickerMessage.setTradeId(log.getTradeId());
-        tickerMessage.setSequence(log.getSequence());
-        tickerMessage.setTime(log.getTime().toInstant().toString());
-        tickerMessage.setPrice(log.getPrice().toPlainString());
-        tickerMessage.setSide(log.getSide().name());
-        tickerMessage.setLastSize(log.getSize().toPlainString());
-        tickerMessage.setTime24h(time24h);
-        tickerMessage.setClose24h(close24h.toPlainString());
-        tickerMessage.setOpen24h(open24h.toPlainString());
-        tickerMessage.setHigh24h(high24h.toPlainString());
-        tickerMessage.setLow24h(low24h.toPlainString());
-        tickerMessage.setVolume24h(volume24h.toPlainString());
-        tickerMessage.setTime30d(time30d);
-        tickerMessage.setVolume30d(volume30d.toPlainString());
-        tickerManager.saveTicker(tickerMessage.getProductId(), tickerMessage);
-        marketMessagePublisher.publish(tickerMessage);*/
+        tickerTopic.publish(JSON.toJSONString(ticker));
     }
 }

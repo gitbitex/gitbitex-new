@@ -5,8 +5,8 @@ import java.util.List;
 
 import com.gitbitex.account.entity.Account;
 import com.gitbitex.account.repository.AccountRepository;
-import com.gitbitex.user.entity.User;
 import com.gitbitex.openapi.model.AccountDto;
+import com.gitbitex.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;

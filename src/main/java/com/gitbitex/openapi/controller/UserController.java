@@ -5,14 +5,14 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 
-import com.gitbitex.user.entity.User;
-import com.gitbitex.user.UserManager;
-import com.gitbitex.user.repository.UserRepository;
 import com.gitbitex.openapi.model.SignInRequest;
 import com.gitbitex.openapi.model.SignUpRequest;
 import com.gitbitex.openapi.model.TokenDto;
 import com.gitbitex.openapi.model.UpdateProfileRequest;
 import com.gitbitex.openapi.model.UserDto;
+import com.gitbitex.user.UserManager;
+import com.gitbitex.user.entity.User;
+import com.gitbitex.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;

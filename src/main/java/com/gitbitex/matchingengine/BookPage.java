@@ -11,9 +11,6 @@ import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.gitbitex.order.entity.Order;
-import com.gitbitex.order.entity.Order.OrderSide;
-import com.gitbitex.order.entity.Order.OrderType;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.NewOrderCommand;
 import com.gitbitex.matchingengine.log.OrderBookLog;
@@ -21,6 +18,9 @@ import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.OrderOpenLog;
 import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.order.entity.Order;
+import com.gitbitex.order.entity.Order.OrderSide;
+import com.gitbitex.order.entity.Order.OrderType;
 
 public class BookPage {
     private final String productId;

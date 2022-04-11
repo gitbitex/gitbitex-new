@@ -9,9 +9,9 @@ import javax.annotation.PostConstruct;
 
 import com.alibaba.fastjson.JSON;
 
+import com.gitbitex.order.OrderManager;
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
-import com.gitbitex.order.OrderManager;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -64,12 +64,10 @@ public class TradeMaker {
                         BigDecimal size = new BigDecimal(trade.getQty());
                         BigDecimal price = new BigDecimal(trade.getPrice());
 
-
-
                         orderManager.placeOrder(userId, productId, OrderType.LIMIT,
-                                trade.isBuyerMaker()?  OrderSide.BUY:OrderSide.SELL, size, price, null, null, null);
+                            trade.isBuyerMaker() ? OrderSide.BUY : OrderSide.SELL, size, price, null, null, null);
                         orderManager.placeOrder(userId, productId, OrderType.LIMIT,
-                                trade.isBuyerMaker()?  OrderSide.SELL:OrderSide.BUY, size, price, null, null, null);
+                            trade.isBuyerMaker() ? OrderSide.SELL : OrderSide.BUY, size, price, null, null, null);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();

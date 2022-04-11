@@ -30,7 +30,7 @@ public class BookOrder {
 
     public BookOrder copy() {
         BookOrder order = new BookOrder();
-        BeanUtils.copyProperties(this,order);
+        BeanUtils.copyProperties(this, order);
         return order;
     }
 }

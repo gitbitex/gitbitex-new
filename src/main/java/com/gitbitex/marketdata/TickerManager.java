@@ -1,4 +1,4 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.marketdata;
 
 import com.alibaba.fastjson.JSON;
 
@@ -22,6 +22,7 @@ public class TickerManager {
     }
 
     public void saveTicker(Ticker ticker) {
-        redissonClient.getBucket(ticker.getProductId() + ".ticker", StringCodec.INSTANCE).set(JSON.toJSONString(ticker));
+        redissonClient.getBucket(ticker.getProductId() + ".ticker", StringCodec.INSTANCE).set(
+            JSON.toJSONString(ticker));
     }
 }

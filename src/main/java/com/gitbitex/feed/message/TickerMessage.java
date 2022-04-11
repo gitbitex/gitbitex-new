@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class TickerMessage  {
+public class TickerMessage {
     private String type;
     private String productId;
     private long tradeId;

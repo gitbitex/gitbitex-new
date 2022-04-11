@@ -1,7 +1,6 @@
 package com.gitbitex.matchingengine.snapshot;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,7 +19,6 @@ public class L2OrderBookSnapshot {
     private List<SnapshotLine> bids = new ArrayList<>();
 
     public L2OrderBookSnapshot() {
-
     }
 
     public L2OrderBookSnapshot(OrderBook orderBook, boolean onlyLevel1) {
@@ -33,13 +31,6 @@ public class L2OrderBookSnapshot {
             this.asks = orderBook.getAsks().getLines().stream().map(SnapshotLine::new).collect(Collectors.toList());
             this.bids = orderBook.getBids().getLines().stream().map(SnapshotLine::new).collect(Collectors.toList());
         }
-    }
-
-    public L2OrderBookSnapshot(String productId, long sequence, Collection<PageLine> asks, Collection<PageLine> bids) {
-        this.setProductId(productId);
-        this.sequence = sequence;
-        this.asks = asks.stream().map(SnapshotLine::new).collect(Collectors.toList());
-        this.bids = bids.stream().map(SnapshotLine::new).collect(Collectors.toList());
     }
 
     public L2OrderBookSnapshot makeL1OrderBookSnapshot() {

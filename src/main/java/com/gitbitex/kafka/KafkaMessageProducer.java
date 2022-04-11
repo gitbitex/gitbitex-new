@@ -7,8 +7,6 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.account.command.AccountCommand;
 import com.gitbitex.matchingengine.command.OrderBookCommand;
-import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.order.command.OrderCommand;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -22,7 +20,6 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         super(kafkaProperties);
         this.appProperties = appProperties;
     }
-
 
     @SneakyThrows
     public void sendToMatchingEngine(OrderBookCommand command) {

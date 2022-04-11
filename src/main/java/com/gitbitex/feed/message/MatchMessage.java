@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class MatchMessage  {
+public class MatchMessage {
     private String type;
     private String productId;
     private long tradeId;

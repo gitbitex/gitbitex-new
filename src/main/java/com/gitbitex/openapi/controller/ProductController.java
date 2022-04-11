@@ -5,14 +5,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.gitbitex.marketdata.entity.Candle;
+import com.gitbitex.marketdata.entity.Trade;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.product.entity.Product;
-import com.gitbitex.marketdata.entity.Trade;
-import com.gitbitex.matchingengine.OrderBookSnapshotManager;
+import com.gitbitex.matchingengine.snapshot.OrderBookSnapshotManager;
 import com.gitbitex.openapi.model.ProductDto;
-import com.gitbitex.product.repository.ProductRepository;
 import com.gitbitex.openapi.model.TradeDto;
+import com.gitbitex.product.entity.Product;
+import com.gitbitex.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;

@@ -1,19 +1,20 @@
 package com.gitbitex.matchingengine;
 
-import com.alibaba.fastjson.JSON;
-import com.google.common.hash.BloomFilter;
-import com.google.common.hash.Funnels;
-import lombok.Getter;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.alibaba.fastjson.JSON;
+
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
+import lombok.Getter;
+
 @Getter
 public class SlidingBloomFilter {
-    private List<BloomFilter<String>> filters;
-    private int expectedInsertions;
+    private final List<BloomFilter<String>> filters;
+    private final int expectedInsertions;
     private int idx;
 
     public SlidingBloomFilter(int expectedInsertions, int filterCount) {
@@ -28,6 +29,31 @@ public class SlidingBloomFilter {
         this.expectedInsertions = expectedInsertions;
         this.idx = idx;
         this.filters = filters;
+    }
+
+    public static void main(String[] a) throws IOException {
+        SlidingBloomFilter slidingBloomFilter = new SlidingBloomFilter(100000000, 3);
+
+        for (int i = 0; i < 10000000; i++) {
+            slidingBloomFilter.put(String.valueOf(i));
+        }
+
+        for (int i = 0; i < 10; i++) {
+            System.out.println(slidingBloomFilter.contains(String.valueOf(i)));
+        }
+
+        long t1 = System.currentTimeMillis();
+        slidingBloomFilter.copy();
+        System.out.println(System.currentTimeMillis() - t1);
+        if (true) {return;}
+
+        SlidingBloomFilterSnapshot snapshot = new SlidingBloomFilterSnapshot(slidingBloomFilter);
+        System.out.println(JSON.toJSONString(snapshot, true));
+
+        SlidingBloomFilter filter = snapshot.restore();
+        System.out.println(filter.contains("1"));
+        System.out.println(slidingBloomFilter.contains("1"));
+
     }
 
     public boolean contains(String orderId) {
@@ -59,10 +85,10 @@ public class SlidingBloomFilter {
     }
 
     public SlidingBloomFilter copy() {
-        SlidingBloomFilter slidingBloomFilter = new SlidingBloomFilter(1,111);
+        SlidingBloomFilter slidingBloomFilter = new SlidingBloomFilter(1, 111);
         slidingBloomFilter.idx = this.idx;
         for (BloomFilter<String> filter : this.filters) {
-            if (filter!=null) {
+            if (filter != null) {
                 Object o = filter.copy();
                 System.out.println(o.getClass());
             }
@@ -75,35 +101,6 @@ public class SlidingBloomFilter {
     }
 
     private boolean isFilterFull(BloomFilter<String> filter) {
-        return filter.approximateElementCount() > expectedInsertions ;
-    }
-
-    public static void main(String[] a) throws IOException {
-        SlidingBloomFilter slidingBloomFilter = new SlidingBloomFilter(100000000, 3);
-
-
-
-        for (int i = 0; i < 10000000; i++) {
-            slidingBloomFilter.put(String.valueOf(i));
-        }
-
-        for (int i = 0; i < 10; i++) {
-            System.out.println(slidingBloomFilter.contains(String.valueOf(i)));
-        }
-
-        long t1=System.currentTimeMillis();
-        slidingBloomFilter.copy();
-        System.out.println(System.currentTimeMillis()-t1);
-        if (true)return;
-
-
-        SlidingBloomFilterSnapshot snapshot = new SlidingBloomFilterSnapshot(slidingBloomFilter);
-        System.out.println(JSON.toJSONString(snapshot, true));
-
-
-        SlidingBloomFilter filter= snapshot.restore();
-        System.out.println(  filter.contains("1"));
-        System.out.println(  slidingBloomFilter.contains("1"));
-
+        return filter.approximateElementCount() > expectedInsertions;
     }
 }

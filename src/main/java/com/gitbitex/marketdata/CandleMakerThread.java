@@ -29,12 +29,15 @@ import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 
+/**
+ * My job is to produce candles
+ */
 @Slf4j
 public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog> {
     private static final int[] MINUTES = new int[] {1, 3, 5, 15, 30, 60, 120, 240, 360, 720, 1440, 43200};
+    private final Map<Integer, Candle> candles = new HashMap<>();
     private final String productId;
     private final CandleRepository candleRepository;
-    private final Map<Integer, Candle> candles = new HashMap<>();
     private final AppProperties appProperties;
     private final RTopic candleTopic;
 

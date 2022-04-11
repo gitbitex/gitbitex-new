@@ -6,11 +6,11 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.account.entity.Account;
 import com.gitbitex.account.entity.Bill;
+import com.gitbitex.account.repository.AccountRepository;
+import com.gitbitex.account.repository.BillRepository;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
 import com.gitbitex.feed.message.AccountMessage;
-import com.gitbitex.account.repository.AccountRepository;
-import com.gitbitex.account.repository.BillRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
@@ -159,15 +159,7 @@ public class AccountManager {
 
     private void tryNotifyAccountUpdate(Account account) {
         try {
-            AccountMessage accountMessage = new AccountMessage();
-            accountMessage.setType("funds");
-            accountMessage.setUserId(account.getUserId());
-            accountMessage.setCurrencyCode(account.getCurrency());
-            accountMessage.setAvailable(
-                account.getAvailable() != null ? account.getAvailable().stripTrailingZeros().toPlainString() : "0");
-            accountMessage.setHold(
-                account.getHold() != null ? account.getHold().stripTrailingZeros().toPlainString() : "0");
-            redissonClient.getTopic("account", StringCodec.INSTANCE).publish(JSON.toJSONString(accountMessage));
+            redissonClient.getTopic("account", StringCodec.INSTANCE).publish(JSON.toJSONString(account));
         } catch (Exception e) {
             logger.error("notify error: {}", e.getMessage(), e);
         }

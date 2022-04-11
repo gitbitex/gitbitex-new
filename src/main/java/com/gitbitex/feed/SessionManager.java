@@ -11,8 +11,8 @@ import com.gitbitex.feed.message.L2OrderBookSnapshotMessage;
 import com.gitbitex.feed.message.PongMessage;
 import com.gitbitex.feed.message.TickerMessage;
 import com.gitbitex.marketdata.entity.Ticker;
-import com.gitbitex.matchingengine.OrderBookSnapshotManager;
-import com.gitbitex.matchingengine.TickerManager;
+import com.gitbitex.matchingengine.snapshot.OrderBookSnapshotManager;
+import com.gitbitex.marketdata.TickerManager;
 import com.gitbitex.matchingengine.snapshot.L2OrderBookSnapshot;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -46,8 +46,7 @@ public class SessionManager {
                             subscribeChannel(session, productChannel);
 
                             try {
-                                L2OrderBookSnapshot snapshot = orderBookSnapshotManager.getLevel2BookSnapshot(
-                                    productId);
+                                L2OrderBookSnapshot snapshot = orderBookSnapshotManager.getLevel2BookSnapshot(productId);
                                 if (snapshot != null) {
                                     session.sendMessage(
                                         new TextMessage(JSON.toJSONString(new L2OrderBookSnapshotMessage(snapshot))));

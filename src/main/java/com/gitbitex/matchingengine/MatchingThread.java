@@ -16,6 +16,8 @@ import com.gitbitex.matchingengine.command.OrderBookCommand;
 import com.gitbitex.matchingengine.command.OrderBookCommandDispatcher;
 import com.gitbitex.matchingengine.command.OrderBookCommandHandler;
 import com.gitbitex.matchingengine.log.OrderBookLog;
+import com.gitbitex.matchingengine.snapshot.OrderBookSnapshot;
+import com.gitbitex.matchingengine.snapshot.OrderBookSnapshotManager;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -103,7 +105,7 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
     @SneakyThrows
     public void on(NewOrderCommand command) {
         List<OrderBookLog> logs = orderBook.executeCommand(command);
-        if (logs!=null) {
+        if (logs != null) {
             for (OrderBookLog log : logs) {
                 checkOrderBookLogQueueCapacity();
                 orderBookLogQueue.put(log);
