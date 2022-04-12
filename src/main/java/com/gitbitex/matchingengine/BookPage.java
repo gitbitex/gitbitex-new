@@ -1,5 +1,6 @@
 package com.gitbitex.matchingengine;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -22,7 +23,7 @@ import com.gitbitex.order.entity.Order;
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
 
-public class BookPage {
+public class BookPage implements Serializable {
     private final String productId;
     private final TreeMap<BigDecimal, PageLine> lines;
     private final LinkedHashMap<String, BookOrder> orders = new LinkedHashMap<>();

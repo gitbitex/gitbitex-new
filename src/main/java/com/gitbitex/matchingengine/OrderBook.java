@@ -1,5 +1,6 @@
 package com.gitbitex.matchingengine;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -21,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Getter
 @Slf4j
-public class OrderBook {
+public class OrderBook implements Serializable {
     private final String productId;
     private final AtomicLong tradeId;
     private final AtomicLong sequence;

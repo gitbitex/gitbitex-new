@@ -13,7 +13,6 @@ import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.OrderOpenLog;
 import com.gitbitex.matchingengine.log.OrderReceivedLog;
-import com.gitbitex.matchingengine.snapshot.OrderBookSnapshot;
 import com.gitbitex.matchingengine.snapshot.OrderBookSnapshotManager;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
@@ -52,14 +51,14 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
 
                 @Override
                 public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                    OrderBookSnapshot snapshot = orderBookSnapshotManager.getOrderBookSnapshot(productId);
-                    orderBook = snapshot != null
-                        ? snapshot.restore()
-                        : new OrderBook(productId);
+                    orderBook = orderBookSnapshotManager.getOrderBookSnapshot(productId);
+                    if (orderBook == null) {
+                        orderBook = new OrderBook(productId);
+                    }
 
                     for (TopicPartition partition : partitions) {
-                        if (snapshot != null) {
-                            consumer.seek(partition, snapshot.getLogOffset() + 1);
+                        if (orderBook.getLogOffset() == 0) {
+                            consumer.seek(partition, orderBook.getLogOffset() + 1);
                         }
                     }
                 }

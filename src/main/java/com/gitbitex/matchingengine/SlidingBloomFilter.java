@@ -1,6 +1,11 @@
 package com.gitbitex.matchingengine;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,9 +15,10 @@ import com.alibaba.fastjson.JSON;
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
 import lombok.Getter;
+import org.springframework.util.SerializationUtils;
 
 @Getter
-public class SlidingBloomFilter {
+public class SlidingBloomFilter implements Serializable {
     private final List<BloomFilter<String>> filters;
     private final int expectedInsertions;
     private int idx;
@@ -31,16 +37,24 @@ public class SlidingBloomFilter {
         this.filters = filters;
     }
 
-    public static void main(String[] a) throws IOException {
-        SlidingBloomFilter slidingBloomFilter = new SlidingBloomFilter(100000000, 3);
+    public static void main(String[] a) throws IOException, ClassNotFoundException {
+        SlidingBloomFilter slidingBloomFilter = new SlidingBloomFilter(10000, 3);
 
-        for (int i = 0; i < 10000000; i++) {
+        for (int i = 0; i < 1000; i++) {
             slidingBloomFilter.put(String.valueOf(i));
         }
 
         for (int i = 0; i < 10; i++) {
             System.out.println(slidingBloomFilter.contains(String.valueOf(i)));
         }
+
+
+      byte[] bytes=   SerializationUtils.serialize(slidingBloomFilter);
+        SlidingBloomFilter newFilter= (SlidingBloomFilter)SerializationUtils.deserialize(bytes);
+
+        System.out.println("-"+newFilter.contains("1"));
+        if (true)return;
+
 
         long t1 = System.currentTimeMillis();
         slidingBloomFilter.copy();

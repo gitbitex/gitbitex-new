@@ -100,7 +100,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
         }
     }
 
-    private void makeCandle(OrderMatchLog log, long offset, int granularity) throws InterruptedException {
+    private void makeCandle(OrderMatchLog log, long offset, int granularity) {
         Candle candle = candles.get(granularity);
 
         if (candle != null) {

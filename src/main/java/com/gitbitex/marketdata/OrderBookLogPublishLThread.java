@@ -1,5 +1,7 @@
 package com.gitbitex.marketdata;
 
+import java.util.Collections;
+
 import com.gitbitex.AppProperties;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
@@ -10,15 +12,14 @@ import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 
-import java.util.Collections;
-
 @Slf4j
 public class OrderBookLogPublishLThread extends KafkaConsumerThread<String, String> {
     private final String productId;
     private final AppProperties appProperties;
     private final RTopic logTopic;
 
-    public OrderBookLogPublishLThread(String productId, KafkaConsumer<String, String> kafkaConsumer, RedissonClient redissonClient, AppProperties appProperties) {
+    public OrderBookLogPublishLThread(String productId, KafkaConsumer<String, String> kafkaConsumer,
+        RedissonClient redissonClient, AppProperties appProperties) {
         super(kafkaConsumer, logger);
         this.productId = productId;
         this.appProperties = appProperties;

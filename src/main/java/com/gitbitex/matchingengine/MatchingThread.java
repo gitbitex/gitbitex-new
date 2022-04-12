@@ -16,7 +16,6 @@ import com.gitbitex.matchingengine.command.OrderBookCommand;
 import com.gitbitex.matchingengine.command.OrderBookCommandDispatcher;
 import com.gitbitex.matchingengine.command.OrderBookCommandHandler;
 import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.matchingengine.snapshot.OrderBookSnapshot;
 import com.gitbitex.matchingengine.snapshot.OrderBookSnapshotManager;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.RequiredArgsConstructor;
@@ -76,14 +75,14 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
 
                 @Override
                 public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                    OrderBookSnapshot snapshot = orderBookSnapshotManager.getOrderBookSnapshot(productId);
-                    orderBook = snapshot != null
-                        ? snapshot.restore()
-                        : new OrderBook(productId);
+                    orderBook = orderBookSnapshotManager.getOrderBookSnapshot(productId);
+                    if (orderBook == null) {
+                        orderBook = new OrderBook(productId);
+                    }
 
                     for (TopicPartition partition : partitions) {
-                        if (snapshot != null) {
-                            consumer.seek(partition, snapshot.getCommandOffset() + 1);
+                        if (orderBook.getLogOffset() == 0) {
+                            consumer.seek(partition, orderBook.getLogOffset() + 1);
                         }
                     }
                 }

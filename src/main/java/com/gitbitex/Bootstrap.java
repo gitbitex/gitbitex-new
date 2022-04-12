@@ -10,9 +10,9 @@ import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.MatchingThread;
 import com.gitbitex.matchingengine.command.OrderBookCommandDeserializer;
 import com.gitbitex.matchingengine.log.OrderBookLogDeserializer;
-import com.gitbitex.matchingengine.snapshot.FullOrderBookSnapshotThread;
-import com.gitbitex.matchingengine.snapshot.L2OrderBookSnapshotThread;
-import com.gitbitex.matchingengine.snapshot.L3OrderBookSnapshotThread;
+import com.gitbitex.matchingengine.snapshot.FullOrderBookSnapshotTakerThread;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookSnapshotTakerThread;
+import com.gitbitex.matchingengine.snapshot.L3OrderBookSnapshotTakerThread;
 import com.gitbitex.matchingengine.snapshot.OrderBookSnapshotManager;
 import com.gitbitex.order.OrderCommandShardingThread;
 import com.gitbitex.order.OrderManager;
@@ -120,7 +120,7 @@ public class Bootstrap {
     private void startFullOrderBookSnapshotTaker(String productId, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Snapshot-Full-" + productId;
-            FullOrderBookSnapshotThread thread = new FullOrderBookSnapshotThread(productId,
+            FullOrderBookSnapshotTakerThread thread = new FullOrderBookSnapshotTakerThread(productId,
                     orderBookSnapshotManager,
                     new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookLogDeserializer()),
                     appProperties);
@@ -133,7 +133,7 @@ public class Bootstrap {
     private void startL2OrderBookSnapshotTaker(String productId, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Snapshot-L2-" + productId;
-            L2OrderBookSnapshotThread thread = new L2OrderBookSnapshotThread(productId,
+            L2OrderBookSnapshotTakerThread thread = new L2OrderBookSnapshotTakerThread(productId,
                     orderBookSnapshotManager, redissonClient,
                     new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookLogDeserializer()),
                     appProperties);
@@ -146,7 +146,7 @@ public class Bootstrap {
     private void startL3OrderBookSnapshotTaker(String productId, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Snapshot-L3-" + productId;
-            L3OrderBookSnapshotThread thread = new L3OrderBookSnapshotThread(productId,
+            L3OrderBookSnapshotTakerThread thread = new L3OrderBookSnapshotTakerThread(productId,
                     orderBookSnapshotManager,
                     new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookLogDeserializer()),
                     appProperties);

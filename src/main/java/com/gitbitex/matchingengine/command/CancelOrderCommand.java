@@ -12,5 +12,4 @@ public class CancelOrderCommand extends OrderBookCommand {
     public CancelOrderCommand() {
         this.setType(CommandType.CANCEL_ORDER);
     }
-
 }

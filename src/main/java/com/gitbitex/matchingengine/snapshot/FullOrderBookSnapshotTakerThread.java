@@ -9,17 +9,19 @@ import com.gitbitex.matchingengine.OrderBook;
 import com.gitbitex.matchingengine.OrderBookListener;
 import com.gitbitex.matchingengine.PageLine;
 import com.gitbitex.matchingengine.log.OrderBookLog;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.springframework.util.SerializationUtils;
 
 @Slf4j
-public class L3OrderBookSnapshotThread extends OrderBookListener {
+public class FullOrderBookSnapshotTakerThread extends OrderBookListener {
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final ThreadPoolExecutor persistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS,
-        new LinkedBlockingQueue<>(10));
+        new LinkedBlockingQueue<>(10), new ThreadFactoryBuilder().setNameFormat("Full-P-Executor-%s").build());
 
-    public L3OrderBookSnapshotThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
+    public FullOrderBookSnapshotTakerThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
         KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
         super(productId, orderBookSnapshotManager, kafkaConsumer, appProperties);
         this.orderBookSnapshotManager = orderBookSnapshotManager;
@@ -32,13 +34,13 @@ public class L3OrderBookSnapshotThread extends OrderBookListener {
             if (persistenceExecutor.getQueue().remainingCapacity() == 0) {
                 logger.warn("persistenceExecutor is busy");
             } else {
-                logger.info("start take level3 snapshot");
-                L3OrderBookSnapshot snapshot = new L3OrderBookSnapshot(orderBook);
+                logger.info("start take full snapshot");
+                byte[] bytes = SerializationUtils.serialize(orderBook);
                 logger.info("done");
 
                 persistenceExecutor.execute(() -> {
                     try {
-                        orderBookSnapshotManager.saveLevel3BookSnapshot(snapshot.getProductId(), snapshot);
+                        orderBookSnapshotManager.saveOrderBookSnapshot(orderBook.getProductId(), bytes);
                     } catch (Exception e) {
                         logger.error("save snapshot error: {}", e.getMessage(), e);
                     }

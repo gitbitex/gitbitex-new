@@ -1,10 +1,16 @@
 package com.gitbitex.matchingengine.snapshot;
 
+import java.nio.charset.StandardCharsets;
+
 import com.alibaba.fastjson.JSON;
+
+import com.gitbitex.matchingengine.OrderBook;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
+import org.springframework.util.SerializationUtils;
 
 @Component
 @Slf4j
@@ -12,18 +18,19 @@ import org.springframework.stereotype.Component;
 public class OrderBookSnapshotManager {
     private final RedissonClient redissonClient;
 
-    public void saveOrderBookSnapshot( OrderBookSnapshot snapshot) {
-        String key = snapshot.getProductId() + ".order_book_snapshot";
-        redissonClient.getBucket(key).set(JSON.toJSONString(snapshot));
+    public void saveOrderBookSnapshot(String productId, byte[] bytes) {
+        String key = productId + ".order_book_snapshot";
+        redissonClient.getBucket(key).set(new String(bytes));
     }
 
-    public OrderBookSnapshot getOrderBookSnapshot(String productId) {
+    @Nullable
+    public OrderBook getOrderBookSnapshot(String productId) {
         String key = productId + ".order_book_snapshot";
         Object o = redissonClient.getBucket(key).get();
         if (o == null) {
             return null;
         }
-        return JSON.parseObject(o.toString(), OrderBookSnapshot.class);
+        return (OrderBook)SerializationUtils.deserialize(o.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     public void saveLevel3BookSnapshot(String productId, L3OrderBookSnapshot snapshot) {

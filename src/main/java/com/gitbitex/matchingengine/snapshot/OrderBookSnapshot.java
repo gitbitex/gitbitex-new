@@ -1,3 +1,4 @@
+/*
 package com.gitbitex.matchingengine.snapshot;
 
 import com.gitbitex.matchingengine.BookOrder;
@@ -40,3 +41,4 @@ public class OrderBookSnapshot {
         return new OrderBook(productId, new AtomicLong(tradeId), new AtomicLong(sequence), commandOffset, logOffset, asks, bids, orderIdFilterSnapshot.restore());
     }
 }
+*/

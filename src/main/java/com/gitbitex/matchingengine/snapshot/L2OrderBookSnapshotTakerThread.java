@@ -24,14 +24,14 @@ import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 
 @Slf4j
-public class L2OrderBookSnapshotThread extends OrderBookListener {
+public class L2OrderBookSnapshotTakerThread extends OrderBookListener {
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final ThreadPoolExecutor persistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS,
         new LinkedBlockingQueue<>(10), new ThreadFactoryBuilder().setNameFormat("L2-P-Executor-%s").build());
     private final BlockingQueue<L2PageLineChange> l2PageLineChangeQueue = new LinkedBlockingQueue<>(10000);
     private final L2OrderBookChangePublishThread l2OrderBookChangePublishThread;
 
-    public L2OrderBookSnapshotThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
+    public L2OrderBookSnapshotTakerThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
         RedissonClient redissonClient,
         KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
         super(productId, orderBookSnapshotManager, kafkaConsumer, appProperties);
