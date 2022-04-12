@@ -10,9 +10,12 @@ import javax.annotation.PostConstruct;
 
 import com.alibaba.fastjson.JSON;
 
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
 import com.gitbitex.order.OrderManager;
+import com.gitbitex.order.entity.Order;
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
+import com.gitbitex.order.repository.OrderRepository;
 import jodd.util.RandomString;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -22,10 +25,12 @@ import okhttp3.Request;
 import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.client.WebSocketClient;
 
 @Component
 @RequiredArgsConstructor
 public class TradeMaker {
+    private final OrderRepository orderRepository;
     private final OrderManager orderManager;
     @Value("${gbe.trade-maker-enabled:false}")
     private boolean tradeMakerEnabled;
@@ -33,8 +38,9 @@ public class TradeMaker {
     @PostConstruct
     public void init() throws IOException, InterruptedException {
         if (!tradeMakerEnabled) {
-            //return;
+            return;
         }
+
 
         Executors.newFixedThreadPool(1).submit(() -> {
             OkHttpClient httpClient = new OkHttpClient();
@@ -45,14 +51,7 @@ public class TradeMaker {
             long maxTradeId = 0;
             while (true) {
                 try {
-                    orderManager.placeOrder(userId, productId, OrderType.LIMIT,
-                         OrderSide.SELL, new BigDecimal( Math.random() ).multiply(BigDecimal.valueOf(2.5)), new BigDecimal( Math.random() ), null, null, null);
-                    Thread.sleep(1000);
-                    orderManager.placeOrder(userId, productId, OrderType.LIMIT,
-                         OrderSide.BUY, new BigDecimal(Math.random() ), new BigDecimal( Math.random() ), null, null, null);
-
-
-                    /*Request request = new Request.Builder()
+                    Request request = new Request.Builder()
                         .url("https://api.binance.com/api/v3/trades?symbol=BTCUSDT&limit=1")
                         .get()
                         .build();
@@ -73,11 +72,13 @@ public class TradeMaker {
                         BigDecimal size = new BigDecimal(trade.getQty());
                         BigDecimal price = new BigDecimal(trade.getPrice());
 
+                        orderRepository.findAll(userId,productId, Order.OrderStatus.OPEN,null,1,10000);
+
                         orderManager.placeOrder(userId, productId, OrderType.LIMIT,
                             trade.isBuyerMaker() ? OrderSide.BUY : OrderSide.SELL, size, price, null, null, null);
                         orderManager.placeOrder(userId, productId, OrderType.LIMIT,
-                            trade.isBuyerMaker() ? OrderSide.SELL : OrderSide.BUY, size, price, null, null, null);*/
-                    //}
+                            trade.isBuyerMaker() ? OrderSide.SELL : OrderSide.BUY, size, price, null, null, null);
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
