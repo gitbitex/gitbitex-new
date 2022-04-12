@@ -20,6 +20,7 @@ public class FeedTextWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+        System.out.println("conn");
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.gitbitex.liquidity;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.Executors;
 
 import javax.annotation.PostConstruct;
@@ -12,6 +13,7 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.order.OrderManager;
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
+import jodd.util.RandomString;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -43,11 +45,11 @@ public class TradeMaker {
             long maxTradeId = 0;
             while (true) {
                 try {
-
                     orderManager.placeOrder(userId, productId, OrderType.LIMIT,
-                        true ? OrderSide.BUY : OrderSide.SELL, new BigDecimal("1"), new BigDecimal("1"), null, null, null);
+                         OrderSide.SELL, new BigDecimal( Math.random() ).multiply(BigDecimal.valueOf(2.5)), new BigDecimal( Math.random() ), null, null, null);
+                    Thread.sleep(1000);
                     orderManager.placeOrder(userId, productId, OrderType.LIMIT,
-                        true ? OrderSide.SELL : OrderSide.BUY, new BigDecimal("1"), new BigDecimal("1"), null, null, null);
+                         OrderSide.BUY, new BigDecimal(Math.random() ), new BigDecimal( Math.random() ), null, null, null);
 
 
                     /*Request request = new Request.Builder()

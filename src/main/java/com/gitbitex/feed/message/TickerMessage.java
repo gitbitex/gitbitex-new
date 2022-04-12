@@ -7,11 +7,10 @@ import lombok.Setter;
 @Getter
 @Setter
 public class TickerMessage {
-    private String type="ticker";
+    private String type = "ticker";
     private String productId;
     private long tradeId;
     private long sequence;
-    private long orderBookLogOffset;
     private String time;
     private String price;
     private String side;

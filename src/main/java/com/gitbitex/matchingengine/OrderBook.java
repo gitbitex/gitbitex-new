@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 @Getter
 @Slf4j
 public class OrderBook implements Serializable {
+    private static final long serialVersionUID = 1927816293532124184L;
     private final String productId;
     private final AtomicLong tradeId;
     private final AtomicLong sequence;
