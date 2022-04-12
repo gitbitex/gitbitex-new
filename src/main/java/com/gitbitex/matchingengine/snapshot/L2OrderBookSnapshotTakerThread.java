@@ -56,14 +56,14 @@ public class L2OrderBookSnapshotTakerThread extends OrderBookListener {
                 logger.warn("persistenceExecutor is busy");
             } else {
                 logger.info("start take level2 snapshot");
-                L2OrderBookSnapshot snapshot = new L2OrderBookSnapshot(orderBook, false);
+                L2OrderBook snapshot = new L2OrderBook(orderBook);
                 logger.info("done");
 
                 persistenceExecutor.execute(() -> {
                     try {
                         orderBookSnapshotManager.saveLevel2BookSnapshot(snapshot.getProductId(), snapshot);
 
-                        L2OrderBookSnapshot l1Snapshot = snapshot.makeL1OrderBookSnapshot();
+                        L2OrderBook l1Snapshot = snapshot.makeL1OrderBookSnapshot();
                         orderBookSnapshotManager.saveLevel1BookSnapshot(l1Snapshot.getProductId(), l1Snapshot);
                     } catch (Exception e) {
                         logger.error("save snapshot error: {}", e.getMessage(), e);

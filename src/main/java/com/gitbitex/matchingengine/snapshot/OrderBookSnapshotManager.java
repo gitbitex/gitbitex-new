@@ -2,6 +2,8 @@ package com.gitbitex.matchingengine.snapshot;
 
 import java.nio.charset.StandardCharsets;
 
+import javax.validation.constraints.Null;
+
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.matchingengine.OrderBook;
@@ -33,44 +35,44 @@ public class OrderBookSnapshotManager {
         return (OrderBook)SerializationUtils.deserialize(o.toString().getBytes(StandardCharsets.UTF_8));
     }
 
-    public void saveLevel3BookSnapshot(String productId, L3OrderBookSnapshot snapshot) {
+    public void saveLevel3BookSnapshot(String productId, L3OrderBook snapshot) {
         String key = productId + ".level3_book_snapshot";
         redissonClient.getBucket(key).set(JSON.toJSONString(snapshot));
     }
 
-    public L3OrderBookSnapshot getLevel3Snapshot(String productId) {
+    public L3OrderBook getLevel3Snapshot(String productId) {
         String key = productId + ".level3_book_snapshot";
         Object o = redissonClient.getBucket(key).get();
         if (o == null) {
             return null;
         }
-        return JSON.parseObject(o.toString(), L3OrderBookSnapshot.class);
+        return JSON.parseObject(o.toString(), L3OrderBook.class);
     }
 
-    public void saveLevel2BookSnapshot(String productId, L2OrderBookSnapshot l2OrderBookSnapshot) {
+    public void saveLevel2BookSnapshot(String productId, L2OrderBook l2OrderBook) {
         String key = productId + ".level2_book_snapshot";
-        redissonClient.getBucket(key).set(JSON.toJSONString(l2OrderBookSnapshot));
+        redissonClient.getBucket(key).set(JSON.toJSONString(l2OrderBook));
     }
 
-    public L2OrderBookSnapshot getLevel2BookSnapshot(String productId) {
+    public L2OrderBook getLevel2BookSnapshot(String productId) {
         String key = productId + ".level2_book_snapshot";
         Object o = redissonClient.getBucket(key).get();
         if (o == null) {
             return null;
         }
-        return JSON.parseObject(o.toString(), L2OrderBookSnapshot.class);
+        return JSON.parseObject(o.toString(), L2OrderBook.class);
     }
 
-    public L2OrderBookSnapshot getLevel1BookSnapshot(String productId) {
+    public L2OrderBook getLevel1BookSnapshot(String productId) {
         String key = productId + ".level1_book_snapshot";
         Object o = redissonClient.getBucket(key).get();
         if (o == null) {
             return null;
         }
-        return JSON.parseObject(o.toString(), L2OrderBookSnapshot.class);
+        return JSON.parseObject(o.toString(), L2OrderBook.class);
     }
 
-    public void saveLevel1BookSnapshot(String productId, L2OrderBookSnapshot level1OrderBookSnapshot) {
+    public void saveLevel1BookSnapshot(String productId, L2OrderBook level1OrderBookSnapshot) {
         String key = productId + ".level1_book_snapshot";
         redissonClient.getBucket(key).set(JSON.toJSONString(level1OrderBookSnapshot));
     }

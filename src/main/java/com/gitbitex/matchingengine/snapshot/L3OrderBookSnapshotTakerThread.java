@@ -34,7 +34,7 @@ public class L3OrderBookSnapshotTakerThread extends OrderBookListener {
                 logger.warn("persistenceExecutor is busy");
             } else {
                 logger.info("start take level3 snapshot");
-                L3OrderBookSnapshot snapshot = new L3OrderBookSnapshot(orderBook);
+                L3OrderBook snapshot = new L3OrderBook(orderBook);
                 logger.info("done");
 
                 persistenceExecutor.execute(() -> {

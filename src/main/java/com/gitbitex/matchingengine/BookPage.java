@@ -22,6 +22,7 @@ import com.gitbitex.matchingengine.log.OrderReceivedLog;
 import com.gitbitex.order.entity.Order;
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
+import org.springframework.beans.BeanUtils;
 
 public class BookPage implements Serializable {
     private final String productId;
@@ -49,7 +50,8 @@ public class BookPage implements Serializable {
             return logs;
         }
 
-        BookOrder takerOrder = new BookOrder(order);
+        BookOrder takerOrder = new BookOrder();
+        BeanUtils.copyProperties(order,takerOrder);
 
         // If it's a Market-Buy order, set price to infinite high, and if it's market-sell,
         // set price to zero, which ensures that prices will cross.
