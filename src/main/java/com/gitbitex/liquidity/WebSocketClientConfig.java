@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class WebSocketClientConfig {
 
-    private static class MyClient extends  org.java_websocket.client.WebSocketClient{
+    public static class MyClient extends  org.java_websocket.client.WebSocketClient{
 
         public MyClient(URI serverUri) {
             super(serverUri);
@@ -31,7 +31,7 @@ public class WebSocketClientConfig {
         public void onOpen(ServerHandshake serverHandshake) {
             logger.info("open");
 
-            send("{\"type\":\"subscribe\",\"product_ids\":[\"BTC-USDT\"],\"channels\":[\"candles\",\"match\",\"level2\",\"order\"],\"token\":\"\"}");
+            send("{\"type\":\"subscribe\",\"product_ids\":[\"BTC-USDT\"],\"channels\":[\"full\"],\"token\":\"\"}");
 
             Executors.newScheduledThreadPool(1).scheduleAtFixedRate(()->{
                 send(("{\"type\": \"ping\"}"));
@@ -50,7 +50,7 @@ public class WebSocketClientConfig {
 
         @Override
         public void onError(Exception e) {
-
+            logger.error("error",e);
         }
     }
 
@@ -59,12 +59,12 @@ public class WebSocketClientConfig {
         client1.connectBlocking();
     }
 
-    @PostConstruct
+    //@PostConstruct
     public void init() {
         logger.info("start");
         Executors.newFixedThreadPool(1).execute(()->{
             try {
-                MyClient client1=new MyClient(new URI("ws://gitbitex.cloud/ws"));
+                MyClient client1=new MyClient(new URI("wss://ws-feed.exchange.coinbase.com"));
                 client1.connectBlocking();
             } catch (Exception e) {
                 logger.error("error",e);
