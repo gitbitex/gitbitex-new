@@ -16,6 +16,7 @@ import com.gitbitex.matchingengine.PageLine;
 import com.gitbitex.matchingengine.log.OrderBookLog;
 import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdate.Change;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.sun.org.apache.bcel.internal.generic.IF_ACMPEQ;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -73,8 +74,10 @@ public class L2OrderBookPersistenceThread extends OrderBookListener {
             }
         }
 
-        Change change = new Change(line.getSide(), line.getPrice(), line.getTotalSize());
-        changeQueue.offer(change);
+        if (line!=null) {
+            Change change = new Change(line.getSide(), line.getPrice(), line.getTotalSize());
+            changeQueue.offer(change);
+        }
     }
 
     @RequiredArgsConstructor

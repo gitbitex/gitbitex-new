@@ -76,14 +76,13 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
                 @Override
                 public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
                     orderBook = orderBookManager.getOrderBook(productId);
-                    if (orderBook == null) {
-                        orderBook = new OrderBook(productId);
-                    }
+                    if (orderBook != null) {
+                        for (TopicPartition partition : partitions) {
+                            consumer.seek(partition, orderBook.getCommandOffset() + 1);
 
-                    for (TopicPartition partition : partitions) {
-                        if (orderBook.getLogOffset() == 0) {
-                            consumer.seek(partition, orderBook.getLogOffset() + 1);
                         }
+                    } else {
+                        orderBook = new OrderBook(productId);
                     }
                 }
             });

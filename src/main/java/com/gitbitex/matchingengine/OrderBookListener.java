@@ -52,14 +52,12 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
                 @Override
                 public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
                     orderBook = orderBookManager.getOrderBook(productId);
-                    if (orderBook == null) {
-                        orderBook = new OrderBook(productId);
-                    }
-
-                    for (TopicPartition partition : partitions) {
-                        if (orderBook.getLogOffset() == 0) {
+                    if (orderBook != null) {
+                        for (TopicPartition partition : partitions) {
                             consumer.seek(partition, orderBook.getLogOffset() + 1);
                         }
+                    } else {
+                        orderBook = new OrderBook(productId);
                     }
                 }
             });

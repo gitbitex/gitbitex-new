@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
+import com.sun.corba.se.spi.ior.IdentifiableFactory;
 import lombok.Getter;
 
 @Getter
@@ -25,8 +26,10 @@ public class SlidingBloomFilter implements Serializable {
 
     public boolean contains(String orderId) {
         for (BloomFilter<String> filter : filters) {
-            if (filter.mightContain(orderId)) {
-                return true;
+            if (filter!=null) {
+                if (filter.mightContain(orderId)) {
+                    return true;
+                }
             }
         }
         return false;

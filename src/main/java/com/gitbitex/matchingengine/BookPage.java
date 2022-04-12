@@ -213,58 +213,61 @@ public class BookPage implements Serializable {
     }
 
     private OrderReceivedLog orderReceivedLog(long commandOffset, Order order) {
-        OrderReceivedLog orderReceivedLog = new OrderReceivedLog();
-        orderReceivedLog.setSequence(sequence.incrementAndGet());
-        orderReceivedLog.setCommandOffset(commandOffset);
-        orderReceivedLog.setProductId(productId);
-        orderReceivedLog.setOrder(order);
-        return orderReceivedLog;
+        OrderReceivedLog log = new OrderReceivedLog();
+        log.setSequence(sequence.incrementAndGet());
+        log.setCommandOffset(commandOffset);
+        log.setProductId(productId);
+        log.setOrder(order);
+        log.setTime(new Date());
+        return log;
     }
 
     private OrderOpenLog orderOpenLog(long commandOffset, BookOrder takerOrder) {
-        OrderOpenLog message = new OrderOpenLog();
-        message.setCommandOffset(commandOffset);
-        message.setSequence(sequence.incrementAndGet());
-        message.setProductId(productId);
-        message.setRemainingSize(takerOrder.getSize());
-        message.setPrice(takerOrder.getPrice());
-        message.setSide(takerOrder.getSide());
-        message.setOrderId(takerOrder.getOrderId());
-        message.setUserId(takerOrder.getUserId());
-        return message;
+        OrderOpenLog log = new OrderOpenLog();
+        log.setCommandOffset(commandOffset);
+        log.setSequence(sequence.incrementAndGet());
+        log.setProductId(productId);
+        log.setRemainingSize(takerOrder.getSize());
+        log.setPrice(takerOrder.getPrice());
+        log.setSide(takerOrder.getSide());
+        log.setOrderId(takerOrder.getOrderId());
+        log.setUserId(takerOrder.getUserId());
+        log.setTime(new Date());
+        return log;
     }
 
     private OrderMatchLog orderMatchLog(long commandOffset, BookOrder takerOrder, BookOrder makerOrder,
         BigDecimal size) {
-        OrderMatchLog message = new OrderMatchLog();
-        message.setCommandOffset(commandOffset);
-        message.setSequence(sequence.incrementAndGet());
-        message.setTradeId(tradeId.incrementAndGet());
-        message.setProductId(productId);
-        message.setTakerOrderId(takerOrder.getOrderId());
-        message.setMakerOrderId(makerOrder.getOrderId());
-        message.setPrice(makerOrder.getPrice());
-        message.setSize(size);
-        message.setFunds(makerOrder.getPrice().multiply(size));
-        message.setSide(makerOrder.getSide());
-        message.setTime(new Date());
-        return message;
+        OrderMatchLog log = new OrderMatchLog();
+        log.setCommandOffset(commandOffset);
+        log.setSequence(sequence.incrementAndGet());
+        log.setTradeId(tradeId.incrementAndGet());
+        log.setProductId(productId);
+        log.setTakerOrderId(takerOrder.getOrderId());
+        log.setMakerOrderId(makerOrder.getOrderId());
+        log.setPrice(makerOrder.getPrice());
+        log.setSize(size);
+        log.setFunds(makerOrder.getPrice().multiply(size));
+        log.setSide(makerOrder.getSide());
+        log.setTime(new Date());
+        return log;
     }
 
     private OrderDoneLog orderDoneLog(long commandOffset, BookOrder order) {
-        OrderDoneLog message = new OrderDoneLog();
-        message.setCommandOffset(commandOffset);
-        message.setSequence(sequence.incrementAndGet());
-        message.setProductId(productId);
+        OrderDoneLog log = new OrderDoneLog();
+        log.setCommandOffset(commandOffset);
+        log.setSequence(sequence.incrementAndGet());
+        log.setProductId(productId);
         if (order.getType() != OrderType.MARKET) {
-            message.setRemainingSize(order.getSize());
-            message.setPrice(order.getPrice());
+            log.setRemainingSize(order.getSize());
+            log.setPrice(order.getPrice());
         }
-        message.setSide(order.getSide());
-        message.setOrderId(order.getOrderId());
-        message.setUserId(order.getUserId());
-        message.setDoneReason(determineDoneReason(order));
-        message.setOrderType(order.getType());
-        return message;
+        log.setSide(order.getSide());
+        log.setOrderId(order.getOrderId());
+        log.setUserId(order.getUserId());
+        log.setDoneReason(determineDoneReason(order));
+        log.setOrderType(order.getType());
+        log.setTime(new Date());
+        return log;
     }
 }

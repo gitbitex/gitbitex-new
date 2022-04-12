@@ -72,15 +72,6 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
         for (ConsumerRecord<String, OrderBookLog> record : records) {
             OrderBookLog log = record.value();
 
-            if (ticker == null && log.getSequence() != 1) {
-                throw new RuntimeException("unexpected sequence: sequence must be 1");
-            } else if (log.getSequence() <= ticker.getSequence()) {
-                logger.info("discard {}", log.getSequence());
-                continue;
-            } else if (log.getSequence() != ticker.getSequence() + 1) {
-                throw new RuntimeException("unexpected sequence: sequence discontinuity");
-            }
-
             if (log instanceof OrderMatchLog) {
                 OrderMatchLog orderMatchLog = ((OrderMatchLog)log);
                 orderMatchLog.setOffset(record.offset());
@@ -92,6 +83,18 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
     }
 
     private void refreshTicker(OrderMatchLog log) {
+        if (ticker == null) {
+            ticker = new Ticker();
+            ticker.setProductId(productId);
+        } else {
+            if (ticker.getTradeId() >= log.getTradeId()) {
+                logger.warn("discard duplicate match log");
+                return;
+            } else if (ticker.getTradeId() + 1 != log.getTradeId()) {
+                throw new RuntimeException("bad match log: tradeId discontinuity");
+            }
+        }
+
         long time24h = DateUtil.round(
             ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
             ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
@@ -99,10 +102,6 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
             ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
             ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
 
-        if (ticker == null) {
-            ticker = new Ticker();
-            ticker.setProductId(productId);
-        }
         if (ticker.getTime24h() == null || ticker.getTime24h() != time24h) {
             ticker.setTime24h(time24h);
             ticker.setOpen24h(log.getPrice());

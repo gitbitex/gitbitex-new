@@ -1,6 +1,6 @@
 package com.gitbitex.matchingengine.snapshot;
 
-import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 import com.alibaba.fastjson.JSON;
 
@@ -8,6 +8,7 @@ import com.gitbitex.matchingengine.OrderBook;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.SerializationUtils;
@@ -19,16 +20,17 @@ public class OrderBookManager {
     private final RedissonClient redissonClient;
 
     public void saveOrderBook(String productId, byte[] bytes) {
-        redissonClient.getBucket(keyForFull(productId)).set(new String(bytes));
+        redissonClient.getBucket(keyForFull(productId), StringCodec.INSTANCE)
+            .set(Base64.getEncoder().encodeToString(bytes));
     }
 
     @Nullable
     public OrderBook getOrderBook(String productId) {
-        Object o = redissonClient.getBucket(keyForFull(productId)).get();
+        Object o = redissonClient.getBucket(keyForFull(productId), StringCodec.INSTANCE).get();
         if (o == null) {
             return null;
         }
-        return (OrderBook)SerializationUtils.deserialize(o.toString().getBytes(StandardCharsets.UTF_8));
+        return (OrderBook)SerializationUtils.deserialize(Base64.getDecoder().decode(o.toString()));
     }
 
     public void saveL3OrderBook(String productId, L3OrderBook l3OrderBook) {

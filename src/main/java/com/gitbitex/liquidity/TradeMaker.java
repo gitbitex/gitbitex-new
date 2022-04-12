@@ -31,7 +31,7 @@ public class TradeMaker {
     @PostConstruct
     public void init() throws IOException, InterruptedException {
         if (!tradeMakerEnabled) {
-            return;
+            //return;
         }
 
         Executors.newFixedThreadPool(1).submit(() -> {
@@ -43,7 +43,14 @@ public class TradeMaker {
             long maxTradeId = 0;
             while (true) {
                 try {
-                    Request request = new Request.Builder()
+
+                    orderManager.placeOrder(userId, productId, OrderType.LIMIT,
+                        true ? OrderSide.BUY : OrderSide.SELL, new BigDecimal("1"), new BigDecimal("1"), null, null, null);
+                    orderManager.placeOrder(userId, productId, OrderType.LIMIT,
+                        true ? OrderSide.SELL : OrderSide.BUY, new BigDecimal("1"), new BigDecimal("1"), null, null, null);
+
+
+                    /*Request request = new Request.Builder()
                         .url("https://api.binance.com/api/v3/trades?symbol=BTCUSDT&limit=1")
                         .get()
                         .build();
@@ -67,13 +74,13 @@ public class TradeMaker {
                         orderManager.placeOrder(userId, productId, OrderType.LIMIT,
                             trade.isBuyerMaker() ? OrderSide.BUY : OrderSide.SELL, size, price, null, null, null);
                         orderManager.placeOrder(userId, productId, OrderType.LIMIT,
-                            trade.isBuyerMaker() ? OrderSide.SELL : OrderSide.BUY, size, price, null, null, null);
-                    }
+                            trade.isBuyerMaker() ? OrderSide.SELL : OrderSide.BUY, size, price, null, null, null);*/
+                    //}
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
 
-                Thread.sleep(1000);
+                Thread.sleep(3000);
             }
 
         });
