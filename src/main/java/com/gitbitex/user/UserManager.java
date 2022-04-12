@@ -40,11 +40,11 @@ public class UserManager {
 
         // TODO: REMOVE
         // to demo, give each user some money
-        accountManager.increaseAvailable(user.getUserId(), "LTC", BigDecimal.valueOf(10000000),
+        accountManager.increaseAvailable(user.getUserId(), "LTC", BigDecimal.valueOf(1000),
             UUID.randomUUID().toString());
-        accountManager.increaseAvailable(user.getUserId(), "ETH", BigDecimal.valueOf(10000000),
+        accountManager.increaseAvailable(user.getUserId(), "ETH", BigDecimal.valueOf(1000),
             UUID.randomUUID().toString());
-        accountManager.increaseAvailable(user.getUserId(), "BTC", BigDecimal.valueOf(10000000),
+        accountManager.increaseAvailable(user.getUserId(), "BTC", BigDecimal.valueOf(100),
             UUID.randomUUID().toString());
         accountManager.increaseAvailable(user.getUserId(), "USDT", BigDecimal.valueOf(10000000),
             UUID.randomUUID().toString());
