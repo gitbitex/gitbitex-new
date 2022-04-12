@@ -1,5 +1,6 @@
 package com.gitbitex.matchingengine;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
 import com.gitbitex.order.entity.Order;
@@ -11,7 +12,7 @@ import org.springframework.beans.BeanUtils;
 
 @Getter
 @Setter
-public class BookOrder {
+public class BookOrder implements Serializable {
     private String userId;
     private String orderId;
     private OrderType type;
@@ -26,11 +27,5 @@ public class BookOrder {
 
     public BookOrder(Order order) {
         BeanUtils.copyProperties(order, this);
-    }
-
-    public BookOrder copy() {
-        BookOrder order = new BookOrder();
-        BeanUtils.copyProperties(this, order);
-        return order;
     }
 }

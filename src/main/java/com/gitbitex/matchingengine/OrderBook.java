@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.NewOrderCommand;
@@ -126,15 +125,6 @@ public class OrderBook implements Serializable {
             return order;
         }
         return this.bids.getOrderById(orderId);
-    }
-
-    public OrderBook copy() {
-        return new OrderBook(this.productId,
-            new AtomicLong(this.tradeId.get()), new AtomicLong(this.sequence.get()),
-            this.commandOffset, this.logOffset,
-            this.asks.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()),
-            this.bids.getOrders().stream().map(BookOrder::copy).collect(Collectors.toList()),
-            this.orderIdFilter.copy());
     }
 
     private PageLine addOrder(BookOrder order) {
