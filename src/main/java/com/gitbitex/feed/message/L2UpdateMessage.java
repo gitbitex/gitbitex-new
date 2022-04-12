@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.Date;
 
 import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdate;
-import com.gitbitex.matchingengine.snapshot.L2PageLineChange;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdate.Change;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,9 +25,10 @@ import lombok.Setter;
 @Getter
 @Setter
 public class L2UpdateMessage {
+    private String type = "l2update";
     private String productId;
     private String time;
-    private Collection<L2PageLineChange> changes;
+    private Collection<Change> changes;
 
     public L2UpdateMessage() {
     }

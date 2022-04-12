@@ -8,7 +8,7 @@ import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Trade;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.matchingengine.snapshot.OrderBookSnapshotManager;
+import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.openapi.model.ProductDto;
 import com.gitbitex.openapi.model.TradeDto;
 import com.gitbitex.product.entity.Product;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController()
 @RequiredArgsConstructor
 public class ProductController {
-    private final OrderBookSnapshotManager orderBookSnapshotManager;
+    private final OrderBookManager orderBookManager;
     private final ProductRepository productRepository;
     private final TradeRepository tradeRepository;
     private final CandleRepository candleRepository;
@@ -68,11 +68,11 @@ public class ProductController {
     public Object getProductBook(@PathVariable String productId, @RequestParam(defaultValue = "2") int level) {
         switch (level) {
             case 1:
-                return orderBookSnapshotManager.getLevel1BookSnapshot(productId);
+                return orderBookManager.getL1OrderBook(productId);
             case 2:
-                return orderBookSnapshotManager.getLevel2BookSnapshot(productId);
+                return orderBookManager.getL2OrderBook(productId);
             case 3:
-                return orderBookSnapshotManager.getLevel3Snapshot(productId);
+                return orderBookManager.getL3OrderBook(productId);
             default:
                 return null;
         }

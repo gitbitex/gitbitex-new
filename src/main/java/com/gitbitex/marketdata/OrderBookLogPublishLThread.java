@@ -36,5 +36,6 @@ public class OrderBookLogPublishLThread extends KafkaConsumerThread<String, Stri
         for (ConsumerRecord<String, String> record : records) {
             logTopic.publish(record.value());
         }
+        consumer.commitAsync();
     }
 }

@@ -16,7 +16,7 @@ import com.gitbitex.matchingengine.command.OrderBookCommand;
 import com.gitbitex.matchingengine.command.OrderBookCommandDispatcher;
 import com.gitbitex.matchingengine.command.OrderBookCommandHandler;
 import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.matchingengine.snapshot.OrderBookSnapshotManager;
+import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -31,19 +31,19 @@ import org.apache.kafka.common.TopicPartition;
 @Slf4j
 public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand> implements OrderBookCommandHandler {
     private final String productId;
-    private final OrderBookSnapshotManager orderBookSnapshotManager;
+    private final OrderBookManager orderBookManager;
     private final OrderBookLogPersistenceThread orderBookLogPersistenceThread;
     private final OrderBookCommandDispatcher orderBookCommandDispatcher;
     private final BlockingQueue<OrderBookLog> orderBookLogQueue = new LinkedBlockingQueue<>(10000);
     private final AppProperties appProperties;
     private OrderBook orderBook;
 
-    public MatchingThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
+    public MatchingThread(String productId, OrderBookManager orderBookManager,
         KafkaConsumer<String, OrderBookCommand> messageKafkaConsumer, KafkaMessageProducer messageProducer,
         AppProperties appProperties) {
         super(messageKafkaConsumer, logger);
         this.productId = productId;
-        this.orderBookSnapshotManager = orderBookSnapshotManager;
+        this.orderBookManager = orderBookManager;
         this.orderBookLogPersistenceThread = new OrderBookLogPersistenceThread(orderBookLogQueue, messageProducer,
             appProperties);
         this.orderBookCommandDispatcher = new OrderBookCommandDispatcher(this);
@@ -75,7 +75,7 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
 
                 @Override
                 public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                    orderBook = orderBookSnapshotManager.getOrderBookSnapshot(productId);
+                    orderBook = orderBookManager.getOrderBook(productId);
                     if (orderBook == null) {
                         orderBook = new OrderBook(productId);
                     }

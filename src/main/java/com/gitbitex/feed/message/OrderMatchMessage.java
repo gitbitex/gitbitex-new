@@ -6,7 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class OrderMatchMessage {
-    private String type;
+    private String type="match";
     private String productId;
     private long tradeId;
     private long sequence;
@@ -16,8 +16,4 @@ public class OrderMatchMessage {
     private String size;
     private String price;
     private String side;
-
-    public OrderMatchMessage() {
-        this.setType("match");
-    }
 }

@@ -15,15 +15,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 @Slf4j
-public class L3OrderBookSnapshotTakerThread extends OrderBookListener {
-    private final OrderBookSnapshotManager orderBookSnapshotManager;
+public class L3OrderBookPersistenceThread extends OrderBookListener {
+    private final OrderBookManager orderBookManager;
     private final ThreadPoolExecutor persistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS,
         new LinkedBlockingQueue<>(10), new ThreadFactoryBuilder().setNameFormat("L3-P-Executor-%s").build());
 
-    public L3OrderBookSnapshotTakerThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
+    public L3OrderBookPersistenceThread(String productId, OrderBookManager orderBookManager,
         KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
-        super(productId, orderBookSnapshotManager, kafkaConsumer, appProperties);
-        this.orderBookSnapshotManager = orderBookSnapshotManager;
+        super(productId, orderBookManager, kafkaConsumer, appProperties);
+        this.orderBookManager = orderBookManager;
     }
 
     @Override
@@ -39,7 +39,7 @@ public class L3OrderBookSnapshotTakerThread extends OrderBookListener {
 
                 persistenceExecutor.execute(() -> {
                     try {
-                        orderBookSnapshotManager.saveLevel3BookSnapshot(snapshot.getProductId(), snapshot);
+                        orderBookManager.saveL3OrderBook(snapshot.getProductId(), snapshot);
                     } catch (Exception e) {
                         logger.error("save snapshot error: {}", e.getMessage(), e);
                     }

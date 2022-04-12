@@ -6,7 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class OrderReceivedMessage {
-    private String type;
+    private String type = "received";
     private String time;
     private String productId;
     private long sequence;
@@ -16,8 +16,4 @@ public class OrderReceivedMessage {
     private String funds;
     private String side;
     private String orderType;
-
-    public OrderReceivedMessage() {
-        this.setType("received");
-    }
 }

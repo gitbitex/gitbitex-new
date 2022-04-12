@@ -1,6 +1,5 @@
 package com.gitbitex.feed.message;
 
-import com.gitbitex.matchingengine.log.OrderBookLog;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,8 +18,8 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class OrderDoneMessage  {
-    private String type;
+public class OrderDoneMessage {
+    private String type="done";
     private String productId;
     private long sequence;
     private String orderId;
@@ -29,10 +28,6 @@ public class OrderDoneMessage  {
     private String side;
     private String reason;
     private String time;
-
-    public OrderDoneMessage() {
-        this.setType("done");
-    }
 }
 
 

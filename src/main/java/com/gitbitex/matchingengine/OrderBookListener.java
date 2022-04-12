@@ -13,7 +13,7 @@ import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.OrderOpenLog;
 import com.gitbitex.matchingengine.log.OrderReceivedLog;
-import com.gitbitex.matchingengine.snapshot.OrderBookSnapshotManager;
+import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -26,16 +26,16 @@ import org.apache.kafka.common.TopicPartition;
 public abstract class OrderBookListener extends KafkaConsumerThread<String, OrderBookLog>
     implements OrderBookLogHandler {
     private final String productId;
-    private final OrderBookSnapshotManager orderBookSnapshotManager;
+    private final OrderBookManager orderBookManager;
     private final OrderBookLogDispatcher messageDispatcher;
     private final AppProperties appProperties;
     private OrderBook orderBook;
 
-    public OrderBookListener(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
+    public OrderBookListener(String productId, OrderBookManager orderBookManager,
         KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
         super(kafkaConsumer, logger);
         this.productId = productId;
-        this.orderBookSnapshotManager = orderBookSnapshotManager;
+        this.orderBookManager = orderBookManager;
         this.messageDispatcher = new OrderBookLogDispatcher(this);
         this.appProperties = appProperties;
     }
@@ -51,7 +51,7 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
 
                 @Override
                 public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                    orderBook = orderBookSnapshotManager.getOrderBookSnapshot(productId);
+                    orderBook = orderBookManager.getOrderBook(productId);
                     if (orderBook == null) {
                         orderBook = new OrderBook(productId);
                     }

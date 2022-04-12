@@ -1,11 +1,26 @@
 package com.gitbitex.feed;
 
+import javax.annotation.PostConstruct;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.account.entity.Account;
-import com.gitbitex.feed.message.*;
+import com.gitbitex.feed.message.AccountMessage;
+import com.gitbitex.feed.message.CandleMessage;
+import com.gitbitex.feed.message.L2UpdateMessage;
+import com.gitbitex.feed.message.OrderDoneMessage;
+import com.gitbitex.feed.message.OrderMatchMessage;
+import com.gitbitex.feed.message.OrderMessage;
+import com.gitbitex.feed.message.OrderOpenMessage;
+import com.gitbitex.feed.message.OrderReceivedMessage;
+import com.gitbitex.feed.message.TickerMessage;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Ticker;
-import com.gitbitex.matchingengine.log.*;
+import com.gitbitex.matchingengine.log.OrderBookLog;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
 import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdate;
 import com.gitbitex.order.entity.Order;
 import lombok.RequiredArgsConstructor;
@@ -13,8 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
 
 @Component
 @Slf4j
@@ -61,7 +74,8 @@ public class FeedMessageListener {
             switch (log.getType()) {
                 case RECEIVED:
                     OrderReceivedLog orderReceivedLog = JSON.parseObject(msg, OrderReceivedLog.class);
-                    sessionManager.sendMessageToChannel(fullChannel, JSON.toJSONString(orderReceivedMessage(orderReceivedLog)));
+                    sessionManager.sendMessageToChannel(fullChannel,
+                        JSON.toJSONString(orderReceivedMessage(orderReceivedLog)));
                     break;
                 case MATCH:
                     OrderMatchLog orderMatchLog = JSON.parseObject(msg, OrderMatchLog.class);
@@ -148,7 +162,6 @@ public class FeedMessageListener {
 
     private OrderMessage orderMessage(Order order) {
         OrderMessage message = new OrderMessage();
-        message.setType("order");
         message.setUserId(order.getUserId());
         message.setProductId(order.getProductId());
         message.setId(order.getOrderId());
@@ -167,11 +180,10 @@ public class FeedMessageListener {
 
     private AccountMessage accountMessage(Account account) {
         AccountMessage message = new AccountMessage();
-        message.setType("funds");
         message.setUserId(account.getUserId());
         message.setCurrencyCode(account.getCurrency());
         message.setAvailable(
-                account.getAvailable() != null ? account.getAvailable().stripTrailingZeros().toPlainString() : "0");
+            account.getAvailable() != null ? account.getAvailable().stripTrailingZeros().toPlainString() : "0");
         message.setHold(account.getHold() != null ? account.getHold().stripTrailingZeros().toPlainString() : "0");
         return message;
     }

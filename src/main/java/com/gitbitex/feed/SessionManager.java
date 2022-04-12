@@ -7,13 +7,13 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 import com.alibaba.fastjson.JSON;
 
-import com.gitbitex.feed.message.L2OrderBookMessage;
+import com.gitbitex.feed.message.L2SnapshotMessage;
 import com.gitbitex.feed.message.PongMessage;
 import com.gitbitex.feed.message.TickerMessage;
-import com.gitbitex.marketdata.entity.Ticker;
-import com.gitbitex.matchingengine.snapshot.OrderBookSnapshotManager;
 import com.gitbitex.marketdata.TickerManager;
+import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
+import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +30,7 @@ public class SessionManager {
     private final ConcurrentHashMap<String, ConcurrentSkipListSet<String>> channelsBySessionId
         = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, WebSocketSession> sessionById = new ConcurrentHashMap<>();
-    private final OrderBookSnapshotManager orderBookSnapshotManager;
+    private final OrderBookManager orderBookManager;
     private final TickerManager tickerManager;
 
     @SneakyThrows
@@ -46,10 +46,10 @@ public class SessionManager {
                             subscribeChannel(session, productChannel);
 
                             try {
-                                L2OrderBook snapshot = orderBookSnapshotManager.getLevel2BookSnapshot(productId);
+                                L2OrderBook snapshot = orderBookManager.getL2OrderBook(productId);
                                 if (snapshot != null) {
                                     session.sendMessage(
-                                        new TextMessage(JSON.toJSONString(new L2OrderBookMessage(snapshot))));
+                                        new TextMessage(JSON.toJSONString(new L2SnapshotMessage(snapshot))));
                                 }
                             } catch (Exception e) {
                                 logger.error("send level2 snapshot error: {}", e.getMessage(), e);

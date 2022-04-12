@@ -14,6 +14,7 @@ import com.gitbitex.matchingengine.OrderBook;
 import com.gitbitex.matchingengine.OrderBookListener;
 import com.gitbitex.matchingengine.PageLine;
 import com.gitbitex.matchingengine.log.OrderBookLog;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdate.Change;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -24,28 +25,28 @@ import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 
 @Slf4j
-public class L2OrderBookSnapshotTakerThread extends OrderBookListener {
-    private final OrderBookSnapshotManager orderBookSnapshotManager;
+public class L2OrderBookPersistenceThread extends OrderBookListener {
+    private final OrderBookManager orderBookManager;
     private final ThreadPoolExecutor persistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS,
         new LinkedBlockingQueue<>(10), new ThreadFactoryBuilder().setNameFormat("L2-P-Executor-%s").build());
-    private final BlockingQueue<L2PageLineChange> l2PageLineChangeQueue = new LinkedBlockingQueue<>(10000);
-    private final L2OrderBookChangePublishThread l2OrderBookChangePublishThread;
+    private final BlockingQueue<Change> changeQueue = new LinkedBlockingQueue<>(10000);
+    private final L2OrderBookUpdatePublishThread l2OrderBookUpdatePublishThread;
 
-    public L2OrderBookSnapshotTakerThread(String productId, OrderBookSnapshotManager orderBookSnapshotManager,
+    public L2OrderBookPersistenceThread(String productId, OrderBookManager orderBookManager,
         RedissonClient redissonClient,
         KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
-        super(productId, orderBookSnapshotManager, kafkaConsumer, appProperties);
-        this.orderBookSnapshotManager = orderBookSnapshotManager;
-        this.l2OrderBookChangePublishThread = new L2OrderBookChangePublishThread(productId, l2PageLineChangeQueue,
+        super(productId, orderBookManager, kafkaConsumer, appProperties);
+        this.orderBookManager = orderBookManager;
+        this.l2OrderBookUpdatePublishThread = new L2OrderBookUpdatePublishThread(productId, changeQueue,
             redissonClient.getTopic("l2change", StringCodec.INSTANCE));
-        this.l2OrderBookChangePublishThread.start();
+        this.l2OrderBookUpdatePublishThread.start();
     }
 
     @Override
     public void shutdown() {
         super.shutdown();
         this.persistenceExecutor.shutdown();
-        this.l2OrderBookChangePublishThread.interrupt();
+        this.l2OrderBookUpdatePublishThread.interrupt();
     }
 
     @Override
@@ -61,10 +62,10 @@ public class L2OrderBookSnapshotTakerThread extends OrderBookListener {
 
                 persistenceExecutor.execute(() -> {
                     try {
-                        orderBookSnapshotManager.saveLevel2BookSnapshot(snapshot.getProductId(), snapshot);
+                        orderBookManager.saveL2OrderBook(snapshot.getProductId(), snapshot);
 
                         L2OrderBook l1Snapshot = snapshot.makeL1OrderBookSnapshot();
-                        orderBookSnapshotManager.saveLevel1BookSnapshot(l1Snapshot.getProductId(), l1Snapshot);
+                        orderBookManager.saveL1OrderBook(l1Snapshot.getProductId(), l1Snapshot);
                     } catch (Exception e) {
                         logger.error("save snapshot error: {}", e.getMessage(), e);
                     }
@@ -72,24 +73,24 @@ public class L2OrderBookSnapshotTakerThread extends OrderBookListener {
             }
         }
 
-        L2PageLineChange change = new L2PageLineChange(line.getSide(), line.getPrice(), line.getTotalSize());
-        l2PageLineChangeQueue.offer(change);
+        Change change = new Change(line.getSide(), line.getPrice(), line.getTotalSize());
+        changeQueue.offer(change);
     }
 
     @RequiredArgsConstructor
-    private static class L2OrderBookChangePublishThread extends Thread {
+    private static class L2OrderBookUpdatePublishThread extends Thread {
         private final static int BUF_SIZE = 100;
         private final String productId;
-        private final BlockingQueue<L2PageLineChange> changeQueue;
+        private final BlockingQueue<Change> changeQueue;
         private final RTopic l2UpdateTopic;
-        private final Map<String, L2PageLineChange> changeBuffer = new LinkedHashMap<>(BUF_SIZE);
+        private final Map<String, Change> changeBuffer = new LinkedHashMap<>(BUF_SIZE);
 
         @Override
 
         public void run() {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    L2PageLineChange change = changeQueue.take();
+                    Change change = changeQueue.take();
 
                     changeBuffer.put(makeBufferKey(change), change);
                     if (changeBuffer.size() < BUF_SIZE && !changeQueue.isEmpty()) {
@@ -111,7 +112,7 @@ public class L2OrderBookSnapshotTakerThread extends OrderBookListener {
             }
         }
 
-        private String makeBufferKey(L2PageLineChange change) {
+        private String makeBufferKey(Change change) {
             return change.get(0) + "-" + change.get(1);
         }
     }

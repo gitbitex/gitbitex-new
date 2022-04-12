@@ -7,11 +7,10 @@ import org.springframework.beans.BeanUtils;
 
 @Getter
 @Setter
-public class L2OrderBookMessage extends L2OrderBook {
-    private String type;
+public class L2SnapshotMessage extends L2OrderBook {
+    private String type = "snapshot";
 
-    public L2OrderBookMessage(L2OrderBook snapshot) {
-        this.type = "snapshot";
+    public L2SnapshotMessage(L2OrderBook snapshot) {
         BeanUtils.copyProperties(snapshot, this);
     }
 }

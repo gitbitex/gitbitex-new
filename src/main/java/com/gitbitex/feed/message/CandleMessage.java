@@ -6,7 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CandleMessage {
-    private String type;
+    private String type = "candle";
     private String productId;
     private long sequence;
     private int granularity;
@@ -16,8 +16,4 @@ public class CandleMessage {
     private String high;
     private String low;
     private String volume;
-
-    public CandleMessage() {
-        this.setType("candle");
-    }
 }
