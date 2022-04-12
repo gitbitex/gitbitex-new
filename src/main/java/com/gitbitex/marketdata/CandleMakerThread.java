@@ -3,11 +3,14 @@ package com.gitbitex.marketdata;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.alibaba.fastjson.JSON;
 
@@ -93,14 +96,19 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
                 orderMatchLog.setOffset(record.offset());
                 logger.info(JSON.toJSONString(orderMatchLog));
 
-                for (int minute : MINUTES) {
-                    makeCandle(orderMatchLog, record.offset(), minute);
+                List<Candle> candles = Arrays.stream(MINUTES)
+                    .mapToObj(x -> makeCandle(orderMatchLog, record.offset(), x))
+                    .collect(Collectors.toList());
+                candleRepository.saveAll(candles);
+
+                for (Candle candle : candles) {
+                    candleTopic.publish(JSON.toJSONString(candle));
                 }
             }
         }
     }
 
-    private void makeCandle(OrderMatchLog log, long offset, int granularity) {
+    private Candle makeCandle(OrderMatchLog log, long offset, int granularity) {
         Candle candle = candles.get(granularity);
 
         if (candle != null) {
@@ -134,9 +142,6 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
         }
         candle.setOrderBookLogOffset(offset);
         candle.setTradeId(log.getTradeId());
-
-        candleRepository.save(candle);
-
-        candleTopic.publish(JSON.toJSONString(candle));
+        return candle;
     }
 }

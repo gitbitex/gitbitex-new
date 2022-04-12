@@ -32,22 +32,12 @@ public class OrderBook implements Serializable {
     private long logOffset;
 
     public OrderBook(String productId) {
-        this(productId, new AtomicLong(), new AtomicLong(), 0, 0, new ArrayList<>(), new ArrayList<>(),
-            new SlidingBloomFilter(100000, 2));
-    }
-
-    public OrderBook(String productId, AtomicLong tradeId, AtomicLong sequence,
-        long commandOffset, long logOffset,
-        List<BookOrder> askOrders, List<BookOrder> bidOrders,
-        SlidingBloomFilter orderIdFilter) {
         this.productId = productId;
-        this.tradeId = tradeId;
-        this.sequence = sequence;
-        this.commandOffset = commandOffset;
-        this.logOffset = logOffset;
-        this.orderIdFilter = orderIdFilter;
-        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, askOrders);
-        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, bidOrders);
+        this.tradeId = new AtomicLong();
+        this.sequence = new AtomicLong();
+        this.orderIdFilter = new SlidingBloomFilter(100000, 2);
+        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, new ArrayList<>());
+        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, new ArrayList<>());
     }
 
     public List<OrderBookLog> executeCommand(NewOrderCommand command) {
