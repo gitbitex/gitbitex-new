@@ -43,6 +43,8 @@ public class Order {
 
     private String clientOid;
 
+    private Date time;
+
     private BigDecimal size;
 
     private BigDecimal funds;

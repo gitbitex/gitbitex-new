@@ -3,6 +3,10 @@ package com.gitbitex.liquidity;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.text.DateFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -29,8 +33,8 @@ public class WebSocketClientConfig {
     private final OrderManager orderManager;
 
     public static void main(String[] a) throws Exception, InterruptedException, IOException {
-        //MyClient client1 = new MyClient(new URI("ws://gitbitex.cloud/ws"));
-        //client1.connectBlocking();
+      String s= Date.from( Instant.from( DateTimeFormatter.ISO_INSTANT.parse("2022-04-13T11:00:58.222700Z"))).toString();
+      System.out.println(s);
     }
 
     @PostConstruct
@@ -78,7 +82,7 @@ public class WebSocketClientConfig {
         public void onOpen(ServerHandshake serverHandshake) {
             logger.info("open");
 
-            send("{\"type\":\"subscribe\",\"product_ids\":[\"BTC-USDT\"],\"channels\":[\"full\"],\"token\":\"\"}");
+            send("{\"type\":\"subscribe\",\"product_ids\":[\"BTC-USD\"],\"channels\":[\"full\"],\"token\":\"\"}");
 
             Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
                 send(("{\"type\": \"ping\"}"));
@@ -101,6 +105,9 @@ public class WebSocketClientConfig {
                                 OrderSide.valueOf(message.getSide().toUpperCase()), null,null,
                                 new BigDecimal(message.getFunds()), null, null);
                         }
+                        break;
+                    case "match":
+                        logger.info("match {}", message.getSide());
                         break;
                     case "done":
                         orderManager.cancelOrder(message.getOrderId(),userId,productId);

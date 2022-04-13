@@ -2,6 +2,7 @@ package com.gitbitex.matchingengine;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.Date;
 
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
@@ -19,4 +20,5 @@ public class BookOrder implements Serializable {
     private BigDecimal price;
     private BigDecimal funds;
     private boolean postOnly;
+    private Date time;
 }

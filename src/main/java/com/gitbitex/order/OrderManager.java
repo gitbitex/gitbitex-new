@@ -2,6 +2,7 @@ package com.gitbitex.order;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
@@ -98,6 +99,7 @@ public class OrderManager {
         order.setSize(size);
         order.setFunds(funds);
         order.setPrice(price);
+        order.setTime(new Date());
 
         // send order to accountant
         PlaceOrderCommand placeOrderCommand = new PlaceOrderCommand();
