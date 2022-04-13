@@ -24,4 +24,6 @@ public class AppProperties {
 
     private int l2OrderBookPersistenceInterval = 1000;
     private int l3OrderBookPersistenceInterval = 5000;
+    private int fullOrderBookPersistenceInterval = 10000;
+    private int fullOrderBookPersistenceThreshold = 10000;
 }

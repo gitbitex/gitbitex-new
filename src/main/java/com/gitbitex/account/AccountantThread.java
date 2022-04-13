@@ -9,6 +9,7 @@ import com.gitbitex.AppProperties;
 import com.gitbitex.account.command.AccountCommand;
 import com.gitbitex.account.command.AccountCommandDispatcher;
 import com.gitbitex.account.command.AccountCommandHandler;
+import com.gitbitex.account.command.CancelOrderCommand;
 import com.gitbitex.account.command.PlaceOrderCommand;
 import com.gitbitex.account.command.SettleOrderCommand;
 import com.gitbitex.account.command.SettleOrderFillCommand;
@@ -81,12 +82,14 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
             try {
                 accountManager.hold(order.getUserId(), holdCurrency, holdAmount, billId);
             } catch (ServiceException e) {
-                logger.error("process error: {}", e.getMessage(), e);
                 if (e.getCode() != ErrorCode.DUPLICATE_BILL_ID) {
+                    logger.error("hold {} {} for order {} failed: {}", holdCurrency, holdAmount, order.getOrderId(),
+                        e.getMessage(), e);
                     command.getOrder().setStatus(Order.OrderStatus.DENIED);
                 }
             } catch (Exception e) {
-                logger.error("process error: {}", e.getMessage(), e);
+                logger.error("hold {} {} for order {} failed: {}", holdCurrency, holdAmount, order.getOrderId(),
+                    e.getMessage(), e);
                 command.getOrder().setStatus(Order.OrderStatus.DENIED);
             }
         }
@@ -95,6 +98,16 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
         newOrderCommand.setProductId(command.getOrder().getProductId());
         newOrderCommand.setOrder(command.getOrder());
         messageProducer.sendToMatchingEngine(newOrderCommand);
+    }
+
+    @Override
+    public void on(CancelOrderCommand command) {
+        com.gitbitex.matchingengine.command.CancelOrderCommand cancelOrderCommand
+            = new com.gitbitex.matchingengine.command.CancelOrderCommand();
+        cancelOrderCommand.setUserId(command.getUserId());
+        cancelOrderCommand.setOrderId(command.getOrderId());
+        cancelOrderCommand.setProductId(command.getProductId());
+        messageProducer.sendToMatchingEngine(cancelOrderCommand);
     }
 
     @Override

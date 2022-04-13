@@ -16,6 +16,8 @@ public class AccountCommandDeserializer implements Deserializer<AccountCommand> 
             switch (message.getType()) {
                 case PLACE_ORDER:
                     return JSON.parseObject(jsonString, PlaceOrderCommand.class);
+                case CANCEL_ORDER:
+                    return JSON.parseObject(jsonString, CancelOrderCommand.class);
                 case SETTLE_ORDER:
                     return JSON.parseObject(jsonString, SettleOrderCommand.class);
                 case SETTLE_ORDER_FILL:

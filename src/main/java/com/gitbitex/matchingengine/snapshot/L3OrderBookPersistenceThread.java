@@ -1,8 +1,8 @@
 package com.gitbitex.matchingengine.snapshot;
 
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.OrderBook;
@@ -17,43 +17,59 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 @Slf4j
 public class L3OrderBookPersistenceThread extends OrderBookListener {
     private final OrderBookManager orderBookManager;
-    private final ThreadPoolExecutor persistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS,
-        new LinkedBlockingQueue<>(1), new ThreadFactoryBuilder().setNameFormat("L3-P-Executor-%s").build());
-    private final AppProperties appProperties;
-    private long lastSnapshotTime;
+    private final ScheduledThreadPoolExecutor scheduledExecutor;
+    private final ReentrantLock lock = new ReentrantLock(true);
+    private long lastSnapshotSequence;
+    private OrderBook orderBook;
 
     public L3OrderBookPersistenceThread(String productId, OrderBookManager orderBookManager,
         KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
         super(productId, orderBookManager, kafkaConsumer, appProperties);
         this.orderBookManager = orderBookManager;
-        this.appProperties = appProperties;
+        this.scheduledExecutor = new ScheduledThreadPoolExecutor(1,
+            new ThreadFactoryBuilder().setNameFormat("L3-P-Executor-" + productId + "-%s").build());
+        this.scheduledExecutor.scheduleWithFixedDelay(this::takeSnapshot, 0,
+            appProperties.getL3OrderBookPersistenceInterval(), TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        this.scheduledExecutor.shutdown();
     }
 
     @Override
     @SneakyThrows
     protected void onOrderBookChange(OrderBook orderBook, boolean stable, PageLine line) {
         if (stable) {
-            if (System.currentTimeMillis() - lastSnapshotTime < appProperties.getL3OrderBookPersistenceInterval()) {
+            lock.lock();
+            this.orderBook = orderBook;
+            lock.unlock();
+        }
+    }
+
+    private void takeSnapshot() {
+        lock.lock();
+        try {
+            if (orderBook == null) {
+                return;
+            }
+            if (orderBook.getSequence().get() == lastSnapshotSequence) {
                 return;
             }
 
-            if (persistenceExecutor.getQueue().remainingCapacity() == 0) {
-                logger.warn("persistenceExecutor is busy");
-                return;
-            }
-
+            // level3
             logger.info("start take level3 snapshot");
-            L3OrderBook snapshot = new L3OrderBook(orderBook);
-            lastSnapshotTime = System.currentTimeMillis();
+            L3OrderBook l3OrderBook = new L3OrderBook(orderBook);
             logger.info("done");
+            orderBookManager.saveL3OrderBook(l3OrderBook.getProductId(), l3OrderBook);
 
-            persistenceExecutor.execute(() -> {
-                try {
-                    orderBookManager.saveL3OrderBook(snapshot.getProductId(), snapshot);
-                } catch (Exception e) {
-                    logger.error("save snapshot error: {}", e.getMessage(), e);
-                }
-            });
+            lastSnapshotSequence = l3OrderBook.getSequence();
+            orderBook = null;
+        } catch (Exception e) {
+            logger.error("snapshot error: {}", e.getMessage(), e);
+        } finally {
+            lock.unlock();
         }
     }
 }

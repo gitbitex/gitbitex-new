@@ -1,8 +1,8 @@
 package com.gitbitex.matchingengine.snapshot;
 
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.OrderBook;
@@ -18,41 +18,59 @@ import org.springframework.util.SerializationUtils;
 @Slf4j
 public class FullOrderBookPersistenceThread extends OrderBookListener {
     private final OrderBookManager orderBookManager;
-    private final ThreadPoolExecutor persistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS,
-        new LinkedBlockingQueue<>(1), new ThreadFactoryBuilder().setNameFormat("Full-P-Executor-%s").build());
+    private final ScheduledThreadPoolExecutor scheduledExecutor;
+    private final ReentrantLock lock = new ReentrantLock(true);
     private long lastSnapshotSequence;
+    private OrderBook orderBook;
 
     public FullOrderBookPersistenceThread(String productId, OrderBookManager orderBookManager,
         KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
         super(productId, orderBookManager, kafkaConsumer, appProperties);
         this.orderBookManager = orderBookManager;
+        this.scheduledExecutor = new ScheduledThreadPoolExecutor(1,
+            new ThreadFactoryBuilder().setNameFormat("L3-P-Executor-" + productId + "-%s").build());
+        this.scheduledExecutor.scheduleWithFixedDelay(this::takeSnapshot, 0,
+            appProperties.getFullOrderBookPersistenceInterval(), TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        this.scheduledExecutor.shutdown();
     }
 
     @Override
     @SneakyThrows
     protected void onOrderBookChange(OrderBook orderBook, boolean stable, PageLine line) {
         if (stable) {
-            if (orderBook.getSequence().get() - lastSnapshotSequence < 10000) {
+            lock.lock();
+            this.orderBook = orderBook;
+            lock.unlock();
+        }
+    }
+
+    private void takeSnapshot() {
+        lock.lock();
+        try {
+            if (orderBook == null) {
+                return;
+            }
+            if (orderBook.getSequence().get() == lastSnapshotSequence) {
                 return;
             }
 
-            if (persistenceExecutor.getQueue().remainingCapacity() == 0) {
-                logger.warn("persistenceExecutor is busy");
-                return;
-            }
+            // full
+            logger.info("start take full snapshot");
+            byte[] orderBookBytes = SerializationUtils.serialize(orderBook);
+            logger.info("done");
+            orderBookManager.saveOrderBook(orderBook.getProductId(), orderBookBytes);
 
-            logger.info("start take full snapshot: sequence={}", lastSnapshotSequence);
-            byte[] bytes = SerializationUtils.serialize(orderBook);
             lastSnapshotSequence = orderBook.getSequence().get();
-            logger.info("done: size={}MB", bytes != null ? bytes.length / 1024.0 / 1024.0 : 0);
-
-            persistenceExecutor.execute(() -> {
-                try {
-                    orderBookManager.saveOrderBook(orderBook.getProductId(), bytes);
-                } catch (Exception e) {
-                    logger.error("save snapshot error: {}", e.getMessage(), e);
-                }
-            });
+            orderBook = null;
+        } catch (Exception e) {
+            logger.error("snapshot error: {}", e.getMessage(), e);
+        } finally {
+            lock.unlock();
         }
     }
 }

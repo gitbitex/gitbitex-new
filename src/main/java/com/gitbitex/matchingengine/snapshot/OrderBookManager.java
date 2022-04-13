@@ -46,7 +46,7 @@ public class OrderBookManager {
     }
 
     public void saveL2OrderBook(String productId, L2OrderBook l2OrderBook) {
-        redissonClient.getBucket(keyForL2(productId)).set(JSON.toJSONString(l2OrderBook));
+        redissonClient.getBucket(keyForL2(productId)).setAsync(JSON.toJSONString(l2OrderBook));
     }
 
     public L2OrderBook getL2OrderBook(String productId) {

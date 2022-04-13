@@ -90,7 +90,7 @@ public class OrderController {
         OrderSide orderSide = side != null ? Order.OrderSide.valueOf(side.toUpperCase()) : null;
 
         Page<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, Order.OrderStatus.OPEN,
-            orderSide, 1, 10000);
+            orderSide, 1, 20000);
 
         for (Order order : orderPage.getContent()) {
             orderManager.cancelOrder(order);

@@ -103,10 +103,7 @@ public class WebSocketClientConfig {
                         }
                         break;
                     case "done":
-                        Order order=orderManager.findByOrderId(message.getOrderId());
-                        if (order!=null){
-                            orderManager.cancelOrder(order);
-                        }
+                        orderManager.cancelOrder(message.getOrderId(),userId,productId);
                         break;
                     default:
                 }

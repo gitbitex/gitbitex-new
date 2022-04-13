@@ -8,11 +8,11 @@ import java.util.concurrent.ExecutionException;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.account.AccountManager;
+import com.gitbitex.account.command.CancelOrderCommand;
 import com.gitbitex.account.command.PlaceOrderCommand;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.order.entity.Fill;
 import com.gitbitex.order.entity.Order;
 import com.gitbitex.order.entity.Order.OrderSide;
@@ -40,7 +40,8 @@ public class OrderManager {
     private final KafkaMessageProducer messageProducer;
     private final AccountManager accountManager;
 
-    public String placeOrder(String orderId, String userId, String productId, OrderType orderType, OrderSide side, BigDecimal size,
+    public String placeOrder(String orderId, String userId, String productId, OrderType orderType, OrderSide side,
+        BigDecimal size,
         BigDecimal price, BigDecimal funds, String clientOrderId, TimeInForcePolicy timeInForcePolicy)
         throws ExecutionException, InterruptedException {
         Product product = productManager.getProductById(productId);
@@ -98,7 +99,7 @@ public class OrderManager {
         order.setFunds(funds);
         order.setPrice(price);
 
-        // send order to matching-engine
+        // send order to accountant
         PlaceOrderCommand placeOrderCommand = new PlaceOrderCommand();
         placeOrderCommand.setUserId(order.getUserId());
         placeOrderCommand.setOrder(order);
@@ -112,7 +113,15 @@ public class OrderManager {
         cancelOrderCommand.setUserId(order.getUserId());
         cancelOrderCommand.setOrderId(order.getOrderId());
         cancelOrderCommand.setProductId(order.getProductId());
-        messageProducer.sendToMatchingEngine(cancelOrderCommand);
+        messageProducer.sendToAccountant(cancelOrderCommand);
+    }
+
+    public void cancelOrder(String orderId,String userId,String productId) throws ExecutionException, InterruptedException {
+        CancelOrderCommand cancelOrderCommand = new CancelOrderCommand();
+        cancelOrderCommand.setUserId(userId);
+        cancelOrderCommand.setOrderId(orderId);
+        cancelOrderCommand.setProductId(productId);
+        messageProducer.sendToAccountant(cancelOrderCommand);
     }
 
     @Transactional(rollbackFor = Exception.class)

@@ -12,6 +12,7 @@ public class AccountCommand {
 
     public enum CommandType {
         PLACE_ORDER,
+        CANCEL_ORDER,
         SETTLE_ORDER,
         SETTLE_ORDER_FILL,
     }

@@ -9,9 +9,11 @@ public class AccountCommandDispatcher {
     public void dispatch(AccountCommand command) {
         if (command instanceof PlaceOrderCommand) {
             handler.on((PlaceOrderCommand)command);
+        } else if (command instanceof CancelOrderCommand) {
+            handler.on((CancelOrderCommand)command);
         } else if (command instanceof SettleOrderCommand) {
             handler.on((SettleOrderCommand)command);
-        } else if (command instanceof SettleOrderFillCommand) {
+        }else if (command instanceof SettleOrderFillCommand) {
             handler.on((SettleOrderFillCommand)command);
         } else {
             throw new RuntimeException("unknown order message: " + command.getClass().getName());

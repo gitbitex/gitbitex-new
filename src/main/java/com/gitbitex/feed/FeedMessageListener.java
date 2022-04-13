@@ -102,9 +102,9 @@ public class FeedMessageListener {
         message.setTime(log.getTime().toInstant().toString());
         message.setSequence(log.getSequence());
         message.setOrderId(log.getOrder().getOrderId());
-        message.setSize(log.getOrder().getSize().toPlainString());
-        message.setPrice(log.getOrder().getPrice() != null ? log.getOrder().getPrice().toPlainString() : null);
-        message.setFunds(log.getOrder().getFunds() != null ? log.getOrder().getFunds().toPlainString() : null);
+        message.setSize(log.getOrder().getSize().stripTrailingZeros().toPlainString());
+        message.setPrice(log.getOrder().getPrice() != null ? log.getOrder().getPrice().stripTrailingZeros().toPlainString() : null);
+        message.setFunds(log.getOrder().getFunds() != null ? log.getOrder().getFunds().stripTrailingZeros().toPlainString() : null);
         message.setSide(log.getOrder().getSide().name().toUpperCase());
         message.setOrderType(log.getOrder().getType().name().toUpperCase());
         return message;
@@ -118,8 +118,8 @@ public class FeedMessageListener {
         message.setMakerOrderId(log.getMakerOrderId());
         message.setTime(log.getTime().toInstant().toString());
         message.setProductId(log.getProductId());
-        message.setSize(log.getSize().toPlainString());
-        message.setPrice(log.getPrice().toPlainString());
+        message.setSize(log.getSize().stripTrailingZeros().toPlainString());
+        message.setPrice(log.getPrice().stripTrailingZeros().toPlainString());
         message.setSide(log.getSide().name().toLowerCase());
         return message;
     }
@@ -129,7 +129,7 @@ public class FeedMessageListener {
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());
         message.setProductId(log.getProductId());
-        message.setPrice(log.getPrice().toPlainString());
+        message.setPrice(log.getPrice().stripTrailingZeros().toPlainString());
         message.setSide(log.getSide().name().toLowerCase());
         message.setRemainingSize(log.getRemainingSize().toPlainString());
         return message;
@@ -140,10 +140,10 @@ public class FeedMessageListener {
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());
         message.setProductId(log.getProductId());
-        message.setPrice(log.getPrice().toPlainString());
+        message.setPrice(log.getPrice().stripTrailingZeros().toPlainString());
         message.setSide(log.getSide().name().toLowerCase());
         message.setReason(log.getDoneReason().name().toUpperCase());
-        message.setRemainingSize(log.getRemainingSize().toPlainString());
+        message.setRemainingSize(log.getRemainingSize().stripTrailingZeros().toPlainString());
         return message;
     }
 
@@ -165,15 +165,15 @@ public class FeedMessageListener {
         message.setUserId(order.getUserId());
         message.setProductId(order.getProductId());
         message.setId(order.getOrderId());
-        message.setPrice(order.getPrice().toPlainString());
-        message.setSize(order.getSize().toPlainString());
-        message.setFunds(order.getFunds().toPlainString());
+        message.setPrice(order.getPrice().stripTrailingZeros().toPlainString());
+        message.setSize(order.getSize().stripTrailingZeros().toPlainString());
+        message.setFunds(order.getFunds().stripTrailingZeros().toPlainString());
         message.setSide(order.getSide().name().toLowerCase());
         message.setOrderType(order.getType().name().toLowerCase());
         message.setCreatedAt(order.getCreatedAt().toInstant().toString());
-        message.setFillFees(order.getFillFees() != null ? order.getFillFees().toPlainString() : "0");
-        message.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().toPlainString() : "0");
-        message.setExecutedValue(order.getExecutedValue() != null ? order.getExecutedValue().toPlainString() : "0");
+        message.setFillFees(order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
+        message.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().stripTrailingZeros().toPlainString() : "0");
+        message.setExecutedValue(order.getExecutedValue() != null ? order.getExecutedValue().stripTrailingZeros().toPlainString() : "0");
         message.setStatus(order.getStatus().name().toLowerCase());
         return message;
     }
