@@ -40,7 +40,7 @@ public class OrderManager {
     private final KafkaMessageProducer messageProducer;
     private final AccountManager accountManager;
 
-    public String placeOrder(String userId, String productId, OrderType orderType, OrderSide side, BigDecimal size,
+    public String placeOrder(String orderId, String userId, String productId, OrderType orderType, OrderSide side, BigDecimal size,
         BigDecimal price, BigDecimal funds, String clientOrderId, TimeInForcePolicy timeInForcePolicy)
         throws ExecutionException, InterruptedException {
         Product product = productManager.getProductById(productId);
@@ -87,7 +87,7 @@ public class OrderManager {
 
         // build order
         Order order = new Order();
-        order.setOrderId(UUID.randomUUID().toString());
+        order.setOrderId(orderId);
         order.setUserId(userId);
         order.setProductId(productId);
         order.setType(orderType);

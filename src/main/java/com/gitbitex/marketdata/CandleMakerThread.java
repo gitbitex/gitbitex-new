@@ -4,9 +4,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,11 +21,9 @@ import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.TopicPartition;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
@@ -55,33 +51,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
 
     @Override
     protected void doSubscribe(KafkaConsumer<String, OrderBookLog> consumer) {
-        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()),
-            new ConsumerRebalanceListener() {
-                @Override
-                public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-
-                }
-
-                @Override
-                public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                    for (int minute : MINUTES) {
-                        Candle candle = candleRepository.findTopByProductIdAndGranularityOrderByTimeDesc(productId,
-                            minute);
-                        if (candle != null) {
-                            candles.put(minute, candle);
-                        }
-                    }
-
-                    Candle minOffsetCandle = candles.values().stream().min(
-                        Comparator.comparingLong(Candle::getOrderBookLogOffset)).orElse(null);
-
-                    for (TopicPartition partition : partitions) {
-                        if (minOffsetCandle != null) {
-                            consumer.seek(partition, minOffsetCandle.getOrderBookLogOffset() + 1);
-                        }
-                    }
-                }
-            });
+        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()));
     }
 
     @Override
@@ -106,6 +76,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
                 }
             }
         }
+        consumer.commitSync();
     }
 
     private Candle makeCandle(OrderMatchLog log, long offset, int granularity) {

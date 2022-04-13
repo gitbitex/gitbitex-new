@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.Executors;
 
 import javax.annotation.PostConstruct;
@@ -35,7 +36,7 @@ public class TradeMaker {
     @Value("${gbe.trade-maker-enabled:false}")
     private boolean tradeMakerEnabled;
 
-    @PostConstruct
+    //@PostConstruct
     public void init() throws IOException, InterruptedException {
         if (!tradeMakerEnabled) {
             return;
@@ -74,9 +75,9 @@ public class TradeMaker {
 
                         orderRepository.findAll(userId,productId, Order.OrderStatus.OPEN,null,1,10000);
 
-                        orderManager.placeOrder(userId, productId, OrderType.LIMIT,
+                        orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId, OrderType.LIMIT,
                             trade.isBuyerMaker() ? OrderSide.BUY : OrderSide.SELL, size, price, null, null, null);
-                        orderManager.placeOrder(userId, productId, OrderType.LIMIT,
+                        orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId, OrderType.LIMIT,
                             trade.isBuyerMaker() ? OrderSide.SELL : OrderSide.BUY, size, price, null, null, null);
                     }
                 } catch (Exception e) {

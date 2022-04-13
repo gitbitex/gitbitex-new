@@ -18,7 +18,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 public class L3OrderBookPersistenceThread extends OrderBookListener {
     private final OrderBookManager orderBookManager;
     private final ThreadPoolExecutor persistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS,
-        new LinkedBlockingQueue<>(10), new ThreadFactoryBuilder().setNameFormat("L3-P-Executor-%s").build());
+        new LinkedBlockingQueue<>(1), new ThreadFactoryBuilder().setNameFormat("L3-P-Executor-%s").build());
 
     public L3OrderBookPersistenceThread(String productId, OrderBookManager orderBookManager,
         KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {

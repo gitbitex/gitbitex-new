@@ -1,6 +1,7 @@
 package com.gitbitex.openapi.controller;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.validation.Valid;
@@ -53,7 +54,7 @@ public class OrderController {
         TimeInForcePolicy timeInForcePolicy = request.getTimeInForce() != null ? TimeInForcePolicy.valueOf(
             request.getTimeInForce().toUpperCase()) : null;
 
-        String orderId = orderManager.placeOrder(currentUser.getUserId(), request.getProductId(), type, side, size,
+        String orderId = orderManager.placeOrder(UUID.randomUUID().toString(), currentUser.getUserId(), request.getProductId(), type, side, size,
             price, funds, request.getClientOid(), timeInForcePolicy);
 
         OrderDto orderDto = new OrderDto();

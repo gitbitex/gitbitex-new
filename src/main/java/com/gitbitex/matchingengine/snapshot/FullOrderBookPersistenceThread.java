@@ -19,7 +19,7 @@ import org.springframework.util.SerializationUtils;
 public class FullOrderBookPersistenceThread extends OrderBookListener {
     private final OrderBookManager orderBookManager;
     private final ThreadPoolExecutor persistenceExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.DAYS,
-        new LinkedBlockingQueue<>(10), new ThreadFactoryBuilder().setNameFormat("Full-P-Executor-%s").build());
+        new LinkedBlockingQueue<>(1), new ThreadFactoryBuilder().setNameFormat("Full-P-Executor-%s").build());
 
     public FullOrderBookPersistenceThread(String productId, OrderBookManager orderBookManager,
         KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {

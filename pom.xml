@@ -128,9 +128,12 @@
                 <configuration>
                     <container>
                         <mainClass>com.gitbitex.Application</mainClass>
+                        <jvmFlags>
+                            <jvmFlag>-XX:ErrorFile=/logs/hs_err_pid_%p.log</jvmFlag>
+                        </jvmFlags>
                     </container>
                     <from>
-                        <image>openjdk:8-jdk-alpine</image>
+                        <image>openjdk:14</image>
                     </from>
                     <to>
                         <image>registry.hub.docker.com/greensheng/gitbitex</image>

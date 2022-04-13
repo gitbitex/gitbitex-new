@@ -3,7 +3,6 @@ package com.gitbitex.marketdata;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
-import java.util.Collection;
 import java.util.Collections;
 
 import com.alibaba.fastjson.JSON;
@@ -16,11 +15,9 @@ import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.TopicPartition;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
@@ -45,24 +42,7 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
 
     @Override
     protected void doSubscribe(KafkaConsumer<String, OrderBookLog> consumer) {
-        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()),
-            new ConsumerRebalanceListener() {
-                @Override
-                public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-
-                }
-
-                @Override
-                public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                    ticker = tickerManager.getTicker(productId);
-
-                    for (TopicPartition partition : partitions) {
-                        if (ticker != null) {
-                            consumer.seek(partition, ticker.getOrderBookLogOffset() + 1);
-                        }
-                    }
-                }
-            });
+        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()));
     }
 
     @Override
@@ -80,6 +60,7 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
                 refreshTicker(orderMatchLog);
             }
         }
+        consumer.commitAsync();
     }
 
     private void refreshTicker(OrderMatchLog log) {
