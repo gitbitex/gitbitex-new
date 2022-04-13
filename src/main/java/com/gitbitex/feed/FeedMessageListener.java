@@ -65,7 +65,7 @@ public class FeedMessageListener {
         redissonClient.getTopic("l2change", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             L2OrderBookUpdate l2OrderBookUpdate = JSON.parseObject(msg, L2OrderBookUpdate.class);
             String channel = l2OrderBookUpdate.getProductId() + ".level2";
-            sessionManager.sendMessageToChannel(channel, JSON.toJSONString(new L2UpdateMessage(l2OrderBookUpdate)));
+            sessionManager.sendMessageToChannel(channel, JSON.toJSONString(new L2UpdateMessage(l2OrderBookUpdate)),true);
         });
 
         redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
