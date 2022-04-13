@@ -36,7 +36,7 @@ public class OrderBook implements Serializable {
         this.productId = productId;
         this.tradeId = new AtomicLong();
         this.sequence = new AtomicLong();
-        this.orderIdFilter = new SlidingBloomFilter(100000, 2);
+        this.orderIdFilter = new SlidingBloomFilter(1000000, 2);
         this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, new ArrayList<>());
         this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, new ArrayList<>());
     }
@@ -76,6 +76,7 @@ public class OrderBook implements Serializable {
         this.sequence.set(log.getSequence());
         this.logOffset = log.getOffset();
         this.commandOffset = log.getCommandOffset();
+        this.orderIdFilter.put(log.getOrder().getOrderId());
         return null;
     }
 

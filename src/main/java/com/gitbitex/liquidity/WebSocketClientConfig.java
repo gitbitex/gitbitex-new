@@ -33,7 +33,7 @@ public class WebSocketClientConfig {
         //client1.connectBlocking();
     }
 
-    //@PostConstruct
+    @PostConstruct
     public void init() {
         logger.info("start");
         Executors.newFixedThreadPool(1).execute(() -> {

@@ -21,4 +21,7 @@ public class AppProperties {
     private int accountantThreadNum;
 
     private int orderProcessorThreadNum;
+
+    private int l2OrderBookPersistenceInterval = 1000;
+    private int l3OrderBookPersistenceInterval = 5000;
 }
