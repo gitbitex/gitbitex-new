@@ -100,6 +100,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
         SettleOrderFillCommand settleOrderFillCommand = new SettleOrderFillCommand();
         settleOrderFillCommand.setUserId(order.getUserId());
         settleOrderFillCommand.setFillId(fillId);
+        settleOrderFillCommand.setProductId(order.getProductId());
         messageProducer.sendToAccountant(settleOrderFillCommand);
     }
 }

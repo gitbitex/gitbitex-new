@@ -22,8 +22,8 @@ import com.gitbitex.matchingengine.MatchingThread;
 import com.gitbitex.matchingengine.command.OrderBookCommandDeserializer;
 import com.gitbitex.matchingengine.log.OrderBookLogDeserializer;
 import com.gitbitex.matchingengine.snapshot.FullOrderBookPersistenceThread;
+import com.gitbitex.matchingengine.snapshot.L2BatchOrderBookPersistenceThread;
 import com.gitbitex.matchingengine.snapshot.L2OrderBookPersistenceThread;
-import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdatePublishThread;
 import com.gitbitex.matchingengine.snapshot.L3OrderBookPersistenceThread;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.order.OrderCommandShardingThread;
@@ -73,7 +73,7 @@ public class Bootstrap {
             startTicker(product.getProductId(), 1);
             startTradePersistence(product.getProductId(), 1);
             startOrderBookLogPublish(product.getProductId(), 1);
-            startL2OrderBookUpdatePublishThread(product.getProductId(),1);
+            startL2OrderBookSnapshotTaker1(product.getProductId(), 1);
         }
     }
 
@@ -137,11 +137,11 @@ public class Bootstrap {
         }
     }
 
-    private void startL2OrderBookUpdatePublishThread(String productId, int nThreads) {
+    private void startL2OrderBookSnapshotTaker(String productId, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "L2Update-Pub-" + productId;
-            L2OrderBookUpdatePublishThread thread = new L2OrderBookUpdatePublishThread(productId,
-                orderBookManager, redissonClient,
+            String groupId = "Snapshot-L2-" + productId;
+            L2OrderBookPersistenceThread thread = new L2OrderBookPersistenceThread(productId,
+                orderBookManager,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookLogDeserializer()),
                 appProperties);
             thread.setName(groupId + "-" + thread.getId());
@@ -150,11 +150,11 @@ public class Bootstrap {
         }
     }
 
-    private void startL2OrderBookSnapshotTaker(String productId, int nThreads) {
+    private void startL2OrderBookSnapshotTaker1(String productId, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "Snapshot-L2-" + productId;
-            L2OrderBookPersistenceThread thread = new L2OrderBookPersistenceThread(productId,
-                orderBookManager,
+            String groupId = "Snapshot-L2Batch-" + productId;
+            L2BatchOrderBookPersistenceThread thread = new L2BatchOrderBookPersistenceThread(productId,
+                orderBookManager, redissonClient,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookLogDeserializer()),
                 appProperties);
             thread.setName(groupId + "-" + thread.getId());

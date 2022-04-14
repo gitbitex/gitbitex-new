@@ -11,22 +11,30 @@ import com.gitbitex.matchingengine.log.OrderBookLog;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.redisson.api.RTopic;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 
 @Slf4j
-public class L2OrderBookPersistenceThread extends OrderBookListener {
+public class L2BatchOrderBookPersistenceThread extends OrderBookListener {
     private final OrderBookManager orderBookManager;
     private final ScheduledThreadPoolExecutor scheduledExecutor;
+    private final RTopic l2BatchTopic;
+    private final AppProperties appProperties;
+    private long lastSnapshotTime;
     private long lastSnapshotSequence;
     private boolean stable;
 
-    public L2OrderBookPersistenceThread(String productId, OrderBookManager orderBookManager,
+    public L2BatchOrderBookPersistenceThread(String productId, OrderBookManager orderBookManager,
+        RedissonClient redissonClient,
         KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
         super(productId, orderBookManager, kafkaConsumer, appProperties);
         this.orderBookManager = orderBookManager;
         this.scheduledExecutor = new ScheduledThreadPoolExecutor(1,
-            new ThreadFactoryBuilder().setNameFormat("L2-P-" + productId + "-%s").build());
-        this.scheduledExecutor.scheduleWithFixedDelay(this::takeSnapshot, 0,
-            appProperties.getL2OrderBookPersistenceInterval(), TimeUnit.MILLISECONDS);
+            new ThreadFactoryBuilder().setNameFormat("L2-Batch-P-" + productId + "-%s").build());
+        this.scheduledExecutor.scheduleWithFixedDelay(this::takeSnapshot, 0, 1, TimeUnit.SECONDS);
+        this.l2BatchTopic = redissonClient.getTopic("l2_batch", StringCodec.INSTANCE);
+        this.appProperties = appProperties;
     }
 
     @Override
@@ -38,6 +46,7 @@ public class L2OrderBookPersistenceThread extends OrderBookListener {
     @Override
     protected void onOrderBookChange(OrderBook orderBook, boolean stable, PageLine line) {
         this.stable = stable;
+        takeSnapshot();
     }
 
     private void takeSnapshot() {
@@ -47,15 +56,17 @@ public class L2OrderBookPersistenceThread extends OrderBookListener {
         if (orderBook == null || orderBook.getSequence().get() == lastSnapshotSequence) {
             return;
         }
+        if (System.currentTimeMillis() - lastSnapshotTime < appProperties.getL2BatchOrderBookPersistenceInterval()) {
+            return;
+        }
 
-        L2OrderBook l1OrderBook;
         L2OrderBook l2OrderBook;
         if (orderBookLock.tryLock()) {
             try {
-                logger.info("start take level2 snapshot");
-                l1OrderBook = new L2OrderBook(orderBook, 1);
-                l2OrderBook = new L2OrderBook(orderBook);
+                logger.info("start take l2_batch snapshot");
+                l2OrderBook = new L2OrderBook(orderBook, 50);
                 lastSnapshotSequence = l2OrderBook.getSequence();
+                lastSnapshotTime = System.currentTimeMillis();
                 logger.info("done");
             } catch (Exception e) {
                 logger.error("snapshot error: {}", e.getMessage(), e);
@@ -68,11 +79,10 @@ public class L2OrderBookPersistenceThread extends OrderBookListener {
         }
 
         try {
-            orderBookManager.saveL1OrderBook(l1OrderBook);
-            orderBookManager.saveL2OrderBook(l2OrderBook);
+            orderBookManager.saveL2BatchOrderBook(l2OrderBook);
+            l2BatchTopic.publish(l2OrderBook.getProductId());
         } catch (Exception e) {
             logger.error("save order book error: {}", e.getMessage(), e);
         }
     }
-
 }

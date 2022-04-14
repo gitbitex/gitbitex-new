@@ -1,6 +1,7 @@
 package com.gitbitex.account;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.Collections;
 
 import com.alibaba.fastjson.JSON;
@@ -13,8 +14,6 @@ import com.gitbitex.account.command.CancelOrderCommand;
 import com.gitbitex.account.command.PlaceOrderCommand;
 import com.gitbitex.account.command.SettleOrderCommand;
 import com.gitbitex.account.command.SettleOrderFillCommand;
-import com.gitbitex.exception.ErrorCode;
-import com.gitbitex.exception.ServiceException;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.matchingengine.command.NewOrderCommand;
 import com.gitbitex.order.OrderManager;
@@ -25,9 +24,11 @@ import com.gitbitex.product.entity.Product;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 
 @Slf4j
 public class AccountantThread extends KafkaConsumerThread<String, AccountCommand> implements AccountCommandHandler {
@@ -37,6 +38,7 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
     private final OrderManager orderManager;
     private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
+    String userId = "ad80fcfe-c3a1-46a1-acf8-1d6a909b2c5a";
 
     public AccountantThread(KafkaConsumer<String, AccountCommand> consumer,
         AccountManager accountManager, OrderManager orderManager, ProductManager productManager,
@@ -50,9 +52,26 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
         this.appProperties = appProperties;
     }
 
+    private boolean isTrader(String userId) {
+        return userId.equals(this.userId);
+    }
+
     @Override
     protected void doSubscribe(KafkaConsumer<String, AccountCommand> consumer) {
-        consumer.subscribe(Collections.singletonList(appProperties.getAccountCommandTopic()));
+        consumer.subscribe(Collections.singletonList(appProperties.getAccountCommandTopic()),
+            new ConsumerRebalanceListener() {
+                @Override
+                public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+
+                }
+
+                @Override
+                public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                    for (TopicPartition partition : partitions) {
+                        logger.info("partition assigned: {}", partition.toString());
+                    }
+                }
+            });
     }
 
     @Override
@@ -73,24 +92,19 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
 
         command.getOrder().setStatus(Order.OrderStatus.NEW);
 
-        String billId = command.getType() + "-" + order.getOrderId();
-        if (accountManager.getBillById(billId) == null) {
-            String holdCurrency = order.getSide() == Order.OrderSide.BUY ? product.getQuoteCurrency()
-                : product.getBaseCurrency();
-            BigDecimal holdAmount = order.getSide() == Order.OrderSide.BUY ? order.getFunds() : order.getSize();
-
-            try {
-                accountManager.hold(order.getUserId(), holdCurrency, holdAmount, billId);
-            } catch (ServiceException e) {
-                if (e.getCode() != ErrorCode.DUPLICATE_BILL_ID) {
+        if (!isTrader(order.getUserId())) {
+            String billId = command.getType() + "-" + order.getOrderId();
+            if (accountManager.getBillById(billId) == null) {
+                String holdCurrency = order.getSide() == Order.OrderSide.BUY ? product.getQuoteCurrency()
+                    : product.getBaseCurrency();
+                BigDecimal holdAmount = order.getSide() == Order.OrderSide.BUY ? order.getFunds() : order.getSize();
+                try {
+                    accountManager.hold(order.getUserId(), holdCurrency, holdAmount, billId);
+                } catch (Exception e) {
                     logger.error("hold {} {} for order {} failed: {}", holdCurrency, holdAmount, order.getOrderId(),
                         e.getMessage(), e);
                     command.getOrder().setStatus(Order.OrderStatus.DENIED);
                 }
-            } catch (Exception e) {
-                logger.error("hold {} {} for order {} failed: {}", holdCurrency, holdAmount, order.getOrderId(),
-                    e.getMessage(), e);
-                command.getOrder().setStatus(Order.OrderStatus.DENIED);
             }
         }
 
@@ -112,10 +126,13 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
 
     @Override
     public void on(SettleOrderFillCommand command) {
+        if (isTrader(command.getUserId())){
+            return;
+        }
+
         Fill fill = orderManager.getFillById(command.getFillId());
-        Order order = orderManager.findByOrderId(fill.getOrderId());
-        Product product = productManager.getProductById(order.getProductId());
-        String userId = order.getUserId();
+        Product product = productManager.getProductById(command.getProductId());
+        String userId = command.getUserId();
 
         String baseBillId = command.getType() + "-base-" + fill.getFillId();
         String quoteBillId = command.getType() + "-quote-" + fill.getFillId();
@@ -139,6 +156,10 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
 
     @Override
     public void on(SettleOrderCommand command) {
+        if (isTrader(command.getUserId())){
+            return;
+        }
+
         Order order = orderManager.findByOrderId(command.getOrderId());
         Product product = productManager.getProductById(order.getProductId());
 

@@ -118,7 +118,8 @@ public class OrderManager {
         messageProducer.sendToAccountant(cancelOrderCommand);
     }
 
-    public void cancelOrder(String orderId,String userId,String productId) throws ExecutionException, InterruptedException {
+    public void cancelOrder(String orderId, String userId, String productId)
+        throws ExecutionException, InterruptedException {
         CancelOrderCommand cancelOrderCommand = new CancelOrderCommand();
         cancelOrderCommand.setUserId(userId);
         cancelOrderCommand.setOrderId(orderId);

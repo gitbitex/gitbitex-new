@@ -27,15 +27,15 @@ public class TickerMessage {
         this.setTradeId(ticker.getTradeId());
         this.setSequence(ticker.getSequence());
         this.setTime(ticker.getTime().toInstant().toString());
-        this.setPrice(ticker.getPrice().toPlainString());
+        this.setPrice(ticker.getPrice().stripTrailingZeros().toPlainString());
         this.setSide(ticker.getSide().name().toLowerCase());
-        this.setLastSize(ticker.getLastSize().toPlainString());
-        this.setClose24h(ticker.getClose24h().toPlainString());
-        this.setOpen24h(ticker.getOpen24h().toPlainString());
-        this.setHigh24h(ticker.getHigh24h().toPlainString());
-        this.setLow24h(ticker.getLow24h().toPlainString());
-        this.setVolume24h(ticker.getVolume24h().toPlainString());
-        this.setVolume30d(ticker.getVolume30d().toPlainString());
+        this.setLastSize(ticker.getLastSize().stripTrailingZeros().toPlainString());
+        this.setClose24h(ticker.getClose24h().stripTrailingZeros().toPlainString());
+        this.setOpen24h(ticker.getOpen24h().stripTrailingZeros().toPlainString());
+        this.setHigh24h(ticker.getHigh24h().stripTrailingZeros().toPlainString());
+        this.setLow24h(ticker.getLow24h().stripTrailingZeros().toPlainString());
+        this.setVolume24h(ticker.getVolume24h().stripTrailingZeros().toPlainString());
+        this.setVolume30d(ticker.getVolume30d().stripTrailingZeros().toPlainString());
     }
 
 }

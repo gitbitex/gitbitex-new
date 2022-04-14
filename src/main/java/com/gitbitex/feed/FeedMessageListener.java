@@ -7,7 +7,6 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.account.entity.Account;
 import com.gitbitex.feed.message.AccountMessage;
 import com.gitbitex.feed.message.CandleMessage;
-import com.gitbitex.feed.message.L2UpdateMessage;
 import com.gitbitex.feed.message.OrderDoneMessage;
 import com.gitbitex.feed.message.OrderMatchMessage;
 import com.gitbitex.feed.message.OrderMessage;
@@ -21,7 +20,8 @@ import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.OrderOpenLog;
 import com.gitbitex.matchingengine.log.OrderReceivedLog;
-import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdate;
+import com.gitbitex.matchingengine.snapshot.L2OrderBook;
+import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.order.entity.Order;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,37 +35,39 @@ import org.springframework.stereotype.Component;
 public class FeedMessageListener {
     private final RedissonClient redissonClient;
     private final SessionManager sessionManager;
+    private final OrderBookManager orderBookManager;
 
     @PostConstruct
     public void run() {
         redissonClient.getTopic("order", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             Order order = JSON.parseObject(msg, Order.class);
             String channel = order.getUserId() + "." + order.getProductId() + ".order";
-            sessionManager.sendMessageToChannel(channel, JSON.toJSONString(orderMessage(order)));
+            sessionManager.sendMessageToChannel(channel, (orderMessage(order)));
         });
 
         redissonClient.getTopic("account", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             Account account = JSON.parseObject(msg, Account.class);
             String channel = account.getUserId() + "." + account.getCurrency() + ".funds";
-            sessionManager.sendMessageToChannel(channel, JSON.toJSONString(accountMessage(account)));
+            sessionManager.sendMessageToChannel(channel, (accountMessage(account)));
         });
 
         redissonClient.getTopic("ticker", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             Ticker ticker = JSON.parseObject(msg, Ticker.class);
             String channel = ticker.getProductId() + ".ticker";
-            sessionManager.sendMessageToChannel(channel, JSON.toJSONString(new TickerMessage(ticker)));
+            sessionManager.sendMessageToChannel(channel, (new TickerMessage(ticker)));
         });
 
         redissonClient.getTopic("candle", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             Candle candle = JSON.parseObject(msg, Candle.class);
             String channel = candle.getProductId() + ".candle_" + candle.getGranularity() * 60;
-            sessionManager.sendMessageToChannel(channel, JSON.toJSONString(candleMessage(candle)));
+            sessionManager.sendMessageToChannel(channel, (candleMessage(candle)));
         });
 
-        redissonClient.getTopic("l2change", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            L2OrderBookUpdate l2OrderBookUpdate = JSON.parseObject(msg, L2OrderBookUpdate.class);
-            String channel = l2OrderBookUpdate.getProductId() + ".level2";
-            sessionManager.sendMessageToChannel(channel, JSON.toJSONString(new L2UpdateMessage(l2OrderBookUpdate)),true);
+        redissonClient.getTopic("l2_batch", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
+            logger.info("{} {}", c, msg);
+            L2OrderBook l2OrderBook = orderBookManager.getL2BatchOrderBook(msg);
+            String channel = l2OrderBook.getProductId() + ".level2";
+            sessionManager.sendMessageToChannel(channel, l2OrderBook);
         });
 
         redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
@@ -75,21 +77,21 @@ public class FeedMessageListener {
                 case RECEIVED:
                     OrderReceivedLog orderReceivedLog = JSON.parseObject(msg, OrderReceivedLog.class);
                     sessionManager.sendMessageToChannel(fullChannel,
-                        JSON.toJSONString(orderReceivedMessage(orderReceivedLog)));
+                        (orderReceivedMessage(orderReceivedLog)));
                     break;
                 case MATCH:
                     OrderMatchLog orderMatchLog = JSON.parseObject(msg, OrderMatchLog.class);
                     String matchChannel = log.getProductId() + ".match";
-                    sessionManager.sendMessageToChannel(matchChannel, JSON.toJSONString(matchMessage(orderMatchLog)));
-                    sessionManager.sendMessageToChannel(fullChannel, JSON.toJSONString(matchMessage(orderMatchLog)));
+                    sessionManager.sendMessageToChannel(matchChannel, (matchMessage(orderMatchLog)));
+                    sessionManager.sendMessageToChannel(fullChannel, (matchMessage(orderMatchLog)));
                     break;
                 case OPEN:
                     OrderOpenLog orderOpenLog = JSON.parseObject(msg, OrderOpenLog.class);
-                    sessionManager.sendMessageToChannel(fullChannel, JSON.toJSONString(orderOpenMessage(orderOpenLog)));
+                    sessionManager.sendMessageToChannel(fullChannel, (orderOpenMessage(orderOpenLog)));
                     break;
                 case DONE:
                     OrderDoneLog orderDoneLog = JSON.parseObject(msg, OrderDoneLog.class);
-                    sessionManager.sendMessageToChannel(fullChannel, JSON.toJSONString(orderDoneMessage(orderDoneLog)));
+                    sessionManager.sendMessageToChannel(fullChannel, (orderDoneMessage(orderDoneLog)));
                     break;
                 default:
             }
@@ -103,8 +105,10 @@ public class FeedMessageListener {
         message.setSequence(log.getSequence());
         message.setOrderId(log.getOrder().getOrderId());
         message.setSize(log.getOrder().getSize().stripTrailingZeros().toPlainString());
-        message.setPrice(log.getOrder().getPrice() != null ? log.getOrder().getPrice().stripTrailingZeros().toPlainString() : null);
-        message.setFunds(log.getOrder().getFunds() != null ? log.getOrder().getFunds().stripTrailingZeros().toPlainString() : null);
+        message.setPrice(
+            log.getOrder().getPrice() != null ? log.getOrder().getPrice().stripTrailingZeros().toPlainString() : null);
+        message.setFunds(
+            log.getOrder().getFunds() != null ? log.getOrder().getFunds().stripTrailingZeros().toPlainString() : null);
         message.setSide(log.getOrder().getSide().name().toUpperCase());
         message.setOrderType(log.getOrder().getType().name().toUpperCase());
         return message;
@@ -171,9 +175,12 @@ public class FeedMessageListener {
         message.setSide(order.getSide().name().toLowerCase());
         message.setOrderType(order.getType().name().toLowerCase());
         message.setCreatedAt(order.getCreatedAt().toInstant().toString());
-        message.setFillFees(order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
-        message.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().stripTrailingZeros().toPlainString() : "0");
-        message.setExecutedValue(order.getExecutedValue() != null ? order.getExecutedValue().stripTrailingZeros().toPlainString() : "0");
+        message.setFillFees(
+            order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
+        message.setFilledSize(
+            order.getFilledSize() != null ? order.getFilledSize().stripTrailingZeros().toPlainString() : "0");
+        message.setExecutedValue(
+            order.getExecutedValue() != null ? order.getExecutedValue().stripTrailingZeros().toPlainString() : "0");
         message.setStatus(order.getStatus().name().toLowerCase());
         return message;
     }

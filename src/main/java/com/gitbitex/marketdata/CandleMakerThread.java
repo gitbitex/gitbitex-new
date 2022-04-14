@@ -5,9 +5,9 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import com.alibaba.fastjson.JSON;
@@ -24,9 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
-import org.redisson.client.codec.StringCodec;
 
 /**
  * My job is to produce candles
@@ -34,11 +32,10 @@ import org.redisson.client.codec.StringCodec;
 @Slf4j
 public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog> {
     private static final int[] MINUTES = new int[] {1, 3, 5, 15, 30, 60, 120, 240, 360, 720, 1440, 43200};
-    private final Map<Integer, Candle> candles = new HashMap<>();
+    private final Map<Integer, Candle> candles = new ConcurrentHashMap<>();
     private final String productId;
     private final CandleRepository candleRepository;
     private final AppProperties appProperties;
-    private final RTopic candleTopic;
 
     public CandleMakerThread(String productId, CandleRepository candleRepository, RedissonClient redissonClient,
         KafkaConsumer<String, OrderBookLog> consumer, AppProperties appProperties) {
@@ -46,7 +43,6 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
         this.productId = productId;
         this.candleRepository = candleRepository;
         this.appProperties = appProperties;
-        this.candleTopic = redissonClient.getTopic("candle", StringCodec.INSTANCE);
     }
 
     @Override
@@ -67,13 +63,10 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
                 logger.info(JSON.toJSONString(orderMatchLog));
 
                 List<Candle> candles = Arrays.stream(MINUTES)
+                    .parallel()
                     .mapToObj(x -> makeCandle(orderMatchLog, record.offset(), x))
                     .collect(Collectors.toList());
                 candleRepository.saveAll(candles);
-
-                for (Candle candle : candles) {
-                    candleTopic.publish(JSON.toJSONString(candle));
-                }
             }
         }
         consumer.commitSync();

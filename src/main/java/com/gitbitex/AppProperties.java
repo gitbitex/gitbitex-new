@@ -22,8 +22,13 @@ public class AppProperties {
 
     private int orderProcessorThreadNum;
 
-    private int l2OrderBookPersistenceInterval = 1000;
-    private int l3OrderBookPersistenceInterval = 5000;
-    private int fullOrderBookPersistenceInterval = 10000;
+    private int l2BatchOrderBookPersistenceInterval = 20;
+
+    private int l2OrderBookPersistenceInterval = 10000;
+
+    private int l3OrderBookPersistenceInterval = 10000;
+
+    private int fullOrderBookPersistenceInterval = 20000;
+
     private int fullOrderBookPersistenceThreshold = 10000;
 }

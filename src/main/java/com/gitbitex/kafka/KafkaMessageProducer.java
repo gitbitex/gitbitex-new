@@ -42,6 +42,7 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         String topic = appProperties.getAccountCommandTopic();
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, command.getUserId(),
             JSON.toJSONString(command));
+        logger.info("{}",JSON.toJSONString(command));
         super.send(record).get();
     }
 }

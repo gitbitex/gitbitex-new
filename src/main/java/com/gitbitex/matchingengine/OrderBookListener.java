@@ -2,6 +2,7 @@ package com.gitbitex.matchingengine;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.alibaba.fastjson.JSON;
 
@@ -25,11 +26,12 @@ import org.apache.kafka.common.TopicPartition;
 @Slf4j
 public abstract class OrderBookListener extends KafkaConsumerThread<String, OrderBookLog>
     implements OrderBookLogHandler {
+    protected final ReentrantLock orderBookLock;
     private final String productId;
     private final OrderBookManager orderBookManager;
     private final OrderBookLogDispatcher messageDispatcher;
     private final AppProperties appProperties;
-    private OrderBook orderBook;
+    protected OrderBook orderBook;
 
     public OrderBookListener(String productId, OrderBookManager orderBookManager,
         KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
@@ -38,6 +40,7 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
         this.orderBookManager = orderBookManager;
         this.messageDispatcher = new OrderBookLogDispatcher(this);
         this.appProperties = appProperties;
+        this.orderBookLock = new ReentrantLock();
     }
 
     @Override
@@ -85,26 +88,46 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
 
     @Override
     public void on(OrderReceivedLog log) {
-        PageLine line = orderBook.restoreLog(log);
-        onOrderBookChange(orderBook, log.isCommandFinished(), line);
+        orderBookLock.lock();
+        try {
+            PageLine line = orderBook.restoreLog(log);
+            onOrderBookChange(orderBook, log.isCommandFinished(), line);
+        } finally {
+            orderBookLock.unlock();
+        }
     }
 
     @Override
     public void on(OrderOpenLog log) {
-        PageLine line = orderBook.restoreLog(log);
-        onOrderBookChange(orderBook, log.isCommandFinished(), line);
+        orderBookLock.lock();
+        try {
+            PageLine line = orderBook.restoreLog(log);
+            onOrderBookChange(orderBook, log.isCommandFinished(), line);
+        } finally {
+            orderBookLock.unlock();
+        }
     }
 
     @Override
     public void on(OrderMatchLog log) {
-        PageLine line = orderBook.restoreLog(log);
-        onOrderBookChange(orderBook, log.isCommandFinished(), line);
+        orderBookLock.lock();
+        try {
+            PageLine line = orderBook.restoreLog(log);
+            onOrderBookChange(orderBook, log.isCommandFinished(), line);
+        } finally {
+            orderBookLock.unlock();
+        }
     }
 
     @Override
     public void on(OrderDoneLog log) {
-        PageLine line = orderBook.restoreLog(log);
-        onOrderBookChange(orderBook, log.isCommandFinished(), line);
+        orderBookLock.lock();
+        try {
+            PageLine line = orderBook.restoreLog(log);
+            onOrderBookChange(orderBook, log.isCommandFinished(), line);
+        } finally {
+            orderBookLock.unlock();
+        }
     }
 
     protected abstract void onOrderBookChange(OrderBook orderBook, boolean stable, PageLine line);

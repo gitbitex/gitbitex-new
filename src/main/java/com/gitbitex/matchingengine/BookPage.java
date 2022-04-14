@@ -249,7 +249,7 @@ public class BookPage implements Serializable {
         log.setSize(size);
         log.setFunds(makerOrder.getPrice().multiply(size));
         log.setSide(makerOrder.getSide());
-        log.setTime(new Date());
+        log.setTime(takerOrder.getTime());
         return log;
     }
 

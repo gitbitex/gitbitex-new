@@ -1,12 +1,21 @@
 package com.gitbitex.feed;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.feed.message.L2SnapshotMessage;
+import com.gitbitex.feed.message.L2UpdateMessage;
 import com.gitbitex.feed.message.PongMessage;
 import com.gitbitex.feed.message.TickerMessage;
 import com.gitbitex.marketdata.TickerManager;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookChange;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -15,26 +24,21 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class SessionManager {
     private final ConcurrentHashMap<String, ConcurrentSkipListSet<String>> sessionIdsByChannel
-            = new ConcurrentHashMap<>();
+        = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ConcurrentSkipListSet<String>> channelsBySessionId
-            = new ConcurrentHashMap<>();
+        = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, WebSocketSession> sessionById = new ConcurrentHashMap<>();
     private final OrderBookManager orderBookManager;
     private final TickerManager tickerManager;
 
     @SneakyThrows
     public void subOrUnSub(WebSocketSession session, List<String> productIds, List<String> currencies,
-                           List<String> channels, boolean isSub) {
+        List<String> channels, boolean isSub) {
         for (String channel : channels) {
             switch (channel) {
                 case "level2":
@@ -45,11 +49,9 @@ public class SessionManager {
                             subscribeChannel(session, productChannel);
 
                             try {
-                                L2OrderBook snapshot = orderBookManager.getL2OrderBook(productId);
-                                if (snapshot != null) {
-                                    session.sendMessage(
-                                            new TextMessage(JSON.toJSONString(new L2SnapshotMessage(snapshot))));
-                                    session.getAttributes().put("snapshotSequence", snapshot.getSequence());
+                                L2OrderBook l2OrderBook = orderBookManager.getL2BatchOrderBook(productId);
+                                if (l2OrderBook != null) {
+                                    sendL2OrderBookToChannel(session, l2OrderBook);
                                 }
                             } catch (Exception e) {
                                 logger.error("send level2 snapshot error: {}", e.getMessage(), e);
@@ -132,7 +134,7 @@ public class SessionManager {
         }
     }
 
-    public void sendMessageToChannel(String channel, String message,boolean isL2Update) {
+    public void sendMessageToChannel(String channel, Object message) {
         Set<String> sessionIds = sessionIdsByChannel.get(channel);
         if (sessionIds == null || sessionIds.isEmpty()) {
             return;
@@ -143,10 +145,11 @@ public class SessionManager {
                 WebSocketSession session = sessionById.get(sessionId);
                 if (session != null) {
                     synchronized (session) {
-                        if (isL2Update && !session.getAttributes().containsKey("snapshotSequence")){
-                            return;
+                        if (message instanceof L2OrderBook) {
+                            sendL2OrderBookToChannel(session, (L2OrderBook)message);
+                        } else {
+                            session.sendMessage(new TextMessage(JSON.toJSONString(message)));
                         }
-                        session.sendMessage(new TextMessage(message));
                     }
                 }
             } catch (Exception e) {
@@ -155,10 +158,30 @@ public class SessionManager {
         });
     }
 
-    public void sendMessageToChannel(String channel, String message) {
-        sendMessageToChannel(channel,message,false);
-    }
+    private void sendL2OrderBookToChannel(WebSocketSession session, L2OrderBook l2OrderBook) throws IOException {
+        String key = "LAST_L2_ORDER_BOOK";
 
+        if (!session.getAttributes().containsKey(key)) {
+            session.sendMessage(new TextMessage(JSON.toJSONString(new L2SnapshotMessage(l2OrderBook))));
+            session.getAttributes().put(key, l2OrderBook);
+            return;
+        }
+
+        L2OrderBook lastL2OrderBook = (L2OrderBook)session.getAttributes().get(key);
+        if (lastL2OrderBook.getSequence() >= l2OrderBook.getSequence()) {
+            logger.warn("discard l2 order book, too old");
+            return;
+        }
+
+        List<L2OrderBookChange> changes = lastL2OrderBook.diff(l2OrderBook);
+        if (changes == null || changes.isEmpty()) {
+            return;
+        }
+
+        L2UpdateMessage l2UpdateMessage = new L2UpdateMessage(l2OrderBook.getProductId(), changes);
+        session.sendMessage(new TextMessage(JSON.toJSONString(l2UpdateMessage)));
+        session.getAttributes().put(key, l2OrderBook);
+    }
 
     public void sendPong(WebSocketSession session) {
         try {
@@ -173,10 +196,10 @@ public class SessionManager {
     private void subscribeChannel(WebSocketSession session, String channel) {
         logger.info("sub: {} {}", session.getId(), channel);
         sessionIdsByChannel
-                .computeIfAbsent(channel, k -> new ConcurrentSkipListSet<>())
-                .add(session.getId());
+            .computeIfAbsent(channel, k -> new ConcurrentSkipListSet<>())
+            .add(session.getId());
         channelsBySessionId.computeIfAbsent(session.getId(), k -> new ConcurrentSkipListSet<>())
-                .add(channel);
+            .add(channel);
         sessionById.put(session.getId(), session);
     }
 

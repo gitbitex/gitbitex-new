@@ -33,8 +33,8 @@ public class OrderBookManager {
         return (OrderBook)SerializationUtils.deserialize(Base64.getDecoder().decode(o.toString()));
     }
 
-    public void saveL3OrderBook(String productId, L3OrderBook l3OrderBook) {
-        redissonClient.getBucket(keyForL3(productId)).set(JSON.toJSONString(l3OrderBook));
+    public void saveL3OrderBook(L3OrderBook l3OrderBook) {
+        redissonClient.getBucket(keyForL3(l3OrderBook.getProductId())).set(JSON.toJSONString(l3OrderBook));
     }
 
     public L3OrderBook getL3OrderBook(String productId) {
@@ -45,12 +45,24 @@ public class OrderBookManager {
         return JSON.parseObject(o.toString(), L3OrderBook.class);
     }
 
-    public void saveL2OrderBook(String productId, L2OrderBook l2OrderBook) {
-        redissonClient.getBucket(keyForL2(productId)).setAsync(JSON.toJSONString(l2OrderBook));
+    public void saveL2OrderBook( L2OrderBook l2OrderBook) {
+        redissonClient.getBucket(keyForL2(l2OrderBook.getProductId())).setAsync(JSON.toJSONString(l2OrderBook));
     }
 
     public L2OrderBook getL2OrderBook(String productId) {
         Object o = redissonClient.getBucket(keyForL2(productId)).get();
+        if (o == null) {
+            return null;
+        }
+        return JSON.parseObject(o.toString(), L2OrderBook.class);
+    }
+
+    public void saveL2BatchOrderBook( L2OrderBook l2OrderBook) {
+        redissonClient.getBucket(keyForL2Batch(l2OrderBook.getProductId())).setAsync(JSON.toJSONString(l2OrderBook));
+    }
+
+    public L2OrderBook getL2BatchOrderBook(String productId) {
+        Object o = redissonClient.getBucket(keyForL2Batch(productId)).get();
         if (o == null) {
             return null;
         }
@@ -65,8 +77,8 @@ public class OrderBookManager {
         return JSON.parseObject(o.toString(), L2OrderBook.class);
     }
 
-    public void saveL1OrderBook(String productId, L2OrderBook orderBook) {
-        redissonClient.getBucket(keyForL1(productId)).set(JSON.toJSONString(orderBook));
+    public void saveL1OrderBook( L2OrderBook orderBook) {
+        redissonClient.getBucket(keyForL1(orderBook.getProductId())).set(JSON.toJSONString(orderBook));
     }
 
     private String keyForL1(String productId) {
@@ -75,6 +87,10 @@ public class OrderBookManager {
 
     private String keyForL2(String productId) {
         return productId + ".l2_order_book";
+    }
+
+    private String keyForL2Batch(String productId) {
+        return productId + ".l2_batch_order_book";
     }
 
     private String keyForL3(String productId) {

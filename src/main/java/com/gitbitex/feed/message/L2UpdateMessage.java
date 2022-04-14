@@ -1,10 +1,9 @@
 package com.gitbitex.feed.message;
 
-import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 
-import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdate;
-import com.gitbitex.matchingengine.snapshot.L2OrderBookUpdate.Change;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookChange;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -28,15 +27,14 @@ public class L2UpdateMessage {
     private String type = "l2update";
     private String productId;
     private String time;
-    private Collection<Change> changes;
+    private List<L2OrderBookChange> changes;
 
     public L2UpdateMessage() {
     }
 
-    public L2UpdateMessage(L2OrderBookUpdate l2OrderBookUpdate) {
-        this.productId = "l2update";
-        this.productId = l2OrderBookUpdate.getProductId();
-        this.changes = l2OrderBookUpdate.getChanges();
+    public L2UpdateMessage(String productId, List<L2OrderBookChange> l2OrderBookChanges) {
+        this.productId = productId;
         this.time = new Date().toInstant().toString();
+        this.changes = l2OrderBookChanges;
     }
 }

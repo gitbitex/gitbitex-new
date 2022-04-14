@@ -3,7 +3,6 @@ package com.gitbitex.liquidity;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
-import java.text.DateFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
@@ -16,7 +15,6 @@ import javax.annotation.PostConstruct;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.order.OrderManager;
-import com.gitbitex.order.entity.Order;
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
 import lombok.Getter;
@@ -29,12 +27,13 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-public class WebSocketClientConfig {
+public class CoinbaseTrader {
     private final OrderManager orderManager;
 
     public static void main(String[] a) throws Exception, InterruptedException, IOException {
-      String s= Date.from( Instant.from( DateTimeFormatter.ISO_INSTANT.parse("2022-04-13T11:00:58.222700Z"))).toString();
-      System.out.println(s);
+        String s = Date.from(Instant.from(DateTimeFormatter.ISO_INSTANT.parse("2022-04-13T11:00:58.222700Z")))
+            .toString();
+        System.out.println(s);
     }
 
     @PostConstruct
@@ -100,9 +99,9 @@ public class WebSocketClientConfig {
                             orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId, OrderType.LIMIT,
                                 OrderSide.valueOf(message.getSide().toUpperCase()), new BigDecimal(message.getSize()),
                                 new BigDecimal(message.getPrice()), null, null, null);
-                        }else{
+                        } else {
                             orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId, OrderType.MARKET,
-                                OrderSide.valueOf(message.getSide().toUpperCase()), null,null,
+                                OrderSide.valueOf(message.getSide().toUpperCase()), null, null,
                                 new BigDecimal(message.getFunds()), null, null);
                         }
                         break;
@@ -110,12 +109,12 @@ public class WebSocketClientConfig {
                         logger.info("match {}", message.getSide());
                         break;
                     case "done":
-                        orderManager.cancelOrder(message.getOrderId(),userId,productId);
+                        orderManager.cancelOrder(message.getOrderId(), userId, productId);
                         break;
                     default:
                 }
             } catch (Exception e) {
-                logger.error("error", e);
+                logger.error("error: {}", e.getMessage(), e);
             }
         }
 

@@ -32,7 +32,7 @@
             <fileNamePattern>logs/app-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>500MB</maxFileSize>
             <maxHistory>30</maxHistory>
-            <totalSizeCap>50000MB</totalSizeCap>
+            <totalSizeCap>5000MB</totalSizeCap>
             <cleanHistoryOnStart>false</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
@@ -40,9 +40,14 @@
     <logger name="org.apache.kafka" level="WARN">
     </logger>
 
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="RollingFile" />
+        <queueSize>10000</queueSize>
+    </appender>
+
     <root level="INFO">
         <appender-ref ref="Console"/>
-        <appender-ref ref="RollingFile"/>
+        <appender-ref ref="ASYNC"/>
     </root>
 
 </configuration>

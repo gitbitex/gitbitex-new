@@ -34,7 +34,7 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
     private final OrderBookManager orderBookManager;
     private final OrderBookLogPersistenceThread orderBookLogPersistenceThread;
     private final OrderBookCommandDispatcher orderBookCommandDispatcher;
-    private final BlockingQueue<OrderBookLog> orderBookLogQueue = new LinkedBlockingQueue<>(10000);
+    private final BlockingQueue<OrderBookLog> orderBookLogQueue = new LinkedBlockingQueue<>(1000000);
     private final AppProperties appProperties;
     private OrderBook orderBook;
 
@@ -123,7 +123,8 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
 
     private void checkOrderBookLogQueueCapacity() {
         if (orderBookLogQueue.remainingCapacity() == 0) {
-            logger.warn("orderBookLogQueue queue is full, matching thread may block");
+            logger.warn("orderBookLogQueue(size={}) queue is full, matching thread may block",
+                orderBookLogQueue.size());
         }
     }
 
