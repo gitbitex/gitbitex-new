@@ -43,6 +43,7 @@ public class CoinbaseTrader {
             try {
                 MyClient client1 = new MyClient(new URI("wss://ws-feed.exchange.coinbase.com"));
                 client1.connectBlocking();
+                logger.info("exit");
             } catch (Exception e) {
                 logger.error("error", e);
             }
@@ -83,9 +84,9 @@ public class CoinbaseTrader {
 
             send("{\"type\":\"subscribe\",\"product_ids\":[\"BTC-USD\"],\"channels\":[\"full\"],\"token\":\"\"}");
 
-            Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
+            /*Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
                 send(("{\"type\": \"ping\"}"));
-            }, 0, 3, TimeUnit.SECONDS);
+            }, 0, 3, TimeUnit.SECONDS);*/
         }
 
         @Override
@@ -120,7 +121,7 @@ public class CoinbaseTrader {
 
         @Override
         public void onClose(int i, String s, boolean b) {
-
+            logger.info("close");
         }
 
         @Override
