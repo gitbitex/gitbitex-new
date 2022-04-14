@@ -64,7 +64,7 @@ public class L2BatchOrderBookPersistenceThread extends OrderBookListener {
         if (orderBookLock.tryLock()) {
             try {
                 logger.info("start take l2_batch snapshot");
-                l2OrderBook = new L2OrderBook(orderBook, 50);
+                l2OrderBook = new L2OrderBook(orderBook, appProperties.getL2BatchOrderBookSize());
                 lastSnapshotSequence = l2OrderBook.getSequence();
                 lastSnapshotTime = System.currentTimeMillis();
                 logger.info("done");

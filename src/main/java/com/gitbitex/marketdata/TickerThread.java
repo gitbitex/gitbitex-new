@@ -55,7 +55,6 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
             if (log instanceof OrderMatchLog) {
                 OrderMatchLog orderMatchLog = ((OrderMatchLog)log);
                 orderMatchLog.setOffset(record.offset());
-                logger.info(JSON.toJSONString(orderMatchLog));
 
                 refreshTicker(orderMatchLog);
             }

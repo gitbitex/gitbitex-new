@@ -1,19 +1,6 @@
 package com.gitbitex.liquidity;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.net.URI;
-import java.time.Instant;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.PostConstruct;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.order.OrderManager;
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
@@ -24,15 +11,28 @@ import lombok.extern.slf4j.Slf4j;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.net.URI;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class CoinbaseTrader {
     private final OrderManager orderManager;
+    private final ExecutorService executor = Executors.newFixedThreadPool(1);
 
     public static void main(String[] a) throws Exception, InterruptedException, IOException {
         String s = Date.from(Instant.from(DateTimeFormatter.ISO_INSTANT.parse("2022-04-13T11:00:58.222700Z")))
-            .toString();
+                .toString();
         System.out.println(s);
     }
 
@@ -84,44 +84,52 @@ public class CoinbaseTrader {
 
             send("{\"type\":\"subscribe\",\"product_ids\":[\"BTC-USD\"],\"channels\":[\"full\"],\"token\":\"\"}");
 
-            /*Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
-                send(("{\"type\": \"ping\"}"));
-            }, 0, 3, TimeUnit.SECONDS);*/
+            Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
+                try {
+                    this.sendPing();
+                } catch (Exception e) {
+                    logger.error("send ping error: {}", e.getMessage(), e);
+                }
+            }, 0, 3, TimeUnit.SECONDS);
         }
 
         @Override
         public void onMessage(String s) {
             logger.info(s);
-            try {
-                ChannelMessage message = JSON.parseObject(s, ChannelMessage.class);
-                switch (message.getType()) {
-                    case "received":
-                        if (message.getPrice() != null) {
-                            orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId, OrderType.LIMIT,
-                                OrderSide.valueOf(message.getSide().toUpperCase()), new BigDecimal(message.getSize()),
-                                new BigDecimal(message.getPrice()), null, null, null);
-                        } else {
-                            orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId, OrderType.MARKET,
-                                OrderSide.valueOf(message.getSide().toUpperCase()), null, null,
-                                new BigDecimal(message.getFunds()), null, null);
-                        }
-                        break;
-                    case "match":
-                        logger.info("match {}", message.getSide());
-                        break;
-                    case "done":
-                        orderManager.cancelOrder(message.getOrderId(), userId, productId);
-                        break;
-                    default:
+            executor.execute(() -> {
+                try {
+                    ChannelMessage message = JSON.parseObject(s, ChannelMessage.class);
+                    switch (message.getType()) {
+                        case "received":
+                            if (message.getPrice() != null) {
+                                orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId, OrderType.LIMIT,
+                                        OrderSide.valueOf(message.getSide().toUpperCase()), new BigDecimal(message.getSize()),
+                                        new BigDecimal(message.getPrice()), null, null, null);
+                            } else {
+                                orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId, OrderType.MARKET,
+                                        OrderSide.valueOf(message.getSide().toUpperCase()), null, null,
+                                        new BigDecimal(message.getFunds()), null, null);
+                            }
+                            break;
+                        case "done":
+                            orderManager.cancelOrder(message.getOrderId(), userId, productId);
+                            break;
+                        default:
+                    }
+                } catch (Exception e) {
+                    logger.error("error: {}", e.getMessage(), e);
                 }
-            } catch (Exception e) {
-                logger.error("error: {}", e.getMessage(), e);
-            }
+            });
         }
 
         @Override
         public void onClose(int i, String s, boolean b) {
-            logger.info("close");
+            logger.info("connection closed, reconnect...");
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException ignored) {
+            }
+            this.connect();
         }
 
         @Override

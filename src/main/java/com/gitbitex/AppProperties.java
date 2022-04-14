@@ -24,6 +24,8 @@ public class AppProperties {
 
     private int l2BatchOrderBookPersistenceInterval = 20;
 
+    private int l2BatchOrderBookSize = 50;
+
     private int l2OrderBookPersistenceInterval = 10000;
 
     private int l3OrderBookPersistenceInterval = 10000;
