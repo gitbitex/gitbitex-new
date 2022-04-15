@@ -11,12 +11,14 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.account.AccountManager;
 import com.gitbitex.account.command.CancelOrderCommand;
 import com.gitbitex.account.command.PlaceOrderCommand;
+import com.gitbitex.account.command.SettleOrderCommand;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.order.entity.Fill;
 import com.gitbitex.order.entity.Order;
 import com.gitbitex.order.entity.Order.OrderSide;
+import com.gitbitex.order.entity.Order.OrderStatus;
 import com.gitbitex.order.entity.Order.OrderType;
 import com.gitbitex.order.entity.Order.TimeInForcePolicy;
 import com.gitbitex.order.repository.FillRepository;
@@ -159,8 +161,24 @@ public class OrderManager {
         fill.setFunds(funds);
         fill.setSide(order.getSide());
         fillRepository.save(fill);
-
         return fill.getFillId();
+    }
+
+    public void updateOrderStatus(String orderId, OrderStatus newStatus) {
+        Order order = orderRepository.findByOrderId(orderId);
+        if (order == null) {
+            throw new RuntimeException("order not found: " + orderId);
+        }
+
+        order.setStatus(newStatus);
+        save(order);
+
+        if (order.getStatus() == Order.OrderStatus.FILLED || order.getStatus() == Order.OrderStatus.CANCELLED) {
+            SettleOrderCommand settleOrderCommand = new SettleOrderCommand();
+            settleOrderCommand.setUserId(order.getUserId());
+            settleOrderCommand.setOrderId(order.getOrderId());
+            messageProducer.sendToAccountant(settleOrderCommand);
+        }
     }
 
     public void save(Order order) {

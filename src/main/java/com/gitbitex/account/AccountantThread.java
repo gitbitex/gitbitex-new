@@ -41,8 +41,11 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
     String userId = "ad80fcfe-c3a1-46a1-acf8-1d6a909b2c5a";
 
     public AccountantThread(KafkaConsumer<String, AccountCommand> consumer,
-        AccountManager accountManager, OrderManager orderManager, ProductManager productManager,
-        KafkaMessageProducer messageProducer, AppProperties appProperties) {
+        AccountManager accountManager,
+        OrderManager orderManager,
+        ProductManager productManager,
+        KafkaMessageProducer messageProducer,
+        AppProperties appProperties) {
         super(consumer, logger);
         this.messageDispatcher = new AccountCommandDispatcher(this);
         this.accountManager = accountManager;
@@ -77,6 +80,7 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
     @Override
     protected void processRecords(KafkaConsumer<String, AccountCommand> consumer,
         ConsumerRecords<String, AccountCommand> records) {
+        logger.info("received {} record(s)",records.count());
         for (ConsumerRecord<String, AccountCommand> record : records) {
             logger.info("- {} {}", record.offset(), JSON.toJSONString(record.value()));
             this.messageDispatcher.dispatch(record.value());
@@ -126,7 +130,7 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
 
     @Override
     public void on(SettleOrderFillCommand command) {
-        if (isTrader(command.getUserId())){
+        if (isTrader(command.getUserId())) {
             return;
         }
 
@@ -156,7 +160,7 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
 
     @Override
     public void on(SettleOrderCommand command) {
-        if (isTrader(command.getUserId())){
+        if (isTrader(command.getUserId())) {
             return;
         }
 

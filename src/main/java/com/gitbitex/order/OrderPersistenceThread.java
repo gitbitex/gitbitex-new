@@ -1,6 +1,8 @@
 package com.gitbitex.order;
 
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongUnaryOperator;
 
 import com.alibaba.fastjson.JSON;
 
@@ -8,7 +10,6 @@ import com.gitbitex.AppProperties;
 import com.gitbitex.account.command.SettleOrderCommand;
 import com.gitbitex.account.command.SettleOrderFillCommand;
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.order.command.FillOrderCommand;
 import com.gitbitex.order.command.OrderCommand;
 import com.gitbitex.order.command.OrderCommandDispatcher;
@@ -29,6 +30,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
     private final OrderManager orderManager;
     private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
+    AtomicLong minCommittableOffset;
 
     public OrderPersistenceThread(KafkaConsumer<String, OrderCommand> consumer,
         KafkaMessageProducer messageProducer, OrderManager orderManager, AppProperties appProperties) {
@@ -49,6 +51,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
         ConsumerRecords<String, OrderCommand> records) {
         for (ConsumerRecord<String, OrderCommand> record : records) {
             logger.info("- {}", JSON.toJSONString(record.value()));
+            minCommittableOffset.incrementAndGet();
             this.orderCommandDispatcher.dispatch(record.value());
         }
         consumer.commitSync();
@@ -59,6 +62,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
         if (orderManager.findByOrderId(command.getOrder().getOrderId()) == null) {
             orderManager.save(command.getOrder());
         }
+        minCommittableOffset.decrementAndGet();
     }
 
     @Override
@@ -68,15 +72,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
             throw new RuntimeException("order not found: " + command.getOrderId());
         }
 
-        if (command.getDoneReason() != null) {
-            if (command.getDoneReason() == OrderDoneLog.DoneReason.FILLED) {
-                order.setStatus(Order.OrderStatus.FILLED);
-            } else {
-                order.setStatus(Order.OrderStatus.CANCELLED);
-            }
-        } else {
-            order.setStatus(command.getOrderStatus());
-        }
+        order.setStatus(command.getOrderStatus());
         orderManager.save(order);
 
         if (order.getStatus() == Order.OrderStatus.FILLED || order.getStatus() == Order.OrderStatus.CANCELLED) {

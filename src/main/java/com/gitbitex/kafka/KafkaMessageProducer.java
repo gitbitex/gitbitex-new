@@ -23,6 +23,7 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
 
     @SneakyThrows
     public void sendToMatchingEngine(OrderBookCommand command) {
+        long t1=System.currentTimeMillis();
         if (command.getProductId() == null) {
             throw new NullPointerException("productId");
         }
@@ -31,6 +32,7 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, command.getProductId(),
             JSON.toJSONString(command));
         super.send(record).get();
+        logger.info("sendToMatchingEngine time : {}",System.currentTimeMillis()-t1);
     }
 
     @SneakyThrows

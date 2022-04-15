@@ -23,6 +23,8 @@ public class AppConfiguration {
         properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         properties.put("compression.type", "zstd");
+        properties.put("max.in.flight.requests.per.connection", 1);
+        properties.put("reties", 2147483647);
         return new KafkaMessageProducer(properties, appProperties);
     }
 }

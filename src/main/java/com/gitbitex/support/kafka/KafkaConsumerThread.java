@@ -25,8 +25,8 @@ import org.slf4j.Logger;
  */
 @RequiredArgsConstructor
 public abstract class KafkaConsumerThread<K, V> extends Thread {
+    protected final KafkaConsumer<K, V> consumer;
     private final AtomicBoolean closed = new AtomicBoolean();
-    private final KafkaConsumer<K, V> consumer;
     private final Logger logger;
 
     @Override

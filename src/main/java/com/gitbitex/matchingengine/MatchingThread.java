@@ -34,8 +34,9 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
     private final OrderBookManager orderBookManager;
     private final OrderBookLogPersistenceThread orderBookLogPersistenceThread;
     private final OrderBookCommandDispatcher orderBookCommandDispatcher;
-    private final BlockingQueue<OrderBookLog> orderBookLogQueue = new LinkedBlockingQueue<>(1000000);
+    private final BlockingQueue<OrderBookLog> orderBookLogQueue = new LinkedBlockingQueue<>(10000);
     private final AppProperties appProperties;
+    private final KafkaMessageProducer messageProducer;
     private OrderBook orderBook;
 
     public MatchingThread(String productId, OrderBookManager orderBookManager,
@@ -48,6 +49,7 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
             appProperties);
         this.orderBookCommandDispatcher = new OrderBookCommandDispatcher(this);
         this.appProperties = appProperties;
+        this.messageProducer = messageProducer;
     }
 
     @Override
@@ -140,8 +142,7 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
             logger.info("starting...");
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    OrderBookLog log = orderBookLogQueue.take();
-                    sendOrderBookLog(log);
+                    sendOrderBookLog(orderBookLogQueue.take());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (Exception e) {
@@ -161,7 +162,12 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
             String topic = log.getProductId() + "-" + appProperties.getOrderBookLogTopic();
             String key = log.getProductId();
             ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, JSON.toJSONString(log));
-            messageProducer.send(record).get();
+            messageProducer.send(record, (metadata, exception) -> {
+                if (exception != null) {
+                    logger.error("kafka produce error: {}", exception.getMessage(), exception);
+                    throw new RuntimeException(exception);
+                }
+            });
         }
     }
 

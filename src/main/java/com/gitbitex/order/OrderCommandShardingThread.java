@@ -10,6 +10,7 @@ import com.gitbitex.matchingengine.log.OrderBookLog;
 import com.gitbitex.matchingengine.log.OrderBookLogDispatcher;
 import com.gitbitex.matchingengine.log.OrderBookLogHandler;
 import com.gitbitex.matchingengine.log.OrderDoneLog;
+import com.gitbitex.matchingengine.log.OrderDoneLog.DoneReason;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.OrderOpenLog;
 import com.gitbitex.matchingengine.log.OrderReceivedLog;
@@ -18,6 +19,7 @@ import com.gitbitex.order.command.OrderCommand;
 import com.gitbitex.order.command.SaveOrderCommand;
 import com.gitbitex.order.command.UpdateOrderStatusCommand;
 import com.gitbitex.order.entity.Order;
+import com.gitbitex.order.entity.Order.OrderStatus;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -100,7 +102,8 @@ public class OrderCommandShardingThread extends KafkaConsumerThread<String, Orde
     public void on(OrderDoneLog log) {
         UpdateOrderStatusCommand updateOrderStatusCommand = new UpdateOrderStatusCommand();
         updateOrderStatusCommand.setOrderId(log.getOrderId());
-        updateOrderStatusCommand.setOrderStatus(Order.OrderStatus.CANCELLED);
+        updateOrderStatusCommand.setOrderStatus(
+            log.getDoneReason() == DoneReason.FILLED ? OrderStatus.FILLED : Order.OrderStatus.CANCELLED);
         updateOrderStatusCommand.setDoneReason(log.getDoneReason());
         sendCommand(updateOrderStatusCommand);
     }
