@@ -65,19 +65,20 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
             record.value().setOffset(record.offset());
             this.orderCommandDispatcher.dispatch(record.value());
         }
-        if (pendingOffset.isEmpty()) {
-            consumer.commitSync();
-            uncommitted = 0;
-        }
 
         if (uncommitted > 10) {
             logger.info("start commit offset: uncommitted={}", uncommitted);
             while (!pendingOffset.isEmpty()) {
                 logger.warn("pending offset not empty");
+                try {
+                    Thread.sleep(200);
+                }catch (InterruptedException ignored){
+                }
                 continue;
             }
             consumer.commitSync();
             uncommitted=0;
+            logger.info("committed");
         }
     }
 
