@@ -62,8 +62,9 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
         for (ConsumerRecord<String, OrderCommand> record : records) {
             //logger.info("- {}", JSON.toJSONString(record.value()));
             uncommitted++;
-            record.value().setOffset(record.offset());
-            this.orderCommandDispatcher.dispatch(record.value());
+            OrderCommand command= record.value();
+            command.setOffset(record.offset());
+            this.orderCommandDispatcher.dispatch(command);
         }
 
         if (uncommitted > 500) {
