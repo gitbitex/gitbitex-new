@@ -68,7 +68,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
             this.orderCommandDispatcher.dispatch(command);
         }
 
-        if (uncommitted > 500) {
+        if (uncommitted > 1000) {
             logger.info("start commit offset: uncommitted={}", uncommitted);
             while (!pendingOffset.isEmpty()) {
                 logger.warn("pending offset not empty");
