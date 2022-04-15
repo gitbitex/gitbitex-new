@@ -77,6 +77,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
                 continue;
             }
             consumer.commitSync();
+            uncommitted=0;
         }
     }
 
