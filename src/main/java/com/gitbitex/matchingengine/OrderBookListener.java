@@ -72,7 +72,7 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
         for (ConsumerRecord<String, OrderBookLog> record : records) {
             OrderBookLog orderBookLog = record.value();
             orderBookLog.setOffset(record.offset());
-            logger.info("- {} {} {}", record.offset(), orderBookLog.getSequence(), JSON.toJSONString(orderBookLog));
+            //logger.info("- {} {} {}", record.offset(), orderBookLog.getSequence(), JSON.toJSONString(orderBookLog));
 
             // check the sequence to ensure that each message is processed in order
             if (orderBookLog.getSequence() <= orderBook.getSequence().get()) {

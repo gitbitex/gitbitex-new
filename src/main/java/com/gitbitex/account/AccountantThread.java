@@ -82,7 +82,7 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
         ConsumerRecords<String, AccountCommand> records) {
         logger.info("received {} record(s)",records.count());
         for (ConsumerRecord<String, AccountCommand> record : records) {
-            logger.info("- {} {}", record.offset(), JSON.toJSONString(record.value()));
+            //logger.info("- {} {}", record.offset(), JSON.toJSONString(record.value()));
             this.messageDispatcher.dispatch(record.value());
         }
         consumer.commitSync();
