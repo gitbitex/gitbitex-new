@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 @Slf4j
 public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCommand>
@@ -29,7 +30,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
     private final OrderManager orderManager;
     private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
-    Set<Long> pendingOffset = new TreeSet<>();
+    Set<Long> pendingOffset = new ConcurrentSkipListSet<>();
     long uncommitted = 0;
 
     public OrderPersistenceThread(KafkaConsumer<String, OrderCommand> consumer,
