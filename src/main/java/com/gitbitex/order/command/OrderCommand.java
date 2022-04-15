@@ -8,6 +8,7 @@ import lombok.Setter;
 public class OrderCommand {
     private Typ type;
     private String orderId;
+    private long offset;
 
     public enum Typ {
         SAVE_ORDER,

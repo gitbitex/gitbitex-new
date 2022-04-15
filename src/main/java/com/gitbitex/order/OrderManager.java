@@ -107,7 +107,7 @@ public class OrderManager {
         PlaceOrderCommand placeOrderCommand = new PlaceOrderCommand();
         placeOrderCommand.setUserId(order.getUserId());
         placeOrderCommand.setOrder(order);
-        messageProducer.sendToAccountant(placeOrderCommand);
+        messageProducer.sendToAccountantAsync(placeOrderCommand,null);
 
         return order.getOrderId();
     }
@@ -117,7 +117,7 @@ public class OrderManager {
         cancelOrderCommand.setUserId(order.getUserId());
         cancelOrderCommand.setOrderId(order.getOrderId());
         cancelOrderCommand.setProductId(order.getProductId());
-        messageProducer.sendToAccountant(cancelOrderCommand);
+        messageProducer.sendToAccountantAsync(cancelOrderCommand,null);
     }
 
     public void cancelOrder(String orderId, String userId, String productId)
@@ -126,7 +126,7 @@ public class OrderManager {
         cancelOrderCommand.setUserId(userId);
         cancelOrderCommand.setOrderId(orderId);
         cancelOrderCommand.setProductId(productId);
-        messageProducer.sendToAccountant(cancelOrderCommand);
+        messageProducer.sendToAccountantAsync(cancelOrderCommand,null);
     }
 
     @Transactional(rollbackFor = Exception.class)
