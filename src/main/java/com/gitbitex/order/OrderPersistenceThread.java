@@ -60,7 +60,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
     protected void processRecords(KafkaConsumer<String, OrderCommand> consumer,
                                   ConsumerRecords<String, OrderCommand> records) {
         for (ConsumerRecord<String, OrderCommand> record : records) {
-            logger.info("- {}", JSON.toJSONString(record.value()));
+            //logger.info("- {}", JSON.toJSONString(record.value()));
             uncommitted++;
             record.value().setOffset(record.offset());
             this.orderCommandDispatcher.dispatch(record.value());
