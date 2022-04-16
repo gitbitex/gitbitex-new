@@ -8,7 +8,6 @@ import lombok.Setter;
 public class AccountCommand {
     private String userId;
     private CommandType type;
-    private long offset;
 
     public enum CommandType {
         PLACE_ORDER,

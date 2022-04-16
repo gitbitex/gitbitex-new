@@ -95,7 +95,7 @@ public class CoinbaseTrader {
 
         @Override
         public void onMessage(String s) {
-            logger.info(s);
+            //logger.info(s);
             executor.execute(() -> {
                 try {
                     ChannelMessage message = JSON.parseObject(s, ChannelMessage.class);
@@ -105,7 +105,7 @@ public class CoinbaseTrader {
                                 orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId, OrderType.LIMIT,
                                         OrderSide.valueOf(message.getSide().toUpperCase()), new BigDecimal(message.getSize()),
                                         new BigDecimal(message.getPrice()), null, null, null);
-                            } else {
+                            } else if (message.getFunds() != null) {
                                 orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId, OrderType.MARKET,
                                         OrderSide.valueOf(message.getSide().toUpperCase()), null, null,
                                         new BigDecimal(message.getFunds()), null, null);

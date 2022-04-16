@@ -1,39 +1,29 @@
 package com.gitbitex.matchingengine;
 
-import java.io.Serializable;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicLong;
-
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.NewOrderCommand;
-import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.matchingengine.log.OrderDoneLog;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderOpenLog;
-import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.matchingengine.log.*;
 import com.gitbitex.order.entity.Order;
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
 import org.springframework.beans.BeanUtils;
 
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
+
 public class BookPage implements Serializable {
     private final String productId;
-    private final TreeMap<BigDecimal, PageLine> lines;
-    private final LinkedHashMap<String, BookOrder> orders = new LinkedHashMap<>();
+    private final TreeMap<BigDecimal, PageLine> lineByPrice;
+    private final LinkedHashMap<String, BookOrder> orderById = new LinkedHashMap<>();
     private final AtomicLong tradeId;
     private final AtomicLong sequence;
 
     public BookPage(String productId, Comparator<BigDecimal> priceComparator, AtomicLong tradeId, AtomicLong sequence,
-        List<BookOrder> orders) {
-        this.lines = new TreeMap<>(priceComparator);
+                    List<BookOrder> orders) {
+        this.lineByPrice = new TreeMap<>(priceComparator);
         this.productId = productId;
         this.tradeId = tradeId;
         this.sequence = sequence;
@@ -66,7 +56,7 @@ public class BookPage implements Serializable {
         List<BookOrder> matchedOrders = new ArrayList<>();
 
         MATCHING:
-        for (PageLine line : lines.values()) {
+        for (PageLine line : lineByPrice.values()) {
             BigDecimal price = line.getPrice();
 
             // check whether there is price crossing between the taker and the maker
@@ -82,7 +72,7 @@ public class BookPage implements Serializable {
                 return logs;
             }
 
-            for (BookOrder makerOrder : line.getOrders()) {
+            for (BookOrder makerOrder : line.getOrderById()) {
                 // calculate the size of taker at current price
                 BigDecimal takerSize;
                 if (takerOrder.getSide() == Order.OrderSide.BUY && takerOrder.getType() == Order.OrderType.MARKET) {
@@ -141,7 +131,7 @@ public class BookPage implements Serializable {
 
     public OrderDoneLog executeCommand(CancelOrderCommand command) {
         String orderId = command.getOrderId();
-        BookOrder order = orders.get(orderId);
+        BookOrder order = orderById.get(orderId);
         if (order == null) {
             return null;
         }
@@ -154,49 +144,49 @@ public class BookPage implements Serializable {
     }
 
     public PageLine addOrder(BookOrder order) {
-        PageLine line = lines.computeIfAbsent(order.getPrice(), k -> new PageLine(order.getPrice(), order.getSide()));
+        PageLine line = lineByPrice.computeIfAbsent(order.getPrice(), k -> new PageLine(order.getPrice(), order.getSide()));
         line.addOrder(order);
-        orders.put(order.getOrderId(), order);
+        orderById.put(order.getOrderId(), order);
         return line;
     }
 
     public PageLine decreaseOrderSize(String orderId, BigDecimal size) {
-        BookOrder order = orders.get(orderId);
-        PageLine line = lines.get(order.getPrice());
+        BookOrder order = orderById.get(orderId);
+        PageLine line = lineByPrice.get(order.getPrice());
         line.decreaseOrderSize(orderId, size);
         return line;
     }
 
     public PageLine removeOrderById(String orderId) {
-        BookOrder order = orders.remove(orderId);
+        BookOrder order = orderById.remove(orderId);
         if (order == null) {
             return null;
         }
 
-        PageLine line = lines.get(order.getPrice());
+        PageLine line = lineByPrice.get(order.getPrice());
         line.removeOrderById(order.getOrderId());
-        if (line.getOrders().isEmpty()) {
-            lines.remove(order.getPrice());
+        if (line.getOrderById().isEmpty()) {
+            lineByPrice.remove(order.getPrice());
         }
         return line;
     }
 
-    public Collection<PageLine> getLines() {
-        return this.lines.values();
+    public Collection<PageLine> getLineByPrice() {
+        return this.lineByPrice.values();
     }
 
-    public Collection<BookOrder> getOrders() {
-        return this.orders.values();
+    public Collection<BookOrder> getOrderById() {
+        return this.orderById.values();
     }
 
     public BookOrder getOrderById(String orderId) {
-        return this.orders.get(orderId);
+        return this.orderById.get(orderId);
     }
 
     private boolean isPriceCrossed(BookOrder takerOrder, BigDecimal makerOrderPrice) {
         return ((takerOrder.getSide() == Order.OrderSide.BUY && takerOrder.getPrice().compareTo(makerOrderPrice) >= 0)
-            ||
-            (takerOrder.getSide() == Order.OrderSide.SELL && takerOrder.getPrice().compareTo(makerOrderPrice) <= 0));
+                ||
+                (takerOrder.getSide() == Order.OrderSide.SELL && takerOrder.getPrice().compareTo(makerOrderPrice) <= 0));
     }
 
     private OrderDoneLog.DoneReason determineDoneReason(BookOrder order) {
@@ -237,7 +227,7 @@ public class BookPage implements Serializable {
     }
 
     private OrderMatchLog orderMatchLog(long commandOffset, BookOrder takerOrder, BookOrder makerOrder,
-        BigDecimal size) {
+                                        BigDecimal size) {
         OrderMatchLog log = new OrderMatchLog();
         log.setCommandOffset(commandOffset);
         log.setSequence(sequence.incrementAndGet());

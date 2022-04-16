@@ -1,25 +1,29 @@
 package com.gitbitex.marketdata;
 
-import java.util.Collections;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
+
+import java.util.Collection;
+import java.util.Collections;
 
 @Slf4j
 public class OrderBookLogPublishLThread extends KafkaConsumerThread<String, String> {
     private final String productId;
     private final AppProperties appProperties;
     private final RTopic logTopic;
+    private long uncommittedRecordCount;
 
     public OrderBookLogPublishLThread(String productId, KafkaConsumer<String, String> kafkaConsumer,
-        RedissonClient redissonClient, AppProperties appProperties) {
+                                      RedissonClient redissonClient, AppProperties appProperties) {
         super(kafkaConsumer, logger);
         this.productId = productId;
         this.appProperties = appProperties;
@@ -27,15 +31,31 @@ public class OrderBookLogPublishLThread extends KafkaConsumerThread<String, Stri
     }
 
     @Override
-    protected void doSubscribe(KafkaConsumer<String, String> consumer) {
-        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()));
+    protected void doSubscribe() {
+        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()), new ConsumerRebalanceListener() {
+            @Override
+            public void onPartitionsRevoked(Collection<TopicPartition> collection) {
+                consumer.commitSync();
+            }
+
+            @Override
+            public void onPartitionsAssigned(Collection<TopicPartition> collection) {
+
+            }
+        });
     }
 
     @Override
-    protected void processRecords(KafkaConsumer<String, String> consumer, ConsumerRecords<String, String> records) {
+    protected void processRecords(ConsumerRecords<String, String> records) {
+        uncommittedRecordCount += records.count();
+
         for (ConsumerRecord<String, String> record : records) {
-            logTopic.publish(record.value());
+            logTopic.publishAsync(record.value());
         }
-        consumer.commitAsync();
+
+        if (uncommittedRecordCount > 10000) {
+            consumer.commitAsync();
+            uncommittedRecordCount = 0;
+        }
     }
 }

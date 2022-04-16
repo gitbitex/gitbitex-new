@@ -11,7 +11,7 @@ import lombok.Getter;
 public class PageLine implements Serializable {
     @Getter
     private final BigDecimal price;
-    private final LinkedHashMap<String, BookOrder> orders = new LinkedHashMap<>();
+    private final LinkedHashMap<String, BookOrder> orderById = new LinkedHashMap<>();
     @Getter
     private final OrderSide side;
     @Getter
@@ -24,23 +24,23 @@ public class PageLine implements Serializable {
 
     public void addOrder(BookOrder order) {
         totalSize = totalSize.add(order.getSize());
-        orders.put(order.getOrderId(), order);
+        orderById.put(order.getOrderId(), order);
     }
 
     public void decreaseOrderSize(String orderId, BigDecimal size) {
-        BookOrder order = orders.get(orderId);
+        BookOrder order = orderById.get(orderId);
         order.setSize(order.getSize().subtract(size));
         totalSize = totalSize.subtract(size);
     }
 
     public void removeOrderById(String orderId) {
-        BookOrder order = orders.remove(orderId);
+        BookOrder order = orderById.remove(orderId);
         if (order != null) {
             totalSize = totalSize.subtract(order.getSize());
         }
     }
 
-    public Collection<BookOrder> getOrders() {
-        return orders.values();
+    public Collection<BookOrder> getOrderById() {
+        return orderById.values();
     }
 }

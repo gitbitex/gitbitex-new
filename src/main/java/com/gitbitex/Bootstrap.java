@@ -91,7 +91,7 @@ public class Bootstrap {
             String groupId = "Accountant";
             AccountantThread accountantThread = new AccountantThread(
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new AccountCommandDeserializer()),
-                accountManager, orderManager, productManager, messageProducer, appProperties);
+                accountManager, messageProducer, appProperties);
             accountantThread.setName(groupId + "-" + accountantThread.getId());
             accountantThread.start();
             threads.add(accountantThread);
@@ -154,8 +154,8 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Snapshot-L2Batch-" + productId;
             L2BatchOrderBookPersistenceThread thread = new L2BatchOrderBookPersistenceThread(productId,
-                orderBookManager, redissonClient,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookLogDeserializer()),
+                orderBookManager,
+                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookLogDeserializer()),
                 appProperties);
             thread.setName(groupId + "-" + thread.getId());
             thread.start();
@@ -218,8 +218,7 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "OrderBookLogPublish-" + productId;
             TradePersistenceThread tradePersistenceThread = new TradePersistenceThread(productId, tradeRepository,
-                redissonClient,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookLogDeserializer()),
+                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookLogDeserializer()),
                 appProperties);
             tradePersistenceThread.setName(groupId + "-" + tradePersistenceThread.getId());
             tradePersistenceThread.start();

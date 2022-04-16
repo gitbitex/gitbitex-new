@@ -34,7 +34,7 @@ public abstract class KafkaConsumerThread<K, V> extends Thread {
         logger.info("starting...");
         try {
             // subscribe
-            doSubscribe(consumer);
+            doSubscribe();
             consumer.subscription().forEach(x -> {
                 logger.info("subscribing topic: {}", x);
             });
@@ -42,7 +42,7 @@ public abstract class KafkaConsumerThread<K, V> extends Thread {
             // poll & process
             while (!closed.get()) {
                 ConsumerRecords<K, V> records = consumer.poll(Duration.ofSeconds(10));
-                processRecords(consumer, records);
+                processRecords( records);
             }
         } catch (WakeupException e) {
             // ignore exception if closing
@@ -68,7 +68,7 @@ public abstract class KafkaConsumerThread<K, V> extends Thread {
         super.interrupt();
     }
 
-    protected abstract void doSubscribe(KafkaConsumer<K, V> consumer);
+    protected abstract void doSubscribe();
 
-    protected abstract void processRecords(KafkaConsumer<K, V> consumer, ConsumerRecords<K, V> records);
+    protected abstract void processRecords( ConsumerRecords<K, V> records);
 }

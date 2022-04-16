@@ -1,17 +1,9 @@
 package com.gitbitex.order;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.Date;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.account.AccountManager;
 import com.gitbitex.account.command.CancelOrderCommand;
 import com.gitbitex.account.command.PlaceOrderCommand;
-import com.gitbitex.account.command.SettleOrderCommand;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
 import com.gitbitex.kafka.KafkaMessageProducer;
@@ -32,6 +24,12 @@ import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Date;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -44,9 +42,9 @@ public class OrderManager {
     private final AccountManager accountManager;
 
     public String placeOrder(String orderId, String userId, String productId, OrderType orderType, OrderSide side,
-        BigDecimal size,
-        BigDecimal price, BigDecimal funds, String clientOrderId, TimeInForcePolicy timeInForcePolicy)
-        throws ExecutionException, InterruptedException {
+                             BigDecimal size,
+                             BigDecimal price, BigDecimal funds, String clientOrderId, TimeInForcePolicy timeInForcePolicy)
+            throws ExecutionException, InterruptedException {
         Product product = productManager.getProductById(productId);
 
         // calculate size or funds
@@ -101,13 +99,18 @@ public class OrderManager {
         order.setSize(size);
         order.setFunds(funds);
         order.setPrice(price);
+        order.setStatus(OrderStatus.NEW);
         order.setTime(new Date());
 
         // send order to accountant
         PlaceOrderCommand placeOrderCommand = new PlaceOrderCommand();
         placeOrderCommand.setUserId(order.getUserId());
         placeOrderCommand.setOrder(order);
-        messageProducer.sendToAccountantAsync(placeOrderCommand,null);
+        messageProducer.sendAccountCommand(placeOrderCommand, (metadata, e) -> {
+            if (e != null) {
+                logger.error("send account command error: {}", e.getMessage(), e);
+            }
+        });
 
         return order.getOrderId();
     }
@@ -117,16 +120,16 @@ public class OrderManager {
         cancelOrderCommand.setUserId(order.getUserId());
         cancelOrderCommand.setOrderId(order.getOrderId());
         cancelOrderCommand.setProductId(order.getProductId());
-        messageProducer.sendToAccountantAsync(cancelOrderCommand,null);
+        messageProducer.sendAccountCommand(cancelOrderCommand, null);
     }
 
     public void cancelOrder(String orderId, String userId, String productId)
-        throws ExecutionException, InterruptedException {
+            throws ExecutionException, InterruptedException {
         CancelOrderCommand cancelOrderCommand = new CancelOrderCommand();
         cancelOrderCommand.setUserId(userId);
         cancelOrderCommand.setOrderId(orderId);
         cancelOrderCommand.setProductId(productId);
-        messageProducer.sendToAccountantAsync(cancelOrderCommand,null);
+        messageProducer.sendAccountCommand(cancelOrderCommand, null);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -164,29 +167,12 @@ public class OrderManager {
         return fill.getFillId();
     }
 
-    public void updateOrderStatus(String orderId, OrderStatus newStatus) {
-        Order order = orderRepository.findByOrderId(orderId);
-        if (order == null) {
-            throw new RuntimeException("order not found: " + orderId);
-        }
-
-        order.setStatus(newStatus);
-        save(order);
-
-        if (order.getStatus() == Order.OrderStatus.FILLED || order.getStatus() == Order.OrderStatus.CANCELLED) {
-            SettleOrderCommand settleOrderCommand = new SettleOrderCommand();
-            settleOrderCommand.setUserId(order.getUserId());
-            settleOrderCommand.setOrderId(order.getOrderId());
-            messageProducer.sendToAccountant(settleOrderCommand);
-        }
-    }
-
     public void save(Order order) {
         orderRepository.save(order);
 
         // send order update notify
         try {
-            redissonClient.getTopic("order", StringCodec.INSTANCE).publish(JSON.toJSONString(order));
+            redissonClient.getTopic("order", StringCodec.INSTANCE).publishAsync(JSON.toJSONString(order));
         } catch (Exception e) {
             logger.error("notify error: {}", e.getMessage(), e);
         }

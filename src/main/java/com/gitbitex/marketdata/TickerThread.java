@@ -1,12 +1,5 @@
 package com.gitbitex.marketdata;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoField;
-import java.util.Collections;
-
-import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.marketdata.util.DateUtil;
@@ -15,72 +8,96 @@ import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.redisson.api.RTopic;
+import org.apache.kafka.common.TopicPartition;
 import org.redisson.api.RedissonClient;
-import org.redisson.client.codec.StringCodec;
+
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
+import java.util.Collection;
+import java.util.Collections;
 
 @Slf4j
 public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
     private final String productId;
     private final TickerManager tickerManager;
     private final AppProperties appProperties;
-    private final RTopic tickerTopic;
+
     private Ticker ticker;
+    private long uncommittedRecordCount;
 
     public TickerThread(String productId, TickerManager tickerManager,
-        RedissonClient redissonClient, KafkaConsumer<String, OrderBookLog> consumer,
-        AppProperties appProperties) {
+                        RedissonClient redissonClient, KafkaConsumer<String, OrderBookLog> consumer,
+                        AppProperties appProperties) {
         super(consumer, logger);
         this.productId = productId;
         this.appProperties = appProperties;
         this.tickerManager = tickerManager;
-        this.tickerTopic = redissonClient.getTopic("ticker", StringCodec.INSTANCE);
+
     }
 
     @Override
-    protected void doSubscribe(KafkaConsumer<String, OrderBookLog> consumer) {
-        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()));
+    protected void doSubscribe() {
+        consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()), new ConsumerRebalanceListener() {
+            @Override
+            public void onPartitionsRevoked(Collection<TopicPartition> collection) {
+                consumer.commitSync();
+            }
+
+            @Override
+            public void onPartitionsAssigned(Collection<TopicPartition> collection) {
+
+            }
+        });
     }
 
     @Override
     @SneakyThrows
-    protected void processRecords(KafkaConsumer<String, OrderBookLog> consumer,
-        ConsumerRecords<String, OrderBookLog> records) {
+    protected void processRecords(ConsumerRecords<String, OrderBookLog> records) {
+        uncommittedRecordCount += records.count();
+
         for (ConsumerRecord<String, OrderBookLog> record : records) {
             OrderBookLog log = record.value();
-
             if (log instanceof OrderMatchLog) {
-                OrderMatchLog orderMatchLog = ((OrderMatchLog)log);
+                OrderMatchLog orderMatchLog = ((OrderMatchLog) log);
                 orderMatchLog.setOffset(record.offset());
-
                 refreshTicker(orderMatchLog);
             }
         }
-        consumer.commitAsync();
+
+        if (uncommittedRecordCount > 1000) {
+            consumer.commitAsync();
+            uncommittedRecordCount = 0;
+        }
     }
 
     private void refreshTicker(OrderMatchLog log) {
         if (ticker == null) {
-            ticker = new Ticker();
-            ticker.setProductId(productId);
-        } else {
-            if (ticker.getTradeId() >= log.getTradeId()) {
-                logger.warn("discard duplicate match log");
-                return;
-            } else if (ticker.getTradeId() + 1 != log.getTradeId()) {
-                throw new RuntimeException("bad match log: tradeId discontinuity");
+            ticker = tickerManager.getTicker(productId);
+            if (ticker == null) {
+                ticker = new Ticker();
+                ticker.setProductId(productId);
             }
         }
 
+        if (ticker.getTradeId() >= log.getTradeId()) {
+            logger.warn("discard duplicate match log");
+            return;
+        } else if (ticker.getTradeId() + 1 != log.getTradeId()) {
+            throw new RuntimeException("bad match log: tradeId discontinuity");
+        }
+
+
         long time24h = DateUtil.round(
-            ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
-            ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
+                ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
+                ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
         long time30d = DateUtil.round(
-            ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
-            ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
+                ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
+                ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
 
         if (ticker.getTime24h() == null || ticker.getTime24h() != time24h) {
             ticker.setTime24h(time24h);
@@ -112,9 +129,6 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
         ticker.setSide(log.getSide());
         ticker.setTradeId(log.getTradeId());
         ticker.setSequence(log.getSequence());
-
         tickerManager.saveTicker(ticker);
-
-        tickerTopic.publish(JSON.toJSONString(ticker));
     }
 }

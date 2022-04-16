@@ -44,7 +44,7 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
     }
 
     @Override
-    protected void doSubscribe(KafkaConsumer<String, OrderBookLog> consumer) {
+    protected void doSubscribe( ) {
         consumer.subscribe(Collections.singletonList(productId + "-" + appProperties.getOrderBookLogTopic()),
             new ConsumerRebalanceListener() {
                 @Override
@@ -67,7 +67,7 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
     }
 
     @Override
-    protected void processRecords(KafkaConsumer<String, OrderBookLog> consumer,
+    protected void processRecords(
         ConsumerRecords<String, OrderBookLog> records) {
         for (ConsumerRecord<String, OrderBookLog> record : records) {
             OrderBookLog orderBookLog = record.value();

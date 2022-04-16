@@ -25,8 +25,8 @@ public class L3OrderBook {
         this.productId = orderBook.getProductId();
         this.sequence = orderBook.getSequence().get();
         this.tradeId = orderBook.getTradeId().get();
-        this.asks = orderBook.getAsks().getOrders().stream().map(Line::new).collect(Collectors.toList());
-        this.bids = orderBook.getBids().getOrders().stream().map(Line::new).collect(Collectors.toList());
+        this.asks = orderBook.getAsks().getOrderById().stream().map(Line::new).collect(Collectors.toList());
+        this.bids = orderBook.getBids().getOrderById().stream().map(Line::new).collect(Collectors.toList());
     }
 
     public static class Line extends ArrayList<Object> {

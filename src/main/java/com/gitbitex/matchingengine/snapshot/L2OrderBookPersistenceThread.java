@@ -1,8 +1,5 @@
 package com.gitbitex.matchingengine.snapshot;
 
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.OrderBook;
 import com.gitbitex.matchingengine.OrderBookListener;
@@ -12,6 +9,9 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 public class L2OrderBookPersistenceThread extends OrderBookListener {
     private final OrderBookManager orderBookManager;
@@ -20,13 +20,13 @@ public class L2OrderBookPersistenceThread extends OrderBookListener {
     private boolean stable;
 
     public L2OrderBookPersistenceThread(String productId, OrderBookManager orderBookManager,
-        KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
+                                        KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
         super(productId, orderBookManager, kafkaConsumer, appProperties);
         this.orderBookManager = orderBookManager;
         this.scheduledExecutor = new ScheduledThreadPoolExecutor(1,
-            new ThreadFactoryBuilder().setNameFormat("L2-P-" + productId + "-%s").build());
+                new ThreadFactoryBuilder().setNameFormat("L2-P-" + productId + "-%s").build());
         this.scheduledExecutor.scheduleWithFixedDelay(this::takeSnapshot, 0,
-            appProperties.getL2OrderBookPersistenceInterval(), TimeUnit.MILLISECONDS);
+                appProperties.getL2OrderBookPersistenceInterval(), TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -52,13 +52,13 @@ public class L2OrderBookPersistenceThread extends OrderBookListener {
         L2OrderBook l2OrderBook;
         if (orderBookLock.tryLock()) {
             try {
-                logger.info("start take level2 snapshot");
+                long startTime = System.currentTimeMillis();
                 l1OrderBook = new L2OrderBook(orderBook, 1);
                 l2OrderBook = new L2OrderBook(orderBook);
                 lastSnapshotSequence = l2OrderBook.getSequence();
-                logger.info("done");
+                logger.info("l2 order book snapshot ok: elapsedTime={}ms", System.currentTimeMillis() - startTime);
             } catch (Exception e) {
-                logger.error("snapshot error: {}", e.getMessage(), e);
+                logger.error("l2 order book snapshot error: {}", e.getMessage(), e);
                 return;
             } finally {
                 orderBookLock.unlock();

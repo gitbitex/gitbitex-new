@@ -5,6 +5,8 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.Set;
+
 @ConfigurationProperties(prefix = "gbe")
 @Getter
 @Setter
@@ -30,7 +32,9 @@ public class AppProperties {
 
     private int l3OrderBookPersistenceInterval = 10000;
 
-    private int fullOrderBookPersistenceInterval = 20000;
+    private int fullOrderBookPersistenceInterval = 30000;
 
     private int fullOrderBookPersistenceThreshold = 10000;
+
+    private Set<String> liquidityTraderUserIds;
 }

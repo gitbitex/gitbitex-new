@@ -64,7 +64,6 @@ public class FeedMessageListener {
         });
 
         redissonClient.getTopic("l2_batch", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            logger.info("{} {}", c, msg);
             L2OrderBook l2OrderBook = orderBookManager.getL2BatchOrderBook(msg);
             String channel = l2OrderBook.getProductId() + ".level2";
             sessionManager.sendMessageToChannel(channel, l2OrderBook);

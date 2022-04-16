@@ -1,8 +1,5 @@
 package com.gitbitex.matchingengine.snapshot;
 
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.OrderBook;
 import com.gitbitex.matchingengine.OrderBookListener;
@@ -12,6 +9,9 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 public class L3OrderBookPersistenceThread extends OrderBookListener {
     private final OrderBookManager orderBookManager;
@@ -20,13 +20,13 @@ public class L3OrderBookPersistenceThread extends OrderBookListener {
     private boolean stable;
 
     public L3OrderBookPersistenceThread(String productId, OrderBookManager orderBookManager,
-        KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
+                                        KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
         super(productId, orderBookManager, kafkaConsumer, appProperties);
         this.orderBookManager = orderBookManager;
         this.scheduledExecutor = new ScheduledThreadPoolExecutor(1,
-            new ThreadFactoryBuilder().setNameFormat("L3-P-" + productId + "-%s").build());
+                new ThreadFactoryBuilder().setNameFormat("L3-P-" + productId + "-%s").build());
         this.scheduledExecutor.scheduleWithFixedDelay(this::takeSnapshot, 0,
-            appProperties.getL3OrderBookPersistenceInterval(), TimeUnit.MILLISECONDS);
+                appProperties.getL3OrderBookPersistenceInterval(), TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -48,25 +48,27 @@ public class L3OrderBookPersistenceThread extends OrderBookListener {
             return;
         }
 
-        L3OrderBook l3OrderBook;
+        L3OrderBook l3OrderBook = null;
         if (orderBookLock.tryLock()) {
             try {
-                logger.info("start take level3 snapshot");
+                long startTime = System.currentTimeMillis();
                 l3OrderBook = new L3OrderBook(orderBook);
-                lastSnapshotSequence = l3OrderBook.getSequence();
-                logger.info("done");
+                logger.info("l3 order book snapshot ok: elapsedTime={}ms", System.currentTimeMillis() - startTime);
             } catch (Exception e) {
-                logger.error("snapshot error: {}", e.getMessage(), e);
+                logger.error("l3 order book snapshot error: {}", e.getMessage(), e);
                 return;
             } finally {
                 orderBookLock.unlock();
             }
-        } else {
-            return;
         }
 
+        if (l3OrderBook == null) {
+            return;
+        }
+        lastSnapshotSequence = l3OrderBook.getSequence();
+
         try {
-            orderBookManager.saveL3OrderBook( l3OrderBook);
+            orderBookManager.saveL3OrderBook(l3OrderBook);
         } catch (Exception e) {
             logger.error("save order book error: {}", e.getMessage(), e);
         }

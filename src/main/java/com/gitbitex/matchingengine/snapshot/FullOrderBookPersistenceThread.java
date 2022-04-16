@@ -1,8 +1,5 @@
 package com.gitbitex.matchingengine.snapshot;
 
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.OrderBook;
 import com.gitbitex.matchingengine.OrderBookListener;
@@ -13,6 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.springframework.util.SerializationUtils;
 
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 public class FullOrderBookPersistenceThread extends OrderBookListener {
     private final OrderBookManager orderBookManager;
@@ -21,13 +21,13 @@ public class FullOrderBookPersistenceThread extends OrderBookListener {
     private boolean stable;
 
     public FullOrderBookPersistenceThread(String productId, OrderBookManager orderBookManager,
-        KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
+                                          KafkaConsumer<String, OrderBookLog> kafkaConsumer, AppProperties appProperties) {
         super(productId, orderBookManager, kafkaConsumer, appProperties);
         this.orderBookManager = orderBookManager;
         this.scheduledExecutor = new ScheduledThreadPoolExecutor(1,
-            new ThreadFactoryBuilder().setNameFormat("Full-P-" + productId + "-%s").build());
+                new ThreadFactoryBuilder().setNameFormat("Full-P-" + productId + "-%s").build());
         this.scheduledExecutor.scheduleWithFixedDelay(this::takeSnapshot, 0,
-            appProperties.getFullOrderBookPersistenceInterval(), TimeUnit.MILLISECONDS);
+                appProperties.getFullOrderBookPersistenceInterval(), TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -52,15 +52,15 @@ public class FullOrderBookPersistenceThread extends OrderBookListener {
         byte[] orderBookBytes;
         if (orderBookLock.tryLock()) {
             try {
-                logger.info("start take full snapshot");
+                long startTime = System.currentTimeMillis();
                 orderBookBytes = SerializationUtils.serialize(orderBook);
                 if (orderBookBytes == null) {
                     throw new NullPointerException("serialize order book error");
                 }
                 lastSnapshotSequence = orderBook.getSequence().get();
-                logger.info("done: size={}MB", orderBookBytes.length / 1024.0 / 1024.0);
+                logger.info("full order book snapshot ok: elapsedTime={}ms size={}MB", System.currentTimeMillis() - startTime, orderBookBytes.length / 1024.0 / 1024.0);
             } catch (Exception e) {
-                logger.error("snapshot error: {}", e.getMessage(), e);
+                logger.error("full order book snapshot error: {}", e.getMessage(), e);
                 return;
             } finally {
                 orderBookLock.unlock();

@@ -1,11 +1,15 @@
 package com.gitbitex.order;
 
-import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
+import com.gitbitex.account.command.AccountCommand;
 import com.gitbitex.account.command.SettleOrderCommand;
 import com.gitbitex.account.command.SettleOrderFillCommand;
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.order.command.*;
+import com.gitbitex.kafka.PendingOffsetManager;
+import com.gitbitex.order.command.FillOrderCommand;
+import com.gitbitex.order.command.OrderCommand;
+import com.gitbitex.order.command.SaveOrderCommand;
+import com.gitbitex.order.command.UpdateOrderStatusCommand;
 import com.gitbitex.order.entity.Order;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
@@ -13,128 +17,127 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 @Slf4j
-public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCommand>
-        implements OrderCommandHandler {
-    private final OrderCommandDispatcher orderCommandDispatcher;
+public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCommand> {
     private final OrderManager orderManager;
     private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
-    Set<Long> pendingOffset = new ConcurrentSkipListSet<>();
-    long uncommitted = 0;
+    private final PendingOffsetManager pendingOffsetManager = new PendingOffsetManager();
 
     public OrderPersistenceThread(KafkaConsumer<String, OrderCommand> consumer,
                                   KafkaMessageProducer messageProducer, OrderManager orderManager, AppProperties appProperties) {
         super(consumer, logger);
-        this.orderCommandDispatcher = new OrderCommandDispatcher(this);
         this.orderManager = orderManager;
         this.messageProducer = messageProducer;
         this.appProperties = appProperties;
     }
 
     @Override
-    protected void doSubscribe(KafkaConsumer<String, OrderCommand> consumer) {
+    protected void doSubscribe() {
         consumer.subscribe(Collections.singletonList(appProperties.getOrderCommandTopic()), new ConsumerRebalanceListener() {
             @Override
-            public void onPartitionsRevoked(Collection<TopicPartition> collection) {
+            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                pendingOffsetManager.commit(consumer);
 
+                for (TopicPartition partition : partitions) {
+                    logger.info("partition revoked: {}", partition.toString());
+                    pendingOffsetManager.remove(partition);
+                }
             }
 
             @Override
-            public void onPartitionsAssigned(Collection<TopicPartition> collection) {
-
+            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                for (TopicPartition partition : partitions) {
+                    logger.info("partition assigned: {}", partition.toString());
+                    pendingOffsetManager.put(partition);
+                }
             }
         });
     }
 
     @Override
-    protected void processRecords(KafkaConsumer<String, OrderCommand> consumer,
-                                  ConsumerRecords<String, OrderCommand> records) {
+    protected void processRecords(ConsumerRecords<String, OrderCommand> records) {
         for (ConsumerRecord<String, OrderCommand> record : records) {
-            //logger.info("- {}", JSON.toJSONString(record.value()));
-            uncommitted++;
-            OrderCommand command= record.value();
-            command.setOffset(record.offset());
-            this.orderCommandDispatcher.dispatch(command);
+            TopicPartition partition = new TopicPartition(record.topic(), record.partition());
+
+            pendingOffsetManager.retainOffset(partition, record.offset());
+            OrderCommand command = record.value();
+            if (command instanceof SaveOrderCommand) {
+                on((SaveOrderCommand) command, partition, record.offset());
+            } else if (command instanceof UpdateOrderStatusCommand) {
+                on((UpdateOrderStatusCommand) command, partition, record.offset());
+            } else if (command instanceof FillOrderCommand) {
+                on((FillOrderCommand) command, partition, record.offset());
+            } else {
+                throw new RuntimeException("unknown command");
+            }
+            pendingOffsetManager.releaseOffset(partition, record.offset());
         }
 
-        if (uncommitted > 1000) {
-            logger.info("start commit offset: uncommitted={}", uncommitted);
-            while (!pendingOffset.isEmpty()) {
-                logger.warn("pending offset not empty");
-                try {
-                    Thread.sleep(200);
-                }catch (InterruptedException ignored){
-                }
-                continue;
-            }
-            consumer.commitSync();
-            uncommitted=0;
-            logger.info("committed");
-        }
+        pendingOffsetManager.commit(consumer);
     }
 
-    @Override
-    public void on(SaveOrderCommand command) {
+
+    public void on(SaveOrderCommand command, TopicPartition partition, long offset) {
         if (orderManager.findByOrderId(command.getOrder().getOrderId()) == null) {
             orderManager.save(command.getOrder());
         }
     }
 
-    @Override
-    public void on(UpdateOrderStatusCommand command) {
+    public void on(UpdateOrderStatusCommand command, TopicPartition partition, long offset) {
         Order order = orderManager.findByOrderId(command.getOrderId());
         if (order == null) {
             throw new RuntimeException("order not found: " + command.getOrderId());
         }
+        if (order.getStatus() == command.getOrderStatus()) {
+            logger.warn("The order is already in cancelled status: {}", command.getOrderId());
+        }
 
+        // update order status
         order.setStatus(command.getOrderStatus());
         orderManager.save(order);
 
+        // if the order has been filled or cancelled, notify the account to settle
         if (order.getStatus() == Order.OrderStatus.FILLED || order.getStatus() == Order.OrderStatus.CANCELLED) {
             SettleOrderCommand settleOrderCommand = new SettleOrderCommand();
             settleOrderCommand.setUserId(order.getUserId());
             settleOrderCommand.setOrderId(order.getOrderId());
-            pendingOffset.add(command.getOffset());
-            messageProducer.sendToAccountantAsync(settleOrderCommand, new Callback() {
-                @Override
-                public void onCompletion(RecordMetadata recordMetadata, Exception e) {
-                    pendingOffset.remove(command.getOffset());
-                }
-            });
+            sendAccountCommand(settleOrderCommand, partition, offset);
         }
     }
 
-    @Override
-    public void on(FillOrderCommand command) {
+    public void on(FillOrderCommand command, TopicPartition partition, long offset) {
         Order order = orderManager.findByOrderId(command.getOrderId());
         if (order == null) {
             throw new RuntimeException("order not found: " + command.getOrderId());
         }
 
+        // fill order
         String fillId = orderManager.fillOrder(command.getOrderId(), command.getTradeId(), command.getSize(),
                 command.getPrice(), command.getFunds());
 
+        // notify account to settle
         SettleOrderFillCommand settleOrderFillCommand = new SettleOrderFillCommand();
         settleOrderFillCommand.setUserId(order.getUserId());
         settleOrderFillCommand.setFillId(fillId);
         settleOrderFillCommand.setProductId(order.getProductId());
-        pendingOffset.add(command.getOffset());
-        messageProducer.sendToAccountantAsync(settleOrderFillCommand, new Callback() {
-            @Override
-            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
-                pendingOffset.remove(command.getOffset());
+        sendAccountCommand(settleOrderFillCommand, partition, offset);
+    }
+
+    private void sendAccountCommand(AccountCommand command, TopicPartition partition, long offset) {
+        pendingOffsetManager.retainOffset(partition, offset);
+        messageProducer.sendAccountCommand(command, (recordMetadata, e) -> {
+            if (e != null) {
+                logger.error("send account command error: {}", e.getMessage(), e);
+                this.shutdown();
+                return;
             }
+            pendingOffsetManager.releaseOffset(partition, offset);
         });
     }
 }

@@ -1,17 +1,17 @@
 package com.gitbitex.matchingengine.snapshot;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import com.gitbitex.matchingengine.OrderBook;
 import com.gitbitex.matchingengine.PageLine;
 import com.gitbitex.order.entity.Order.OrderSide;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.lang.Nullable;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -27,21 +27,21 @@ public class L2OrderBook {
     public L2OrderBook(OrderBook orderBook) {
         this.productId = orderBook.getProductId();
         this.sequence = orderBook.getSequence().get();
-        this.asks = orderBook.getAsks().getLines().stream().map(Line::new).collect(Collectors.toList());
-        this.bids = orderBook.getBids().getLines().stream().map(Line::new).collect(Collectors.toList());
+        this.asks = orderBook.getAsks().getLineByPrice().stream().map(Line::new).collect(Collectors.toList());
+        this.bids = orderBook.getBids().getLineByPrice().stream().map(Line::new).collect(Collectors.toList());
     }
 
     public L2OrderBook(OrderBook orderBook, int maxSize) {
         this.productId = orderBook.getProductId();
         this.sequence = orderBook.getSequence().get();
-        this.asks = orderBook.getAsks().getLines().stream()
-            .limit(maxSize)
-            .map(Line::new)
-            .collect(Collectors.toList());
-        this.bids = orderBook.getBids().getLines().stream()
-            .limit(maxSize)
-            .map(Line::new)
-            .collect(Collectors.toList());
+        this.asks = orderBook.getAsks().getLineByPrice().stream()
+                .limit(maxSize)
+                .map(Line::new)
+                .collect(Collectors.toList());
+        this.bids = orderBook.getBids().getLineByPrice().stream()
+                .limit(maxSize)
+                .map(Line::new)
+                .collect(Collectors.toList());
     }
 
     public L2OrderBook truncate(int maxSize) {
@@ -86,7 +86,7 @@ public class L2OrderBook {
                 changes.add(change);
             } else if (!newLine.getSize().equals(oldLine.getSize())) {
                 L2OrderBookChange change = new L2OrderBookChange(side.name().toLowerCase(), oldPrice,
-                    newLine.getSize());
+                        newLine.getSize());
                 changes.add(change);
             }
         }));
@@ -94,7 +94,7 @@ public class L2OrderBook {
             Line oldLine = oldLineByPrice.get(newPrice);
             if (oldLine == null) {
                 L2OrderBookChange change = new L2OrderBookChange(side.name().toLowerCase(), newPrice,
-                    newLine.getSize());
+                        newLine.getSize());
                 changes.add(change);
             }
         });
@@ -108,7 +108,7 @@ public class L2OrderBook {
         public Line(PageLine line) {
             add(line.getPrice().stripTrailingZeros().toPlainString());
             add(line.getTotalSize().stripTrailingZeros().toPlainString());
-            add(line.getOrders().size());
+            add(line.getOrderById().size());
         }
 
         public String getPrice() {
