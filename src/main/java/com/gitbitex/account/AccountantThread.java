@@ -56,12 +56,6 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
                             logger.info("partition assigned: {}", partition.toString());
                             pendingOffsetManager.put(partition);
                         }
-
-                        consumer.committed(new HashSet<>(partitions)).forEach((partition, offsetMeta) -> {
-                            if (offsetMeta != null) {
-                                consumer.seek(partition, offsetMeta.offset() + 1);
-                            }
-                        });
                     }
                 });
     }

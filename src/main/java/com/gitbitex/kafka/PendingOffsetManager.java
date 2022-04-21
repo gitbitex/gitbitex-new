@@ -76,7 +76,7 @@ public class PendingOffsetManager {
         }
 
         pendingOffsets.headMap(maxCommittableOffset, true).clear();
-        return new PartitionOffset(partition, new OffsetAndMetadata(maxCommittableOffset));
+        return new PartitionOffset(partition, new OffsetAndMetadata(maxCommittableOffset + 1));
     }
 
     public Map<TopicPartition, OffsetAndMetadata> commit(KafkaConsumer<?, ?> consumer, int pendingOffsetSizeThreshold) {
