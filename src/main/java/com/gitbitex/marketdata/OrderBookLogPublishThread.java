@@ -19,14 +19,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class OrderBookLogPublishLThread extends KafkaConsumerThread<String, String> {
+public class OrderBookLogPublishThread extends KafkaConsumerThread<String, String> {
     private final List<String> productIds;
     private final AppProperties appProperties;
     private final RTopic logTopic;
     private long uncommittedRecordCount;
 
-    public OrderBookLogPublishLThread(List<String> productIds, KafkaConsumer<String, String> kafkaConsumer,
-                                      RedissonClient redissonClient, AppProperties appProperties) {
+    public OrderBookLogPublishThread(List<String> productIds, KafkaConsumer<String, String> kafkaConsumer,
+                                     RedissonClient redissonClient, AppProperties appProperties) {
         super(kafkaConsumer, logger);
         this.productIds = productIds;
         this.appProperties = appProperties;

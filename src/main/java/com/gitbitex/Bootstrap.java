@@ -228,7 +228,7 @@ public class Bootstrap {
     private void startTradePersistence(List<String> productIds, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "TradePersistence";
-            OrderBookLogPublishLThread thread = new OrderBookLogPublishLThread(productIds,
+            OrderBookLogPublishThread thread = new OrderBookLogPublishThread(productIds,
                     new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new StringDeserializer()),
                     redissonClient, appProperties);
             thread.setName(groupId + "-" + thread.getId());
