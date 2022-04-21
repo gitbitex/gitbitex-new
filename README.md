@@ -50,6 +50,18 @@ docker run -d --name gitbitex \
 
 ```
 
+## Build
+The project uses **jib**(https://cloud.google.com/java/getting-started/jib?hl=en) for docker image construction, so there is no dockerfile file. You can use the following command to generate an image locally:
+```shell
+mvn clean compile jib:buildDocker
+```
+
+If you don't want to use docker, you can directly build a jar package with the following command, and then start it with Java command
+```shell
+mvn clean package -Dmaven.test.skip=true
+```
+
+
 ## Demo
 
 You can view the demo website
