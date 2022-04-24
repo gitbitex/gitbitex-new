@@ -133,10 +133,14 @@ public class FeedMessageListener {
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());
         message.setProductId(log.getProductId());
-        message.setPrice(log.getPrice().stripTrailingZeros().toPlainString());
+        if (log.getPrice() != null) {
+            message.setPrice(log.getPrice().stripTrailingZeros().toPlainString());
+        }
         message.setSide(log.getSide().name().toLowerCase());
         message.setReason(log.getDoneReason().name().toUpperCase());
-        message.setRemainingSize(log.getRemainingSize().stripTrailingZeros().toPlainString());
+        if (log.getRemainingSize() != null) {
+            message.setRemainingSize(log.getRemainingSize().stripTrailingZeros().toPlainString());
+        }
         return message;
     }
 
