@@ -111,7 +111,7 @@ public class L2OrderBook {
         public Line(PageLine line) {
             add(line.getPrice().stripTrailingZeros().toPlainString());
             add(line.getTotalSize().stripTrailingZeros().toPlainString());
-            add(line.getOrderById().size());
+            add(line.getOrders().size());
         }
 
         public String getPrice() {

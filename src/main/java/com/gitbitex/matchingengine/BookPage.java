@@ -70,7 +70,7 @@ public class BookPage implements Serializable {
                 return logs;
             }
 
-            for (BookOrder makerOrder : line.getOrderById()) {
+            for (BookOrder makerOrder : line.getOrders()) {
                 // calculate the size of taker at current price
                 BigDecimal takerSize;
                 if (takerOrder.getSide() == Order.OrderSide.BUY && takerOrder.getType() == Order.OrderType.MARKET) {
@@ -164,7 +164,7 @@ public class BookPage implements Serializable {
 
         PageLine line = lineByPrice.get(order.getPrice());
         line.removeOrderById(order.getOrderId());
-        if (line.getOrderById().isEmpty()) {
+        if (line.getOrders().isEmpty()) {
             lineByPrice.remove(order.getPrice());
         }
         return line;

@@ -40,7 +40,7 @@ public class PageLine implements Serializable {
         }
     }
 
-    public Collection<BookOrder> getOrderById() {
+    public Collection<BookOrder> getOrders() {
         return orderById.values();
     }
 }
