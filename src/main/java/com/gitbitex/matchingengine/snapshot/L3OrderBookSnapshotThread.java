@@ -73,15 +73,15 @@ public class L3OrderBookSnapshotThread extends OrderBookListener {
         }
 
         long startTime = System.currentTimeMillis();
-        lastL3OrderBook = new L3OrderBook(orderBook);
+        L3OrderBook l3OrderBook = new L3OrderBook(orderBook);
         logger.info("l3 order book snapshot ok: {} elapsedTime={}ms", orderBook.getProductId(), System.currentTimeMillis() - startTime);
 
         try {
-            orderBookManager.saveL3OrderBook(lastL3OrderBook);
+            orderBookManager.saveL3OrderBook(l3OrderBook);
         } catch (Exception e) {
             logger.error("save order book error: {}", e.getMessage(), e);
         }
 
-        lastL3OrderBookByProductId.put(orderBook.getProductId(), lastL3OrderBook);
+        lastL3OrderBookByProductId.put(orderBook.getProductId(), l3OrderBook);
     }
 }

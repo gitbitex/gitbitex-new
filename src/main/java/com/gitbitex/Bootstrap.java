@@ -1,5 +1,7 @@
 package com.gitbitex;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Slf4jReporter;
 import com.gitbitex.account.AccountManager;
 import com.gitbitex.account.AccountantThread;
 import com.gitbitex.account.command.AccountCommandDeserializer;
@@ -21,6 +23,7 @@ import com.gitbitex.product.repository.ProductRepository;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.support.kafka.KafkaProperties;
 import lombok.RequiredArgsConstructor;
+import lombok.var;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.redisson.api.RedissonClient;
@@ -31,6 +34,7 @@ import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Component
@@ -48,10 +52,14 @@ public class Bootstrap {
     private final AppProperties appProperties;
     private final KafkaProperties kafkaProperties;
     private final RedissonClient redissonClient;
+    private final Slf4jReporter slf4jReporter;
+    private final MetricRegistry metricRegistry;
     private final List<Thread> threads = new ArrayList<>();
 
     @PostConstruct
     public void init() {
+        slf4jReporter.start(1, TimeUnit.SECONDS);
+
         startAccountant(appProperties.getAccountantThreadNum());
         startOrderProcessor(appProperties.getOrderProcessorThreadNum());
 
@@ -83,10 +91,9 @@ public class Bootstrap {
     private void startAccountant(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Accountant";
-            AccountantThread accountantThread = new AccountantThread(
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                            new AccountCommandDeserializer()),
-                    accountManager, messageProducer, appProperties);
+            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new AccountCommandDeserializer());
+            AccountantThread accountantThread = new AccountantThread(consumer, accountManager, messageProducer,
+                    metricRegistry, appProperties);
             accountantThread.setName(groupId + "-" + accountantThread.getId());
             accountantThread.start();
             threads.add(accountantThread);
@@ -96,10 +103,9 @@ public class Bootstrap {
     private void startOrderProcessor(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "OrderProcessor";
-            OrderPersistenceThread orderPersistenceThread = new OrderPersistenceThread(
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                            new OrderCommandDeserializer()),
-                    messageProducer, orderManager, appProperties);
+            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderCommandDeserializer());
+            OrderPersistenceThread orderPersistenceThread = new OrderPersistenceThread(consumer,
+                    messageProducer, orderManager, metricRegistry, appProperties);
             orderPersistenceThread.setName(groupId + "-" + orderPersistenceThread.getId());
             orderPersistenceThread.start();
             threads.add(orderPersistenceThread);
@@ -110,9 +116,8 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Matching";
             MatchingThread matchingThread = new MatchingThread(productIds, orderBookManager,
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                            new OrderBookCommandDeserializer()),
-                    messageProducer, appProperties);
+                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookCommandDeserializer()),
+                    messageProducer, metricRegistry, appProperties);
             matchingThread.setName(groupId + "-" + matchingThread.getId());
             matchingThread.start();
             threads.add(matchingThread);

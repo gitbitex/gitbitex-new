@@ -1,5 +1,6 @@
 package com.gitbitex.order;
 
+import com.codahale.metrics.MetricRegistry;
 import com.gitbitex.AppProperties;
 import com.gitbitex.account.command.AccountCommand;
 import com.gitbitex.account.command.SettleOrderCommand;
@@ -22,22 +23,24 @@ import org.apache.kafka.common.TopicPartition;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 
 @Slf4j
 public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCommand> {
     private final OrderManager orderManager;
     private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
+    private final MetricRegistry metricRegistry;
     private final PendingOffsetManager pendingOffsetManager = new PendingOffsetManager();
 
     public OrderPersistenceThread(KafkaConsumer<String, OrderCommand> consumer,
                                   KafkaMessageProducer messageProducer, OrderManager orderManager,
+                                  MetricRegistry metricRegistry,
                                   AppProperties appProperties) {
         super(consumer, logger);
         this.orderManager = orderManager;
         this.messageProducer = messageProducer;
         this.appProperties = appProperties;
+        this.metricRegistry = metricRegistry;
     }
 
     @Override
@@ -81,6 +84,8 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
                 throw new RuntimeException("unknown command");
             }
             pendingOffsetManager.releaseOffset(partition, record.offset());
+
+            metricRegistry.meter("orderCommand.processed.total").mark();
         }
 
         pendingOffsetManager.commit(consumer, 1000);
