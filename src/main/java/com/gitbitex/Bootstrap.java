@@ -22,6 +22,7 @@ import com.gitbitex.product.entity.Product;
 import com.gitbitex.product.repository.ProductRepository;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.support.kafka.KafkaProperties;
+import com.gitbitex.support.metric.JsonSlf4Reporter;
 import lombok.RequiredArgsConstructor;
 import lombok.var;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -52,13 +53,13 @@ public class Bootstrap {
     private final AppProperties appProperties;
     private final KafkaProperties kafkaProperties;
     private final RedissonClient redissonClient;
-    private final Slf4jReporter slf4jReporter;
+    private final JsonSlf4Reporter jsonSlf4Reporter;
     private final MetricRegistry metricRegistry;
     private final List<Thread> threads = new ArrayList<>();
 
     @PostConstruct
     public void init() {
-        slf4jReporter.start(1, TimeUnit.SECONDS);
+        jsonSlf4Reporter.start(1, TimeUnit.SECONDS);
 
         startAccountant(appProperties.getAccountantThreadNum());
         startOrderProcessor(appProperties.getOrderProcessorThreadNum());

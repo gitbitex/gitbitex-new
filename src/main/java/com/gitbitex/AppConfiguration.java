@@ -1,9 +1,10 @@
 package com.gitbitex;
 
+import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Slf4jReporter;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.support.kafka.KafkaProperties;
+import com.gitbitex.support.metric.JsonSlf4Reporter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -40,12 +41,9 @@ public class AppConfiguration {
     }
 
     @Bean
-    public Slf4jReporter slf4jReporter(MetricRegistry metricRegistry) {
-        return Slf4jReporter.forRegistry(metricRegistry)
-                .outputTo(LoggerFactory.getLogger("gbeMetric"))
-                .convertRatesTo(TimeUnit.SECONDS)
-                .convertDurationsTo(TimeUnit.MILLISECONDS)
-                .build();
+    public JsonSlf4Reporter JsonSlf4Reporter(MetricRegistry metricRegistry) {
+        return new JsonSlf4Reporter(metricRegistry, "default", MetricFilter.ALL, TimeUnit.SECONDS,
+                TimeUnit.MILLISECONDS, LoggerFactory.getLogger("gbeMetric"));
     }
 }
 

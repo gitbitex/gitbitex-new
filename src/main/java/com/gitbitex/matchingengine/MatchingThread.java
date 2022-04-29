@@ -82,7 +82,6 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
         consumer.subscribe(topics, this);
     }
 
-
     @Override
     protected void doPoll() {
         var records = consumer.poll(Duration.ofSeconds(5));

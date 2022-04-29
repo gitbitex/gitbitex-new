@@ -39,7 +39,7 @@
     <appender name="metricLogAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/metric.log</file>
         <encoder>
-            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <pattern>%m%n</pattern>
             <charset>${FILE_LOG_CHARSET}</charset>
         </encoder>
 
