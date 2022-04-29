@@ -81,17 +81,14 @@ public class L2BatchOrderBookSnapshotThread extends OrderBookListener {
             }
         }
 
-        long startTime = System.currentTimeMillis();
-        lastL2OrderBook = new L2OrderBook(orderBook, appProperties.getL2BatchOrderBookSize());
-        //logger.info("l2_batch order book snapshot ok: {} elapsedTime={}ms", orderBook.getProductId(), System
-        // .currentTimeMillis() - startTime);
+        L2OrderBook l2OrderBook = new L2OrderBook(orderBook, appProperties.getL2BatchOrderBookSize());
 
         try {
-            orderBookManager.saveL2BatchOrderBook(lastL2OrderBook);
+            orderBookManager.saveL2BatchOrderBook(l2OrderBook);
         } catch (Exception e) {
             logger.error("save order book error: {}", e.getMessage(), e);
         }
 
-        lastL2OrderBookByProductId.put(orderBook.getProductId(), lastL2OrderBook);
+        lastL2OrderBookByProductId.put(orderBook.getProductId(), l2OrderBook);
     }
 }

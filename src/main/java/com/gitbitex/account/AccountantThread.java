@@ -1,5 +1,6 @@
 package com.gitbitex.account;
 
+import com.codahale.metrics.MetricRegistry;
 import com.gitbitex.AppProperties;
 import com.gitbitex.account.command.*;
 import com.gitbitex.kafka.KafkaMessageProducer;
@@ -18,23 +19,25 @@ import org.apache.kafka.common.TopicPartition;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 
 @Slf4j
 public class AccountantThread extends KafkaConsumerThread<String, AccountCommand> {
     private final AccountManager accountManager;
     private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
+    private final MetricRegistry metricRegistry;
     private final PendingOffsetManager pendingOffsetManager = new PendingOffsetManager();
 
     public AccountantThread(KafkaConsumer<String, AccountCommand> consumer,
                             AccountManager accountManager,
                             KafkaMessageProducer messageProducer,
+                            MetricRegistry metricRegistry,
                             AppProperties appProperties) {
         super(consumer, logger);
         this.accountManager = accountManager;
         this.messageProducer = messageProducer;
         this.appProperties = appProperties;
+        this.metricRegistry=metricRegistry;
     }
 
     @Override
@@ -80,6 +83,8 @@ public class AccountantThread extends KafkaConsumerThread<String, AccountCommand
                 throw new RuntimeException("unknown command");
             }
             pendingOffsetManager.releaseOffset(partition, record.offset());
+
+            metricRegistry.meter("accountCommand.processed.total").mark();
         }
 
         pendingOffsetManager.commit(consumer, 1000);

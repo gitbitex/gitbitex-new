@@ -21,7 +21,7 @@
         </encoder>
     </appender>
 
-    <appender name="RollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <appender name="appLogAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/app.log</file>
         <encoder>
             <pattern>${CONSOLE_LOG_PATTERN}</pattern>
@@ -36,18 +36,41 @@
             <cleanHistoryOnStart>false</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
+    <appender name="metricLogAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/metric.log</file>
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>${FILE_LOG_CHARSET}</charset>
+        </encoder>
 
-    <logger name="org.apache.kafka" level="WARN">
-    </logger>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/metric-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>500MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>5000MB</totalSizeCap>
+            <cleanHistoryOnStart>false</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
 
-    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
-        <appender-ref ref="RollingFile" />
+    <appender name="appLogAsyncAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="appLogAppender"/>
         <queueSize>10000</queueSize>
     </appender>
 
+    <appender name="metricLogAsyncAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="metricLogAppender"/>
+        <queueSize>10000</queueSize>
+    </appender>
+
+    <logger name="org.apache.kafka" level="WARN"></logger>
+
+    <logger name="gbeMetric" level="INFO" additivity="false">
+        <appender-ref ref="metricLogAsyncAppender"/>
+    </logger>
+
     <root level="INFO">
         <appender-ref ref="Console"/>
-        <appender-ref ref="ASYNC"/>
+        <appender-ref ref="appLogAsyncAppender"/>
     </root>
 
 </configuration>

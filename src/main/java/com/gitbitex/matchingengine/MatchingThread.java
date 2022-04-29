@@ -1,5 +1,6 @@
 package com.gitbitex.matchingengine;
 
+import com.codahale.metrics.MetricRegistry;
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.kafka.TopicUtil;
@@ -23,18 +24,20 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand> implements OrderBookCommandHandler {
+public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand> implements OrderBookCommandHandler, ConsumerRebalanceListener {
     private final List<String> productIds;
     private final OrderBookManager orderBookManager;
     private final OrderBookCommandDispatcher orderBookCommandDispatcher;
     private final AppProperties appProperties;
     private final KafkaMessageProducer messageProducer;
+    private final MetricRegistry metricRegistry;
     private final Map<String, OrderBook> orderBookByProductId = new HashMap<>();
 
     public MatchingThread(List<String> productIds,
                           OrderBookManager orderBookManager,
                           KafkaConsumer<String, OrderBookCommand> messageKafkaConsumer,
                           KafkaMessageProducer messageProducer,
+                          MetricRegistry metricRegistry,
                           AppProperties appProperties) {
         super(messageKafkaConsumer, logger);
         this.productIds = productIds;
@@ -42,6 +45,33 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
         this.orderBookCommandDispatcher = new OrderBookCommandDispatcher(this);
         this.appProperties = appProperties;
         this.messageProducer = messageProducer;
+        this.metricRegistry = metricRegistry;
+    }
+
+    @Override
+    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        for (TopicPartition partition : partitions) {
+            logger.warn("partition revoked: {}", partition.toString());
+            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
+            orderBookByProductId.remove(productId);
+        }
+    }
+
+    @Override
+    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+        for (TopicPartition partition : partitions) {
+            logger.info("partition assigned: {}", partition.toString());
+            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
+            OrderBook orderBook;
+            FullOrderBookSnapshot snapshot = orderBookManager.getFullOrderBookSnapshot(productId);
+            if (snapshot != null) {
+                orderBook = snapshot.decodeOrderBook();
+                consumer.seek(partition, orderBook.getCommandOffset() + 1);
+            } else {
+                orderBook = new OrderBook(productId);
+            }
+            orderBookByProductId.put(productId, orderBook);
+        }
     }
 
     @Override
@@ -49,35 +79,9 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
         List<String> topics = productIds.stream()
                 .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookCommandTopic()))
                 .collect(Collectors.toList());
-
-        consumer.subscribe(topics, new ConsumerRebalanceListener() {
-            @Override
-            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-                for (TopicPartition partition : partitions) {
-                    logger.warn("partition revoked: {}", partition.toString());
-                    String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-                    orderBookByProductId.remove(productId);
-                }
-            }
-
-            @Override
-            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                for (TopicPartition partition : partitions) {
-                    logger.info("partition assigned: {}", partition.toString());
-                    String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-                    OrderBook orderBook;
-                    FullOrderBookSnapshot snapshot = orderBookManager.getFullOrderBookSnapshot(productId);
-                    if (snapshot != null) {
-                        orderBook = snapshot.decodeOrderBook();
-                        consumer.seek(partition, orderBook.getCommandOffset() + 1);
-                    } else {
-                        orderBook = new OrderBook(productId);
-                    }
-                    orderBookByProductId.put(productId, orderBook);
-                }
-            }
-        });
+        consumer.subscribe(topics, this);
     }
+
 
     @Override
     protected void doPoll() {
@@ -85,7 +89,9 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
         for (ConsumerRecord<String, OrderBookCommand> record : records) {
             OrderBookCommand command = record.value();
             command.setOffset(record.offset());
-            this.orderBookCommandDispatcher.dispatch(command);
+            orderBookCommandDispatcher.dispatch(command);
+
+            metricRegistry.meter("orderBookCommand.processed.total").mark();
         }
     }
 
@@ -115,4 +121,5 @@ public class MatchingThread extends KafkaConsumerThread<String, OrderBookCommand
             }
         });
     }
+
 }

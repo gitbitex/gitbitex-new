@@ -54,9 +54,10 @@ public class CoinbaseTrader {
 
         Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
             try {
+
                 if (!client.isOpen() && !client.isConnecting()) {
                     logger.info("reconnecting...");
-                    client.reconnectBlocking();
+                    client.connectBlocking();
                 }else{
                     client.sendPing();
                 }
