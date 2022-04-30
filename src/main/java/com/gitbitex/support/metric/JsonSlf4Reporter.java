@@ -14,7 +14,7 @@ public class JsonSlf4Reporter extends ScheduledReporter {
     private final Logger logger;
 
     public JsonSlf4Reporter(MetricRegistry registry, String name, MetricFilter filter, TimeUnit rateUnit,
-                               TimeUnit durationUnit, Logger logger) {
+                            TimeUnit durationUnit, Logger logger) {
         super(registry, name, filter, rateUnit, durationUnit);
         this.logger = logger;
     }
