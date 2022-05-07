@@ -142,8 +142,7 @@ public class BookPage implements Serializable {
     }
 
     public PageLine addOrder(BookOrder order) {
-        PageLine line = lineByPrice.computeIfAbsent(order.getPrice(), k -> new PageLine(order.getPrice(),
-                order.getSide()));
+        PageLine line = lineByPrice.computeIfAbsent(order.getPrice(), k -> new PageLine(order.getPrice(), order.getSide()));
         line.addOrder(order);
         orderById.put(order.getOrderId(), order);
         return line;
@@ -170,11 +169,11 @@ public class BookPage implements Serializable {
         return line;
     }
 
-    public Collection<PageLine> getLineByPrice() {
+    public Collection<PageLine> getLines() {
         return this.lineByPrice.values();
     }
 
-    public Collection<BookOrder> getOrderById() {
+    public Collection<BookOrder> getOrders() {
         return this.orderById.values();
     }
 

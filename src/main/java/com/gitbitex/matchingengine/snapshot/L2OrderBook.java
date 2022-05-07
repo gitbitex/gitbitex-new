@@ -29,31 +29,26 @@ public class L2OrderBook {
         this.productId = orderBook.getProductId();
         this.sequence = orderBook.getSequence().get();
         this.time = System.currentTimeMillis();
-        this.asks = orderBook.getAsks().getLineByPrice().stream().map(Line::new).collect(Collectors.toList());
-        this.bids = orderBook.getBids().getLineByPrice().stream().map(Line::new).collect(Collectors.toList());
+        this.asks = orderBook.getAsks().getLines().stream()
+                .map(Line::new)
+                .collect(Collectors.toList());
+        this.bids = orderBook.getBids().getLines().stream()
+                .map(Line::new)
+                .collect(Collectors.toList());
     }
 
     public L2OrderBook(OrderBook orderBook, int maxSize) {
         this.productId = orderBook.getProductId();
         this.sequence = orderBook.getSequence().get();
         this.time = System.currentTimeMillis();
-        this.asks = orderBook.getAsks().getLineByPrice().stream()
+        this.asks = orderBook.getAsks().getLines().stream()
                 .limit(maxSize)
                 .map(Line::new)
                 .collect(Collectors.toList());
-        this.bids = orderBook.getBids().getLineByPrice().stream()
+        this.bids = orderBook.getBids().getLines().stream()
                 .limit(maxSize)
                 .map(Line::new)
                 .collect(Collectors.toList());
-    }
-
-    public L2OrderBook truncate(int maxSize) {
-        L2OrderBook orderBook = new L2OrderBook();
-        orderBook.productId = this.getProductId();
-        orderBook.sequence = this.getSequence();
-        orderBook.asks = this.asks.stream().limit(maxSize).collect(Collectors.toList());
-        orderBook.bids = this.bids.stream().limit(maxSize).collect(Collectors.toList());
-        return orderBook;
     }
 
     @Nullable
@@ -66,12 +61,12 @@ public class L2OrderBook {
         }
 
         List<L2OrderBookChange> changes = new ArrayList<>();
-        changes.addAll(diffLines(OrderSide.SELL, this.getAsks(), newL2OrderBook.getAsks()));
-        changes.addAll(diffLines(OrderSide.BUY, this.getBids(), newL2OrderBook.getBids()));
+        changes.addAll(diff(OrderSide.SELL, this.getAsks(), newL2OrderBook.getAsks()));
+        changes.addAll(diff(OrderSide.BUY, this.getBids(), newL2OrderBook.getBids()));
         return changes;
     }
 
-    private List<L2OrderBookChange> diffLines(OrderSide side, List<Line> oldLines, List<Line> newLines) {
+    private List<L2OrderBookChange> diff(OrderSide side, List<Line> oldLines, List<Line> newLines) {
         Map<String, Line> oldLineByPrice = new LinkedHashMap<>();
         Map<String, Line> newLineByPrice = new LinkedHashMap<>();
         for (Line oldLine : oldLines) {
