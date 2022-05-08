@@ -54,11 +54,11 @@ public class ProductController {
         candlePage.getContent().forEach(x -> {
             List<Object> line = new ArrayList<>();
             line.add(x.getTime());
-            line.add(x.getLow());
-            line.add(x.getHigh());
-            line.add(x.getOpen());
-            line.add(x.getClose());
-            line.add(x.getVolume());
+            line.add(x.getLow().stripTrailingZeros());
+            line.add(x.getHigh().stripTrailingZeros());
+            line.add(x.getOpen().stripTrailingZeros());
+            line.add(x.getClose().stripTrailingZeros());
+            line.add(x.getVolume().stripTrailingZeros());
             lines.add(line);
         });
         return lines;
