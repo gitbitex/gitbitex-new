@@ -12,6 +12,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.drafts.Draft_6455;
+import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Component;
 
@@ -34,7 +35,7 @@ public class CoinbaseTrader {
     private final ExecutorService executor = Executors.newFixedThreadPool(1);
     private final AppProperties appProperties;
 
-    @PostConstruct
+    //@PostConstruct
     public void init() throws URISyntaxException {
         if (appProperties.getLiquidityTraderUserIds().isEmpty()) {
             return;
@@ -43,28 +44,28 @@ public class CoinbaseTrader {
 
         MyClient client = new MyClient(new URI("wss://ws-feed.exchange.coinbase.com"));
 
-       /* Executors.newFixedThreadPool(1).execute(() -> {
-            try {
-                client.connectBlocking();
-                logger.info("exit");
-            } catch (Exception e) {
-                logger.error("error", e);
-            }
-        });*/
-
         Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
             try {
-
-                if (!client.isOpen() && !client.isConnecting()) {
-                    logger.info("reconnecting...");
-                    client.connectBlocking();
-                }else{
+                if (!client.isOpen()) {
+                    try {
+                        if (client.getReadyState().equals(ReadyState.NOT_YET_CONNECTED)) {
+                            logger.info("connecting...: {}", client.getURI());
+                            client.connectBlocking();
+                        } else if (client.getReadyState().equals(ReadyState.CLOSING) || client.getReadyState().equals(
+                            ReadyState.CLOSED)) {
+                            logger.info("reconnecting...: {}", client.getURI());
+                            client.reconnectBlocking();
+                        }
+                    } catch (Exception e) {
+                        logger.error("ws error ", e);
+                    }
+                } else {
                     client.sendPing();
                 }
             } catch (Exception e) {
                 logger.error("send ping error: {}", e.getMessage(), e);
             }
-        }, 0, 3, TimeUnit.SECONDS);
+        }, 0, 5, TimeUnit.SECONDS);
     }
 
     @Getter
