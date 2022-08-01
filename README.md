@@ -35,7 +35,7 @@ docker run -d --name mysql \
 docker exec -it mysql mysql -uroot -p123456 -e "create database gitbitex;"
 
 # start gitbitex
-# open the browser and visit http://127.0.0.1:4567/trade/BTC-USDT
+# open the browser and visit http://127.0.0.1/trade/BTC-USDT
 docker run -d --name gitbitex \
   --network=host \
   greensheng/gitbitex
