@@ -1,6 +1,18 @@
 package com.gitbitex.marketdata;
 
+import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.TopicUtil;
 import com.gitbitex.marketdata.entity.Candle;
@@ -17,19 +29,12 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
-import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoField;
-import java.util.*;
-import java.util.stream.Collectors;
-
 /**
  * My job is to produce candles
  */
 @Slf4j
-public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog> {
-    private static final int[] MINUTES = new int[]{1, 5, 15, 30, 60, 360, 1440};
+public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog> implements ConsumerRebalanceListener {
+    private static final int[] MINUTES = new int[] {1, 5, 15, 30, 60, 360, 1440};
     private final List<String> productIds;
     private final Map<String, Map<Integer, Candle>> candlesByProductId = new HashMap<>();
     private final CandleRepository candleRepository;
@@ -37,9 +42,9 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
     private long uncommittedRecordCount;
 
     public CandleMakerThread(List<String> productIds,
-                             CandleRepository candleRepository,
-                             KafkaConsumer<String, OrderBookLog> consumer,
-                             AppProperties appProperties) {
+        CandleRepository candleRepository,
+        KafkaConsumer<String, OrderBookLog> consumer,
+        AppProperties appProperties) {
         super(consumer, logger);
         this.productIds = productIds;
         this.candleRepository = candleRepository;
@@ -47,32 +52,31 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
     }
 
     @Override
+    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        consumer.commitSync();
+
+        for (TopicPartition partition : partitions) {
+            logger.info("partition revoked: {}", partition.toString());
+            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
+            candlesByProductId.remove(productId);
+        }
+    }
+
+    @Override
+    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+        for (TopicPartition partition : partitions) {
+            logger.info("partition assigned: {}", partition.toString());
+            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
+            candlesByProductId.put(productId, new HashMap<>());
+        }
+    }
+
+    @Override
     protected void doSubscribe() {
         List<String> topics = productIds.stream()
-                .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
-                .collect(Collectors.toList());
-
-        consumer.subscribe(topics, new ConsumerRebalanceListener() {
-            @Override
-            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-                consumer.commitSync();
-
-                for (TopicPartition partition : partitions) {
-                    logger.info("partition revoked: {}", partition.toString());
-                    String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-                    candlesByProductId.remove(productId);
-                }
-            }
-
-            @Override
-            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                for (TopicPartition partition : partitions) {
-                    logger.info("partition assigned: {}", partition.toString());
-                    String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-                    candlesByProductId.put(productId, new HashMap<>());
-                }
-            }
-        });
+            .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
+            .collect(Collectors.toList());
+        consumer.subscribe(topics, this);
     }
 
     @Override
@@ -84,7 +88,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
         for (ConsumerRecord<String, OrderBookLog> record : records) {
             OrderBookLog log = record.value();
             if (log instanceof OrderMatchLog) {
-                on(((OrderMatchLog) log), record.offset());
+                on(((OrderMatchLog)log), record.offset());
             }
         }
 
@@ -96,9 +100,9 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
 
     private void on(OrderMatchLog log, long offset) {
         List<Candle> candles = Arrays.stream(MINUTES)
-                .parallel()
-                .mapToObj(x -> makeCandle(log, offset, x))
-                .collect(Collectors.toList());
+            .parallel()
+            .mapToObj(x -> makeCandle(log, offset, x))
+            .collect(Collectors.toList());
         candleRepository.saveAll(candles);
     }
 
@@ -117,13 +121,13 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
                 logger.info("discard {}", log.getSequence());
             } else if (candle.getTradeId() + 1 != log.getTradeId()) {
                 throw new RuntimeException(String.format("unexpected tradeId: candle=%s, log=%s",
-                        JSON.toJSONString(candle), JSON.toJSONString(log)));
+                    JSON.toJSONString(candle), JSON.toJSONString(log)));
             }
         }
 
         long candleTime = DateUtil.round(
-                ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
-                ChronoField.MINUTE_OF_DAY, granularity).toEpochSecond();
+            ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
+            ChronoField.MINUTE_OF_DAY, granularity).toEpochSecond();
 
         if (candle == null || candle.getTime() != candleTime) {
             candle = new Candle();
