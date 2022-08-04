@@ -1,5 +1,10 @@
 package com.gitbitex.marketdata;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.TopicUtil;
 import com.gitbitex.marketdata.entity.Trade;
@@ -14,20 +19,16 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Slf4j
-public class TradePersistenceThread extends KafkaConsumerThread<String, OrderBookLog> {
+public class TradePersistenceThread extends KafkaConsumerThread<String, OrderBookLog>
+    implements ConsumerRebalanceListener {
     private final List<String> productIds;
     private final TradeRepository tradeRepository;
     private final AppProperties appProperties;
     private long uncommittedRecordCount;
 
     public TradePersistenceThread(List<String> productIds, TradeRepository tradeRepository,
-                                  KafkaConsumer<String, OrderBookLog> consumer, AppProperties appProperties) {
+        KafkaConsumer<String, OrderBookLog> consumer, AppProperties appProperties) {
         super(consumer, logger);
         this.productIds = productIds;
         this.tradeRepository = tradeRepository;
@@ -35,28 +36,27 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, OrderBoo
     }
 
     @Override
+    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        consumer.commitSync();
+
+        for (TopicPartition partition : partitions) {
+            logger.info("partition revoked: {}", partition.toString());
+        }
+    }
+
+    @Override
+    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+        for (TopicPartition partition : partitions) {
+            logger.info("partition assigned: {}", partition.toString());
+        }
+    }
+
+    @Override
     protected void doSubscribe() {
         List<String> topics = productIds.stream()
-                .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
-                .collect(Collectors.toList());
-
-        consumer.subscribe(topics, new ConsumerRebalanceListener() {
-            @Override
-            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-                consumer.commitSync();
-
-                for (TopicPartition partition : partitions) {
-                    logger.info("partition revoked: {}", partition.toString());
-                }
-            }
-
-            @Override
-            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                for (TopicPartition partition : partitions) {
-                    logger.info("partition assigned: {}", partition.toString());
-                }
-            }
-        });
+            .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
+            .collect(Collectors.toList());
+        consumer.subscribe(topics, this);
     }
 
     @Override
@@ -67,10 +67,10 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, OrderBoo
         for (ConsumerRecord<String, OrderBookLog> record : records) {
             OrderBookLog log = record.value();
             if (log instanceof OrderMatchLog) {
-                OrderMatchLog orderMatchLog = ((OrderMatchLog) log);
+                OrderMatchLog orderMatchLog = ((OrderMatchLog)log);
                 orderMatchLog.setOffset(record.offset());
                 Trade trade = tradeRepository.findByProductIdAndTradeId(orderMatchLog.getProductId(),
-                        orderMatchLog.getTradeId());
+                    orderMatchLog.getTradeId());
                 if (trade == null) {
                     trade = new Trade();
                     trade.setTradeId(orderMatchLog.getTradeId());
