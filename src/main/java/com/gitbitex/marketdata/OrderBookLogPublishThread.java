@@ -1,5 +1,10 @@
 package com.gitbitex.marketdata;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.TopicUtil;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
@@ -13,20 +18,16 @@ import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Slf4j
-public class OrderBookLogPublishThread extends KafkaConsumerThread<String, String> {
+public class OrderBookLogPublishThread extends KafkaConsumerThread<String, String>
+    implements ConsumerRebalanceListener {
     private final List<String> productIds;
     private final AppProperties appProperties;
     private final RTopic logTopic;
     private long uncommittedRecordCount;
 
     public OrderBookLogPublishThread(List<String> productIds, KafkaConsumer<String, String> kafkaConsumer,
-                                     RedissonClient redissonClient, AppProperties appProperties) {
+        RedissonClient redissonClient, AppProperties appProperties) {
         super(kafkaConsumer, logger);
         this.productIds = productIds;
         this.appProperties = appProperties;
@@ -34,28 +35,27 @@ public class OrderBookLogPublishThread extends KafkaConsumerThread<String, Strin
     }
 
     @Override
+    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        consumer.commitSync();
+
+        for (TopicPartition partition : partitions) {
+            logger.info("partition revoked: {}", partition.toString());
+        }
+    }
+
+    @Override
+    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+        for (TopicPartition partition : partitions) {
+            logger.info("partition assigned: {}", partition.toString());
+        }
+    }
+
+    @Override
     protected void doSubscribe() {
         List<String> topics = productIds.stream()
-                .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
-                .collect(Collectors.toList());
-
-        consumer.subscribe(topics, new ConsumerRebalanceListener() {
-            @Override
-            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-                consumer.commitSync();
-
-                for (TopicPartition partition : partitions) {
-                    logger.info("partition revoked: {}", partition.toString());
-                }
-            }
-
-            @Override
-            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                for (TopicPartition partition : partitions) {
-                    logger.info("partition assigned: {}", partition.toString());
-                }
-            }
-        });
+            .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
+            .collect(Collectors.toList());
+        consumer.subscribe(topics, this);
     }
 
     @Override
