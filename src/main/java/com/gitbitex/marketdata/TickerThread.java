@@ -1,6 +1,17 @@
 package com.gitbitex.marketdata;
 
+import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.TopicUtil;
 import com.gitbitex.marketdata.entity.Ticker;
@@ -16,18 +27,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
-import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoField;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 @Slf4j
-public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
+public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> implements ConsumerRebalanceListener {
     private final List<String> productIds;
     private final TickerManager tickerManager;
     private final AppProperties appProperties;
@@ -35,8 +36,8 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
     private long uncommittedRecordCount;
 
     public TickerThread(List<String> productIds, TickerManager tickerManager,
-                        KafkaConsumer<String, OrderBookLog> consumer,
-                        AppProperties appProperties) {
+        KafkaConsumer<String, OrderBookLog> consumer,
+        AppProperties appProperties) {
         super(consumer, logger);
         this.productIds = productIds;
         this.appProperties = appProperties;
@@ -44,37 +45,36 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
     }
 
     @Override
+    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        consumer.commitSync();
+
+        for (TopicPartition partition : partitions) {
+            logger.info("partition revoked: {}", partition.toString());
+            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
+            tickerByProductId.remove(productId);
+        }
+    }
+
+    @Override
+    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+        for (TopicPartition partition : partitions) {
+            logger.info("partition assigned: {}", partition.toString());
+            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
+            Ticker ticker = tickerManager.getTicker(productId);
+            if (ticker == null) {
+                ticker = new Ticker();
+                ticker.setProductId(productId);
+            }
+            tickerByProductId.put(productId, ticker);
+        }
+    }
+
+    @Override
     protected void doSubscribe() {
         List<String> topics = productIds.stream()
-                .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
-                .collect(Collectors.toList());
-
-        consumer.subscribe(topics, new ConsumerRebalanceListener() {
-            @Override
-            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-                consumer.commitSync();
-
-                for (TopicPartition partition : partitions) {
-                    logger.info("partition revoked: {}", partition.toString());
-                    String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-                    tickerByProductId.remove(productId);
-                }
-            }
-
-            @Override
-            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                for (TopicPartition partition : partitions) {
-                    logger.info("partition assigned: {}", partition.toString());
-                    String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-                    Ticker ticker = tickerManager.getTicker(productId);
-                    if (ticker == null) {
-                        ticker = new Ticker();
-                        ticker.setProductId(productId);
-                    }
-                    tickerByProductId.put(productId, ticker);
-                }
-            }
-        });
+            .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
+            .collect(Collectors.toList());
+        consumer.subscribe(topics, this);
     }
 
     @Override
@@ -86,7 +86,7 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
         for (ConsumerRecord<String, OrderBookLog> record : records) {
             OrderBookLog log = record.value();
             if (log instanceof OrderMatchLog) {
-                OrderMatchLog orderMatchLog = ((OrderMatchLog) log);
+                OrderMatchLog orderMatchLog = ((OrderMatchLog)log);
                 orderMatchLog.setOffset(record.offset());
                 refreshTicker(orderMatchLog);
             }
@@ -106,15 +106,15 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> {
             return;
         } else if (ticker.getTradeId() + 1 != log.getTradeId()) {
             throw new RuntimeException(String.format("tradeId discontinuity: expected=%s actual=%s %s %s",
-                    ticker.getTradeId() + 1, log.getTradeId(), JSON.toJSONString(ticker), JSON.toJSONString(log)));
+                ticker.getTradeId() + 1, log.getTradeId(), JSON.toJSONString(ticker), JSON.toJSONString(log)));
         }
 
         long time24h = DateUtil.round(
-                ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
-                ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
+            ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
+            ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
         long time30d = DateUtil.round(
-                ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
-                ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
+            ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
+            ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
 
         if (ticker.getTime24h() == null || ticker.getTime24h() != time24h) {
             ticker.setTime24h(time24h);
