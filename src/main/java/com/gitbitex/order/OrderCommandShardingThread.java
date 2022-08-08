@@ -1,11 +1,20 @@
 package com.gitbitex.order;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.kafka.PendingOffsetManager;
 import com.gitbitex.kafka.TopicUtil;
-import com.gitbitex.matchingengine.log.*;
+import com.gitbitex.matchingengine.log.OrderBookLog;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderDoneLog.DoneReason;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
 import com.gitbitex.order.command.FillOrderCommand;
 import com.gitbitex.order.command.OrderCommand;
 import com.gitbitex.order.command.SaveOrderCommand;
@@ -20,22 +29,16 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Slf4j
-public class OrderCommandShardingThread extends KafkaConsumerThread<String, OrderBookLog> {
+public class OrderCommandShardingThread extends KafkaConsumerThread<String, OrderBookLog>
+    implements ConsumerRebalanceListener {
     private final List<String> productIds;
     private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
     private final PendingOffsetManager pendingOffsetManager = new PendingOffsetManager();
 
-
     public OrderCommandShardingThread(List<String> productIds, KafkaConsumer<String, OrderBookLog> kafkaConsumer,
-                                      KafkaMessageProducer messageProducer, AppProperties appProperties) {
+        KafkaMessageProducer messageProducer, AppProperties appProperties) {
         super(kafkaConsumer, logger);
         this.productIds = productIds;
         this.messageProducer = messageProducer;
@@ -43,29 +46,28 @@ public class OrderCommandShardingThread extends KafkaConsumerThread<String, Orde
     }
 
     @Override
+    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        for (TopicPartition partition : partitions) {
+            logger.info("partition revoked: {}", partition.toString());
+            pendingOffsetManager.commit(consumer, partition);
+            pendingOffsetManager.remove(partition);
+        }
+    }
+
+    @Override
+    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+        for (TopicPartition partition : partitions) {
+            logger.info("partition assigned: {}", partition.toString());
+            pendingOffsetManager.put(partition);
+        }
+    }
+
+    @Override
     protected void doSubscribe() {
         List<String> topics = productIds.stream()
-                .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
-                .collect(Collectors.toList());
-
-        consumer.subscribe(topics, new ConsumerRebalanceListener() {
-            @Override
-            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-                for (TopicPartition partition : partitions) {
-                    logger.info("partition revoked: {}", partition.toString());
-                    pendingOffsetManager.commit(consumer, partition);
-                    pendingOffsetManager.remove(partition);
-                }
-            }
-
-            @Override
-            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                for (TopicPartition partition : partitions) {
-                    logger.info("partition assigned: {}", partition.toString());
-                    pendingOffsetManager.put(partition);
-                }
-            }
-        });
+            .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
+            .collect(Collectors.toList());
+        consumer.subscribe(topics, this);
     }
 
     @Override
@@ -78,13 +80,13 @@ public class OrderCommandShardingThread extends KafkaConsumerThread<String, Orde
             pendingOffsetManager.retainOffset(partition, record.offset());
             OrderBookLog log = record.value();
             if (log instanceof OrderReceivedLog) {
-                on((OrderReceivedLog) log, partition, record.offset());
+                on((OrderReceivedLog)log, partition, record.offset());
             } else if (log instanceof OrderOpenLog) {
-                on((OrderOpenLog) log, partition, record.offset());
+                on((OrderOpenLog)log, partition, record.offset());
             } else if (log instanceof OrderMatchLog) {
-                on((OrderMatchLog) log, partition, record.offset());
+                on((OrderMatchLog)log, partition, record.offset());
             } else if (log instanceof OrderDoneLog) {
-                on((OrderDoneLog) log, partition, record.offset());
+                on((OrderDoneLog)log, partition, record.offset());
             } else {
                 throw new RuntimeException("unknown log");
             }
@@ -134,7 +136,7 @@ public class OrderCommandShardingThread extends KafkaConsumerThread<String, Orde
         UpdateOrderStatusCommand updateOrderStatusCommand = new UpdateOrderStatusCommand();
         updateOrderStatusCommand.setOrderId(log.getOrderId());
         updateOrderStatusCommand.setOrderStatus(
-                log.getDoneReason() == DoneReason.FILLED ? OrderStatus.FILLED : Order.OrderStatus.CANCELLED);
+            log.getDoneReason() == DoneReason.FILLED ? OrderStatus.FILLED : Order.OrderStatus.CANCELLED);
         updateOrderStatusCommand.setDoneReason(log.getDoneReason());
         sendCommand(updateOrderStatusCommand, partition, offset);
     }
