@@ -1,5 +1,9 @@
 package com.gitbitex.order;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+
 import com.codahale.metrics.MetricRegistry;
 import com.gitbitex.AppProperties;
 import com.gitbitex.account.command.AccountCommand;
@@ -20,12 +24,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-
 @Slf4j
-public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCommand> {
+public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCommand>
+    implements ConsumerRebalanceListener {
     private final OrderManager orderManager;
     private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
@@ -33,9 +34,9 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
     private final PendingOffsetManager pendingOffsetManager = new PendingOffsetManager();
 
     public OrderPersistenceThread(KafkaConsumer<String, OrderCommand> consumer,
-                                  KafkaMessageProducer messageProducer, OrderManager orderManager,
-                                  MetricRegistry metricRegistry,
-                                  AppProperties appProperties) {
+        KafkaMessageProducer messageProducer, OrderManager orderManager,
+        MetricRegistry metricRegistry,
+        AppProperties appProperties) {
         super(consumer, logger);
         this.orderManager = orderManager;
         this.messageProducer = messageProducer;
@@ -44,26 +45,25 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
     }
 
     @Override
-    protected void doSubscribe() {
-        consumer.subscribe(Collections.singletonList(appProperties.getOrderCommandTopic()),
-                new ConsumerRebalanceListener() {
-                    @Override
-                    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-                        for (TopicPartition partition : partitions) {
-                            logger.info("partition revoked: {}", partition.toString());
-                            pendingOffsetManager.commit(consumer, partition);
-                            pendingOffsetManager.remove(partition);
-                        }
-                    }
+    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        for (TopicPartition partition : partitions) {
+            logger.info("partition revoked: {}", partition.toString());
+            pendingOffsetManager.commit(consumer, partition);
+            pendingOffsetManager.remove(partition);
+        }
+    }
 
-                    @Override
-                    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                        for (TopicPartition partition : partitions) {
-                            logger.info("partition assigned: {}", partition.toString());
-                            pendingOffsetManager.put(partition);
-                        }
-                    }
-                });
+    @Override
+    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+        for (TopicPartition partition : partitions) {
+            logger.info("partition assigned: {}", partition.toString());
+            pendingOffsetManager.put(partition);
+        }
+    }
+
+    @Override
+    protected void doSubscribe() {
+        consumer.subscribe(Collections.singletonList(appProperties.getOrderCommandTopic()), this);
     }
 
     @Override
@@ -75,11 +75,11 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
             pendingOffsetManager.retainOffset(partition, record.offset());
             OrderCommand command = record.value();
             if (command instanceof SaveOrderCommand) {
-                on((SaveOrderCommand) command, partition, record.offset());
+                on((SaveOrderCommand)command, partition, record.offset());
             } else if (command instanceof UpdateOrderStatusCommand) {
-                on((UpdateOrderStatusCommand) command, partition, record.offset());
+                on((UpdateOrderStatusCommand)command, partition, record.offset());
             } else if (command instanceof FillOrderCommand) {
-                on((FillOrderCommand) command, partition, record.offset());
+                on((FillOrderCommand)command, partition, record.offset());
             } else {
                 throw new RuntimeException("unknown command");
             }
@@ -90,7 +90,6 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
 
         pendingOffsetManager.commit(consumer, 1000);
     }
-
 
     public void on(SaveOrderCommand command, TopicPartition partition, long offset) {
         if (orderManager.findByOrderId(command.getOrder().getOrderId()) == null) {
@@ -128,7 +127,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderCom
 
         // fill order
         String fillId = orderManager.fillOrder(command.getOrderId(), command.getTradeId(), command.getSize(),
-                command.getPrice(), command.getFunds());
+            command.getPrice(), command.getFunds());
 
         // notify account to settle
         SettleOrderFillCommand settleOrderFillCommand = new SettleOrderFillCommand();
