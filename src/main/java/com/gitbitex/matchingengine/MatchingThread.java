@@ -80,9 +80,11 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
         logger.info(JSON.toJSONString(snapshot, true));
         orderBookManager.saveFullOrderBookSnapshot(snapshot);
 
-        L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot("BTC-USDT", 10);
-        logger.info(JSON.toJSONString(l2OrderBook, true));
-        orderBookManager.saveL2BatchOrderBook(l2OrderBook);
+        matchingEngine.getOrderBooks().keySet().forEach(x -> {
+            L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);
+            logger.info(JSON.toJSONString(l2OrderBook, true));
+            orderBookManager.saveL2BatchOrderBook(l2OrderBook);
+        });
 
     }
 

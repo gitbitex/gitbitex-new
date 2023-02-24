@@ -11,11 +11,13 @@ import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.L3OrderBook;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MatchingEngine {
     private final AccountBook accountBook;
+    @Getter
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
     private final LogWriter logWriter;
     private final AtomicLong logSequence = new AtomicLong();
