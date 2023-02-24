@@ -37,18 +37,6 @@ public class UserManager {
         user.setPasswordSalt(UUID.randomUUID().toString());
         user.setPasswordHash(encryptPassword(password, user.getPasswordSalt()));
         userRepository.save(user);
-
-        // TODO: REMOVE
-        // to demo, give each user some money
-        accountManager.increaseAvailable(user.getUserId(), "LTC", BigDecimal.valueOf(100000000),
-            UUID.randomUUID().toString());
-        accountManager.increaseAvailable(user.getUserId(), "ETH", BigDecimal.valueOf(100000000),
-            UUID.randomUUID().toString());
-        accountManager.increaseAvailable(user.getUserId(), "BTC", BigDecimal.valueOf(100000000),
-            UUID.randomUUID().toString());
-        accountManager.increaseAvailable(user.getUserId(), "USDT", BigDecimal.valueOf(100000000),
-            UUID.randomUUID().toString());
-
         return user;
     }
 

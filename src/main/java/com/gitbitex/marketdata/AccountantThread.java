@@ -42,7 +42,6 @@ public class AccountantThread extends KafkaConsumerThread<String, Log>
         this.accountManager = accountManager;
         this.messageProducer = messageProducer;
         this.appProperties = appProperties;
-
     }
 
     @Override
