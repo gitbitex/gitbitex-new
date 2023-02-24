@@ -6,6 +6,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,13 +15,21 @@ import java.util.stream.Collectors;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
+import com.gitbitex.matchingengine.log.AccountChangeMessage;
 import com.gitbitex.matchingengine.log.Log;
+import com.gitbitex.matchingengine.log.LogDispatcher;
+import com.gitbitex.matchingengine.log.LogHandler;
+import com.gitbitex.matchingengine.log.OrderDoneMessage;
+import com.gitbitex.matchingengine.log.OrderFilledMessage;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.common.message.OrderMessage;
 import com.gitbitex.kafka.TopicUtil;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.util.DateUtil;
+import com.gitbitex.matchingengine.log.OrderOpenMessage;
+import com.gitbitex.matchingengine.log.OrderReceivedMessage;
+import com.gitbitex.matchingengine.log.OrderRejectedMessage;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +43,8 @@ import org.apache.kafka.common.TopicPartition;
  * My job is to produce candles
  */
 @Slf4j
-public class CandleMakerThread extends KafkaConsumerThread<String, Log> implements ConsumerRebalanceListener {
+public class CandleMakerThread extends KafkaConsumerThread<String, Log> implements ConsumerRebalanceListener,
+    LogHandler {
     private static final int[] MINUTES = new int[] {1, 5, 15, 30, 60, 360, 1440};
     private final List<String> productIds;
     private final Map<String, Map<Integer, Candle>> candlesByProductId = new HashMap<>();
@@ -59,7 +69,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
             String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
             candlesByProductId.remove(productId);
         }
-        consumer.commitSync();
+        //consumer.commitSync();
     }
 
     @Override
@@ -73,10 +83,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
 
     @Override
     protected void doSubscribe() {
-        List<String> topics = productIds.stream()
-            .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
-            .collect(Collectors.toList());
-        consumer.subscribe(topics, this);
+        consumer.subscribe(Collections.singletonList(appProperties.getOrderBookLogTopic()), this);
     }
 
     @Override
@@ -87,9 +94,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
 
         for (ConsumerRecord<String, Log> record : records) {
             Log log = record.value();
-            if (log instanceof OrderMatchLog) {
-                on(((OrderMatchLog)log), record.offset());
-            }
+            LogDispatcher.dispatch(log,this);
         }
 
         if (uncommittedRecordCount > 10) {
@@ -101,20 +106,23 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
     private void on(OrderMatchLog log, long offset) {
         List<Candle> candles = Arrays.stream(MINUTES)
             .parallel()
-            .mapToObj(x -> makeCandle(log, offset, x))
+            .mapToObj(x -> makeCandle(log, x))
             .collect(Collectors.toList());
         candleRepository.saveAll(candles);
     }
 
-    private Candle makeCandle(OrderMatchLog log, long offset, int granularity) {
-        Map<Integer, Candle> candles = candlesByProductId.get(log.getProductId());
-        Candle candle = candles.get(granularity);
+    private Candle makeCandle(OrderMatchLog log, int granularity) {
+        //Map<Integer, Candle> candles = candlesByProductId.get(log.getProductId());
+        //Candle candle = candles.get(granularity);
         /*if (candle == null) {
             candle = candleRepository.findTopByProductIdAndGranularityOrderByTimeDesc(productId, granularity);
             if (candle != null) {
                 candles.put(granularity, candle);
             }
         }*/
+
+        Candle candle = candleRepository.findTopByProductIdAndGranularityOrderByTimeDesc(log.getProductId(), granularity);
+
 
         if (candle != null) {
             if (candle.getTradeId() >= log.getTradeId()) {
@@ -139,15 +147,52 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
             candle.setVolume(log.getSize());
             candle.setGranularity(granularity);
             candle.setTime(candleTime);
-            candles.put(granularity, candle);
         } else {
             candle.setClose(log.getPrice());
             candle.setLow(candle.getLow().min(log.getPrice()));
             candle.setHigh(candle.getLow().max(log.getPrice()));
             candle.setVolume(candle.getVolume().add(log.getSize()));
         }
-        candle.setOrderBookLogOffset(offset);
         candle.setTradeId(log.getTradeId());
         return candle;
+    }
+
+    @Override
+    public void on(OrderRejectedMessage log) {
+
+    }
+
+    @Override
+    public void on(OrderReceivedMessage log) {
+
+    }
+
+    @Override
+    public void on(OrderOpenMessage log) {
+
+    }
+
+    @Override
+    public void on(OrderMatchLog log) {
+        List<Candle> candles = Arrays.stream(MINUTES)
+            .parallel()
+            .mapToObj(x -> makeCandle(log, x))
+            .collect(Collectors.toList());
+        candleRepository.saveAll(candles);
+    }
+
+    @Override
+    public void on(OrderDoneMessage log) {
+
+    }
+
+    @Override
+    public void on(OrderFilledMessage log) {
+
+    }
+
+    @Override
+    public void on(AccountChangeMessage log) {
+
     }
 }

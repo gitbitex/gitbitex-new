@@ -5,20 +5,23 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Collections;
 
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.matchingengine.log.Log;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.common.message.OrderMessage;
-import com.gitbitex.kafka.TopicUtil;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.marketdata.util.DateUtil;
+import com.gitbitex.matchingengine.log.AccountChangeMessage;
+import com.gitbitex.matchingengine.log.Log;
+import com.gitbitex.matchingengine.log.LogDispatcher;
+import com.gitbitex.matchingengine.log.LogHandler;
+import com.gitbitex.matchingengine.log.OrderDoneMessage;
+import com.gitbitex.matchingengine.log.OrderFilledMessage;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderOpenMessage;
+import com.gitbitex.matchingengine.log.OrderReceivedMessage;
+import com.gitbitex.matchingengine.log.OrderRejectedMessage;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -29,30 +32,22 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
 @Slf4j
-public class TickerThread extends KafkaConsumerThread<String, Log> implements ConsumerRebalanceListener {
-    private final List<String> productIds;
+public class TickerThread extends KafkaConsumerThread<String, Log> implements ConsumerRebalanceListener, LogHandler {
     private final TickerManager tickerManager;
     private final AppProperties appProperties;
-    private final Map<String, Ticker> tickerByProductId = new HashMap<>();
     private long uncommittedRecordCount;
 
-    public TickerThread(List<String> productIds, TickerManager tickerManager,
-        KafkaConsumer<String, Log> consumer,
-        AppProperties appProperties) {
+    public TickerThread(TickerManager tickerManager, KafkaConsumer<String, Log> consumer, AppProperties appProperties) {
         super(consumer, logger);
-        this.productIds = productIds;
         this.appProperties = appProperties;
         this.tickerManager = tickerManager;
     }
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-        consumer.commitSync();
-
+        //consumer.commitSync();
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
-            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-            tickerByProductId.remove(productId);
         }
     }
 
@@ -60,22 +55,12 @@ public class TickerThread extends KafkaConsumerThread<String, Log> implements Co
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-            Ticker ticker = tickerManager.getTicker(productId);
-            if (ticker == null) {
-                ticker = new Ticker();
-                ticker.setProductId(productId);
-            }
-            tickerByProductId.put(productId, ticker);
         }
     }
 
     @Override
     protected void doSubscribe() {
-        List<String> topics = productIds.stream()
-            .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
-            .collect(Collectors.toList());
-        consumer.subscribe(topics, this);
+        consumer.subscribe(Collections.singletonList(appProperties.getOrderBookLogTopic()), this);
     }
 
     @Override
@@ -86,11 +71,8 @@ public class TickerThread extends KafkaConsumerThread<String, Log> implements Co
 
         for (ConsumerRecord<String, Log> record : records) {
             Log log = record.value();
-            if (log instanceof OrderMatchLog) {
-                OrderMatchLog orderMatchLog = ((OrderMatchLog)log);
-                orderMatchLog.setOffset(record.offset());
-                refreshTicker(orderMatchLog);
-            }
+            log.setOffset(record.offset());
+            LogDispatcher.dispatch(log, this);
         }
 
         if (uncommittedRecordCount > 10) {
@@ -99,22 +81,60 @@ public class TickerThread extends KafkaConsumerThread<String, Log> implements Co
         }
     }
 
+    @Override
+    public void on(OrderRejectedMessage log) {
+
+    }
+
+    @Override
+    public void on(OrderReceivedMessage log) {
+
+    }
+
+    @Override
+    public void on(OrderOpenMessage log) {
+
+    }
+
+    @Override
+    public void on(OrderMatchLog log) {
+        refreshTicker(log);
+    }
+
+    @Override
+    public void on(OrderDoneMessage log) {
+
+    }
+
+    @Override
+    public void on(OrderFilledMessage log) {
+
+    }
+
+    @Override
+    public void on(AccountChangeMessage log) {
+
+    }
+
     private void refreshTicker(OrderMatchLog log) {
-        Ticker ticker = tickerByProductId.get(log.getProductId());
+        Ticker ticker = tickerManager.getTicker(log.getProductId());
+        if (ticker == null) {
+            ticker = new Ticker();
+            ticker.setProductId(log.getProductId());
+        }
 
         if (ticker.getTradeId() >= log.getTradeId()) {
             logger.warn("discard duplicate match log");
             return;
         } else if (ticker.getTradeId() + 1 != log.getTradeId()) {
-            throw new RuntimeException(String.format("tradeId discontinuity: expected=%s actual=%s %s %s",
-                ticker.getTradeId() + 1, log.getTradeId(), JSON.toJSONString(ticker), JSON.toJSONString(log)));
+            throw new RuntimeException(
+                String.format("tradeId discontinuity: expected=%s actual=%s %s %s", ticker.getTradeId() + 1,
+                    log.getTradeId(), JSON.toJSONString(ticker), JSON.toJSONString(log)));
         }
 
-        long time24h = DateUtil.round(
-            ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
+        long time24h = DateUtil.round(ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
             ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
-        long time30d = DateUtil.round(
-            ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
+        long time30d = DateUtil.round(ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
             ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
 
         if (ticker.getTime24h() == null || ticker.getTime24h() != time24h) {

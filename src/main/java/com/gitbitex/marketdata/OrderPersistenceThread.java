@@ -29,7 +29,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
 @Slf4j
-public class OrderBookMessageShardingThread extends KafkaConsumerThread<String, Log>
+public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
     implements ConsumerRebalanceListener, LogHandler {
     private final List<String> productIds;
     private final KafkaMessageProducer messageProducer;
@@ -37,7 +37,7 @@ public class OrderBookMessageShardingThread extends KafkaConsumerThread<String, 
     private final OrderManager orderManager;
     private long uncommittedRecordCount;
 
-    public OrderBookMessageShardingThread(List<String> productIds, KafkaConsumer<String, Log> kafkaConsumer,
+    public OrderPersistenceThread(List<String> productIds, KafkaConsumer<String, Log> kafkaConsumer,
         KafkaMessageProducer messageProducer, AppProperties appProperties, OrderManager orderManager) {
         super(kafkaConsumer, logger);
         this.productIds = productIds;

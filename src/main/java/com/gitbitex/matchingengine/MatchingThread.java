@@ -14,6 +14,7 @@ import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.MatchingEngineCommand;
 import com.gitbitex.matchingengine.command.MatchingEngineCommandHandler;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
+import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
@@ -79,8 +80,10 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
         logger.info(JSON.toJSONString(snapshot, true));
         orderBookManager.saveFullOrderBookSnapshot(snapshot);
 
-        //L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot("BTC-USDT", 2);
-        //logger.info(JSON.toJSONString(l2OrderBook, true));
+        L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot("BTC-USDT", 10);
+        logger.info(JSON.toJSONString(l2OrderBook, true));
+        orderBookManager.saveL2BatchOrderBook(l2OrderBook);
+
     }
 
     @Override

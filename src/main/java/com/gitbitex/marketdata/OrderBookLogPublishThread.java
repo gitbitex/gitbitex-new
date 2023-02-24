@@ -2,6 +2,7 @@ package com.gitbitex.marketdata;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -51,10 +52,8 @@ public class OrderBookLogPublishThread extends KafkaConsumerThread<String, Strin
 
     @Override
     protected void doSubscribe() {
-        List<String> topics = productIds.stream()
-            .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
-            .collect(Collectors.toList());
-        consumer.subscribe(topics, this);
+        consumer.subscribe(Collections.singletonList(appProperties.getOrderBookLogTopic()), this);
+
     }
 
     @Override

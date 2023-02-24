@@ -31,15 +31,13 @@ import org.apache.kafka.common.TopicPartition;
 @Slf4j
 public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
     implements ConsumerRebalanceListener, LogHandler {
-    private final List<String> productIds;
     private final TradeRepository tradeRepository;
     private final AppProperties appProperties;
     private long uncommittedRecordCount;
 
-    public TradePersistenceThread(List<String> productIds, TradeRepository tradeRepository,
+    public TradePersistenceThread( TradeRepository tradeRepository,
         KafkaConsumer<String, Log> consumer, AppProperties appProperties) {
         super(consumer, logger);
-        this.productIds = productIds;
         this.tradeRepository = tradeRepository;
         this.appProperties = appProperties;
     }

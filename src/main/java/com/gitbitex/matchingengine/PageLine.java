@@ -14,8 +14,6 @@ public class PageLine implements Serializable {
     private final LinkedHashMap<String, BookOrder> orderById = new LinkedHashMap<>();
     @Getter
     private final OrderSide side;
-    @Getter
-    private BigDecimal totalSize = BigDecimal.ZERO;
 
     public PageLine(BigDecimal price, OrderSide side) {
         this.price = price;
@@ -23,24 +21,27 @@ public class PageLine implements Serializable {
     }
 
     public void addOrder(BookOrder order) {
-        totalSize = totalSize.add(order.getSize());
         orderById.put(order.getOrderId(), order);
     }
 
     public void decreaseOrderSize(String orderId, BigDecimal size) {
         BookOrder order = orderById.get(orderId);
         order.setSize(order.getSize().subtract(size));
-        totalSize = totalSize.subtract(size);
     }
 
     public void removeOrderById(String orderId) {
-        BookOrder order = orderById.remove(orderId);
-        if (order != null) {
-            totalSize = totalSize.subtract(order.getSize());
-        }
+        orderById.remove(orderId);
     }
 
     public Collection<BookOrder> getOrders() {
         return orderById.values();
+    }
+
+    public BigDecimal getTotalSize() {
+        BigDecimal totalSize = BigDecimal.ZERO;
+        for (BookOrder value : orderById.values()) {
+            totalSize = totalSize.add(value.getSize());
+        }
+        return totalSize;
     }
 }
