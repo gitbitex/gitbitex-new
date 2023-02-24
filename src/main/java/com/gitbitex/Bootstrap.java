@@ -120,7 +120,7 @@ public class Bootstrap {
 
     private void startCandleMaker(List<String> productIds, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "CandlerMaker";
+            String groupId = "CandlerMaker1";
             CandleMakerThread candleMakerThread = new CandleMakerThread(productIds, candleRepository,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
                     new LogDeserializer()), appProperties);

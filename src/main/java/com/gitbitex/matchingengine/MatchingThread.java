@@ -77,12 +77,12 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
         }
 
         EngineSnapshot snapshot = matchingEngine.takeSnapshot();
-        logger.info(JSON.toJSONString(snapshot, true));
+        //logger.info(JSON.toJSONString(snapshot, true));
         orderBookManager.saveFullOrderBookSnapshot(snapshot);
 
         matchingEngine.getOrderBooks().keySet().forEach(x -> {
             L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);
-            logger.info(JSON.toJSONString(l2OrderBook, true));
+            //logger.info(JSON.toJSONString(l2OrderBook, true));
             orderBookManager.saveL2BatchOrderBook(l2OrderBook);
         });
 

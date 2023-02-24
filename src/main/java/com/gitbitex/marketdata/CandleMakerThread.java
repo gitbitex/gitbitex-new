@@ -129,7 +129,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
                 logger.info("discard {}", log.getSequence());
             } else if (candle.getTradeId() + 1 != log.getTradeId()) {
                 throw new RuntimeException(String.format("unexpected tradeId: candle=%s, log=%s",
-                    JSON.toJSONString(candle), JSON.toJSONString(log)));
+                    candle.getTradeId(),log.getTradeId() ));
             }
         }
 
