@@ -1,4 +1,4 @@
-package com.gitbitex.order.entity;
+package com.gitbitex.marketdata.entity;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -8,6 +8,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 
+import com.gitbitex.marketdata.entity.Order.OrderSide;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -49,7 +50,7 @@ public class Fill {
 
     private boolean settled;
 
-    private Order.OrderSide side;
+    private OrderSide side;
 
     private boolean done;
 

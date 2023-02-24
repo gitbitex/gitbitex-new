@@ -3,10 +3,6 @@ package com.gitbitex.matchingengine;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import com.alibaba.fastjson.JSON;
 
@@ -30,34 +26,24 @@ import org.apache.kafka.common.TopicPartition;
 @Slf4j
 public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCommand>
     implements MatchingEngineCommandHandler, ConsumerRebalanceListener {
-    private final List<String> productIds;
     private final OrderBookManager orderBookManager;
     private final AppProperties appProperties;
-    private final KafkaMessageProducer messageProducer;
     private final LogWriter logWriter;
-    private final Map<String, OrderBook> orderBookByProductId = new HashMap<>();
-    private final AccountBook accountBook;
-    private final AtomicLong sequence = new AtomicLong();
     private MatchingEngine matchingEngine;
 
-    public MatchingThread(List<String> productIds, OrderBookManager orderBookManager,
+    public MatchingThread(OrderBookManager orderBookManager,
         KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, KafkaMessageProducer messageProducer,
         AppProperties appProperties) {
         super(messageKafkaConsumer, logger);
-        this.productIds = productIds;
         this.orderBookManager = orderBookManager;
         this.appProperties = appProperties;
-        this.messageProducer = messageProducer;
         this.logWriter = new LogWriter(messageProducer);
-        this.accountBook = new AccountBook(logWriter, sequence);
     }
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.warn("partition revoked: {}", partition.toString());
-            //String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-            //orderBookByProductId.remove(productId);
         }
     }
 
@@ -65,18 +51,13 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
+            EngineSnapshot snapshot = orderBookManager.getFullOrderBookSnapshot();
+            this.matchingEngine = new MatchingEngine(snapshot, logWriter);
 
-            /*FullOrderBookSnapshot snapshot = orderBookManager.getFullOrderBookSnapshot("productId");
             if (snapshot != null) {
-                orderBook = new OrderBook(snapshot, engineLogger);
-                consumer.seek(partition, orderBook.getCommandOffset() + 1);
-            } else {
-                orderBook = new OrderBook(productId, engineLogger, new AccountBook());
+                consumer.seek(partition, snapshot.getCommandOffset() + 1);
             }
-            orderBookByProductId.put(productId, orderBook);*/
         }
-
-        this.matchingEngine = new MatchingEngine(null, logWriter);
     }
 
     @Override
@@ -94,14 +75,17 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
             CommandDispatcher.dispatch(command, this);
         }
 
-        EngineSnapshot snapshot= matchingEngine.takeSnapshot();
-        logger.info(JSON.toJSONString(snapshot,true));
+        EngineSnapshot snapshot = matchingEngine.takeSnapshot();
+        logger.info(JSON.toJSONString(snapshot, true));
+        orderBookManager.saveFullOrderBookSnapshot(snapshot);
+
+        //L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot("BTC-USDT", 2);
+        //logger.info(JSON.toJSONString(l2OrderBook, true));
     }
 
     @Override
     public void on(DepositCommand command) {
         matchingEngine.executeCommand(command);
-
     }
 
     @Override

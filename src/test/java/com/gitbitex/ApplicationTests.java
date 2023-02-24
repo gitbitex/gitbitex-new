@@ -2,10 +2,10 @@ package com.gitbitex;
 
 import com.alibaba.fastjson.JSON;
 
-import com.gitbitex.order.entity.Order;
+import com.gitbitex.marketdata.entity.Order;
 import com.gitbitex.product.entity.Product;
-import com.gitbitex.order.OrderManager;
-import com.gitbitex.order.repository.OrderRepository;
+import com.gitbitex.marketdata.OrderManager;
+import com.gitbitex.marketdata.repository.OrderRepository;
 import com.gitbitex.product.repository.ProductRepository;
 import com.gitbitex.openapi.controller.OrderController;
 import com.gitbitex.openapi.model.OrderDto;

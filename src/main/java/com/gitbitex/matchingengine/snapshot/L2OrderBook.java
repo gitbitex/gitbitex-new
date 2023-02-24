@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 
 import com.gitbitex.matchingengine.OrderBook;
 import com.gitbitex.matchingengine.PageLine;
-import com.gitbitex.order.entity.Order.OrderSide;
+import com.gitbitex.marketdata.entity.Order.OrderSide;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.lang.Nullable;

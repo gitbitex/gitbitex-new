@@ -1,4 +1,4 @@
-package com.gitbitex.order;
+package com.gitbitex.marketdata;
 
 import java.time.Duration;
 import java.util.Collection;

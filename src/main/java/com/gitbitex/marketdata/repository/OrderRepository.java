@@ -1,13 +1,13 @@
-package com.gitbitex.order.repository;
+package com.gitbitex.marketdata.repository;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.persistence.criteria.Predicate;
 
-import com.gitbitex.order.entity.Order;
-import com.gitbitex.order.entity.Order.OrderSide;
-import com.gitbitex.order.entity.Order.OrderStatus;
+import com.gitbitex.marketdata.entity.Order;
+import com.gitbitex.marketdata.entity.Order.OrderSide;
+import com.gitbitex.marketdata.entity.Order.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

@@ -1,12 +1,18 @@
 package com.gitbitex.matchingengine.snapshot;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import com.alibaba.fastjson.JSON;
 
+import com.gitbitex.matchingengine.EngineSnapshot;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -20,18 +26,24 @@ public class OrderBookManager {
         this.l2BatchNotifyTopic = redissonClient.getTopic("l2_batch", StringCodec.INSTANCE);
     }
 
-    @Nullable
-    public FullOrderBookSnapshot getFullOrderBookSnapshot(String productId) {
-        Object o = redissonClient.getBucket(keyForFull(productId), StringCodec.INSTANCE).get();
-        if (o == null) {
+    @SneakyThrows
+    public EngineSnapshot getFullOrderBookSnapshot() {
+        Path path = Paths.get("matching-engine-snapshot.log");
+        if (!Files.exists(path)) {
             return null;
         }
-        return JSON.parseObject(o.toString(), FullOrderBookSnapshot.class);
+        byte[] bytes = Files.readAllBytes(path);
+        return JSON.parseObject(new String(bytes), EngineSnapshot.class);
     }
 
-    public void saveFullOrderBookSnapshot(FullOrderBookSnapshot snapshot) {
-        redissonClient.getBucket(keyForFull(snapshot.getProductId()), StringCodec.INSTANCE).set(
-            JSON.toJSONString(snapshot));
+    @SneakyThrows
+    public void saveFullOrderBookSnapshot(EngineSnapshot snapshot) {
+        Path path = Paths.get("matching-engine-snapshot.log");
+        if (Files.exists(path)) {
+            Files.delete(path);
+        }
+        Files.write(path,
+            JSON.toJSONString(snapshot, true).getBytes(StandardCharsets.UTF_8));
     }
 
     public void saveL3OrderBook(L3OrderBook l3OrderBook) {

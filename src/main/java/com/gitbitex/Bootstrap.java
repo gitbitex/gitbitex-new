@@ -16,19 +16,17 @@ import com.gitbitex.marketdata.CandleMakerThread;
 import com.gitbitex.marketdata.OrderBookLogPublishThread;
 import com.gitbitex.marketdata.TickerManager;
 import com.gitbitex.marketdata.TickerThread;
-import com.gitbitex.order.TradePersistenceThread;
+import com.gitbitex.marketdata.TradePersistenceThread;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.MatchingThread;
 import com.gitbitex.matchingengine.command.MatchingEngineCommandDeserializer;
-import com.gitbitex.matchingengine.snapshot.FullOrderBookSnapshotThread;
-import com.gitbitex.matchingengine.snapshot.L2BatchOrderBookSnapshotThread;
-import com.gitbitex.matchingengine.snapshot.L2OrderBookSnapshotThread;
-import com.gitbitex.matchingengine.snapshot.L3OrderBookSnapshotThread;
+
+
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
-import com.gitbitex.order.OrderBookMessageShardingThread;
-import com.gitbitex.order.OrderManager;
-import com.gitbitex.order.OrderPersistenceThread;
+import com.gitbitex.marketdata.OrderBookMessageShardingThread;
+import com.gitbitex.marketdata.OrderManager;
+
 import com.gitbitex.product.ProductManager;
 import com.gitbitex.product.entity.Product;
 import com.gitbitex.product.repository.ProductRepository;
@@ -61,17 +59,13 @@ public class Bootstrap {
     @PostConstruct
     public void init() {
         startAccountant(appProperties.getAccountantThreadNum());
-        startOrderProcessor(appProperties.getOrderProcessorThreadNum());
+
 
         List<String> productIds = productRepository.findAll().stream()
             .map(Product::getProductId)
             .collect(Collectors.toList());
 
         startMatchingEngine(productIds, 1);
-        startFullOrderBookSnapshotTaker(productIds, 1);
-        startL2OrderBookSnapshotTaker(productIds, 1);
-        startL2BatchOrderBookSnapshot(productIds, 1);
-        startL3OrderBookSnapshotTaker(productIds, 1);
         startOrderCommandSharding(productIds, 1);
         startCandleMaker(productIds, 1);
         startTicker(productIds, 1);
@@ -101,23 +95,10 @@ public class Bootstrap {
         }
     }
 
-    private void startOrderProcessor(int nThreads) {
-        for (int i = 0; i < nThreads; i++) {
-            String groupId = "OrderProcessor";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                new OrderMessageDeserializer());
-            OrderPersistenceThread orderPersistenceThread = new OrderPersistenceThread(consumer,
-                messageProducer, orderManager, appProperties);
-            orderPersistenceThread.setName(groupId + "-" + orderPersistenceThread.getId());
-            orderPersistenceThread.start();
-            threads.add(orderPersistenceThread);
-        }
-    }
-
     private void startMatchingEngine(List<String> productIds, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Matching";
-            MatchingThread matchingThread = new MatchingThread(productIds, orderBookManager,
+            MatchingThread matchingThread = new MatchingThread(orderBookManager,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineCommandDeserializer()),
                 messageProducer, appProperties);
             matchingThread.setName(groupId + "-" + matchingThread.getId());
@@ -126,61 +107,8 @@ public class Bootstrap {
         }
     }
 
-    private void startFullOrderBookSnapshotTaker(List<String> productIds, int nThreads) {
-        for (int i = 0; i < nThreads; i++) {
-            String groupId = "Snapshot-Full";
-            FullOrderBookSnapshotThread thread = new FullOrderBookSnapshotThread(productIds,
-                orderBookManager,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                    new OrderMessageDeserializer()),
-                appProperties);
-            thread.setName(groupId + "-" + thread.getId());
-            thread.start();
-            threads.add(thread);
-        }
-    }
 
-    private void startL2OrderBookSnapshotTaker(List<String> productIds, int nThreads) {
-        for (int i = 0; i < nThreads; i++) {
-            String groupId = "Snapshot-L2";
-            L2OrderBookSnapshotThread thread = new L2OrderBookSnapshotThread(productIds,
-                orderBookManager,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                    new OrderMessageDeserializer()),
-                appProperties);
-            thread.setName(groupId + "-" + thread.getId());
-            thread.start();
-            threads.add(thread);
-        }
-    }
 
-    private void startL2BatchOrderBookSnapshot(List<String> productIds, int nThreads) {
-        for (int i = 0; i < nThreads; i++) {
-            String groupId = "Snapshot-L2Batch";
-            L2BatchOrderBookSnapshotThread thread = new L2BatchOrderBookSnapshotThread(productIds,
-                orderBookManager,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                    new OrderMessageDeserializer()),
-                appProperties);
-            thread.setName(groupId + "-" + thread.getId());
-            thread.start();
-            threads.add(thread);
-        }
-    }
-
-    private void startL3OrderBookSnapshotTaker(List<String> productIds, int nThreads) {
-        for (int i = 0; i < nThreads; i++) {
-            String groupId = "Snapshot-L3";
-            L3OrderBookSnapshotThread thread = new L3OrderBookSnapshotThread(productIds,
-                orderBookManager,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                    new OrderMessageDeserializer()),
-                appProperties);
-            thread.setName(groupId + "-" + thread.getId());
-            thread.start();
-            threads.add(thread);
-        }
-    }
 
     private void startOrderCommandSharding(List<String> productIds, int nThreads) {
         for (int i = 0; i < nThreads; i++) {

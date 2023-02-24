@@ -1,6 +1,6 @@
 package com.gitbitex.common.message;
 
-import com.gitbitex.order.entity.Order;
+import com.gitbitex.marketdata.entity.Order;
 import lombok.Getter;
 import lombok.Setter;
 

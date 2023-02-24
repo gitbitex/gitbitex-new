@@ -4,8 +4,8 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
 
-import com.gitbitex.order.entity.Order.OrderSide;
-import com.gitbitex.order.entity.Order.OrderType;
+import com.gitbitex.marketdata.entity.Order.OrderSide;
+import com.gitbitex.marketdata.entity.Order.OrderType;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.BeanUtils;

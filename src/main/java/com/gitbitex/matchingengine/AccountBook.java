@@ -8,10 +8,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import com.gitbitex.matchingengine.log.AccountChangeMessage;
-import com.gitbitex.order.entity.Order.OrderSide;
-import lombok.Getter;
+import com.gitbitex.marketdata.entity.Order.OrderSide;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import org.springframework.lang.Nullable;
 
 @RequiredArgsConstructor
@@ -39,7 +37,10 @@ public class AccountBook {
     }
 
     public void addAll(List<Account> accounts) {
-
+        for (Account account : accounts) {
+            String key = account.getUserId() + "-" + account.getCurrency();
+            this.accounts.put(key,account);
+        }
     }
 
     public BigDecimal getAvailable(String userId, String currency) {
@@ -155,7 +156,7 @@ public class AccountBook {
     public AccountChangeMessage accountChangeMessage(Account account, BigDecimal holdIncr, BigDecimal availableIncr) {
         AccountChangeMessage accountChangeMessage = new AccountChangeMessage();
         accountChangeMessage.setSequence(sequence.incrementAndGet());
-        accountChangeMessage.setUserId(account.userId);
+        accountChangeMessage.setUserId(account.getUserId());
         accountChangeMessage.setCurrency(account.getCurrency());
         accountChangeMessage.setHold(account.getHold());
         accountChangeMessage.setAvailable(account.getAvailable());
@@ -164,12 +165,5 @@ public class AccountBook {
         return accountChangeMessage;
     }
 
-    @Getter
-    @Setter
-    public static class Account {
-        private String userId;
-        private String currency;
-        private BigDecimal available = new BigDecimal(0);
-        private BigDecimal hold = new BigDecimal(0);
-    }
+
 }

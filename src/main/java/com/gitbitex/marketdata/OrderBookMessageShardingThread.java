@@ -1,4 +1,4 @@
-package com.gitbitex.order;
+package com.gitbitex.marketdata;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -18,7 +18,7 @@ import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.OrderOpenMessage;
 import com.gitbitex.matchingengine.log.OrderReceivedMessage;
 import com.gitbitex.matchingengine.log.OrderRejectedMessage;
-import com.gitbitex.order.entity.Order.OrderStatus;
+import com.gitbitex.marketdata.entity.Order.OrderStatus;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;

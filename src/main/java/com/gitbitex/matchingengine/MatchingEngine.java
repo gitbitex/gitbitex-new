@@ -14,6 +14,8 @@ import com.gitbitex.matchingengine.log.OrderDoneMessage;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.OrderOpenMessage;
 import com.gitbitex.matchingengine.log.OrderReceivedMessage;
+import com.gitbitex.matchingengine.snapshot.L2OrderBook;
+import com.gitbitex.matchingengine.snapshot.L3OrderBook;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -28,6 +30,7 @@ public class MatchingEngine {
         this.logWriter = logWriter;
         if (snapshot != null) {
             this.logSequence.set(snapshot.getLogSequence());
+            this.commandOffset= snapshot.getCommandOffset();
             this.accountBook = new AccountBook(snapshot.getAccountBookSnapshot(), logWriter, logSequence);
             if (snapshot.getOrderBookSnapshots() != null) {
                 snapshot.getOrderBookSnapshots().forEach(x -> {
@@ -95,4 +98,19 @@ public class MatchingEngine {
         return snapshot;
     }
 
+    public L2OrderBook takeL2OrderBookSnapshot(String productId,int depth ) {
+        OrderBook orderBook = orderBooks.get(productId);
+        if (orderBook == null) {
+            return null;
+        }
+        return new L2OrderBook(orderBook, depth);
+    }
+
+    public L3OrderBook takeL3OrderBookSnapshot(String productId) {
+        OrderBook orderBook = orderBooks.get(productId);
+        if (orderBook == null) {
+            return null;
+        }
+        return new L3OrderBook(orderBook);
+    }
 }

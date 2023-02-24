@@ -19,7 +19,7 @@ import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
-import com.gitbitex.order.entity.Order;
+import com.gitbitex.marketdata.entity.Order;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;

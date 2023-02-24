@@ -21,9 +21,9 @@ import com.gitbitex.matchingengine.log.OrderOpenMessage;
 import com.gitbitex.matchingengine.log.OrderReceivedMessage;
 import com.gitbitex.matchingengine.log.OrderRejectedMessage;
 import com.gitbitex.matchingengine.log.OrderRejectedMessage.RejectReason;
-import com.gitbitex.order.entity.Order;
-import com.gitbitex.order.entity.Order.OrderSide;
-import com.gitbitex.order.entity.Order.OrderType;
+import com.gitbitex.marketdata.entity.Order;
+import com.gitbitex.marketdata.entity.Order.OrderSide;
+import com.gitbitex.marketdata.entity.Order.OrderType;
 import org.springframework.beans.BeanUtils;
 
 public class BookPage implements Serializable {
