@@ -1,13 +1,14 @@
 package com.gitbitex.matchingengine;
 
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.util.Date;
+
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.io.Serializable;
-import java.math.BigDecimal;
-import java.util.Date;
+import org.springframework.beans.BeanUtils;
 
 @Getter
 @Setter
@@ -21,4 +22,10 @@ public class BookOrder implements Serializable {
     private BigDecimal funds;
     private boolean postOnly;
     private Date time;
+
+    public BookOrder copy(){
+        BookOrder copy= new BookOrder();
+        BeanUtils.copyProperties(this,copy);
+        return copy;
+    }
 }

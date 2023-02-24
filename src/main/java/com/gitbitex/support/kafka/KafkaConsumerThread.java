@@ -1,11 +1,11 @@
 package com.gitbitex.support.kafka;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
 import org.slf4j.Logger;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * https://kafka.apache.org/23/javadoc/index.html?org/apache/kafka/clients/consumer/KafkaConsumer.html
@@ -33,9 +33,6 @@ public abstract class KafkaConsumerThread<K, V> extends Thread {
         try {
             // subscribe
             doSubscribe();
-            consumer.subscription().forEach(x -> {
-                //logger.info("subscribing topic: {}", x);
-            });
 
             // poll & process
             while (!closed.get()) {

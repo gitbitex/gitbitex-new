@@ -1,26 +1,34 @@
 package com.gitbitex.openapi.controller;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
 import com.gitbitex.account.entity.Account;
 import com.gitbitex.account.repository.AccountRepository;
 import com.gitbitex.openapi.model.AccountDto;
+import com.gitbitex.order.ClientOrderReceiver;
 import com.gitbitex.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class AccountController {
     private final AccountRepository accountRepository;
+    private final ClientOrderReceiver clientOrderReceiver;
 
     @GetMapping("/accounts")
     public List<AccountDto> getAccounts(@RequestParam(name = "currency") List<String> currencies,
-                                        @RequestAttribute(required = false) User currentUser) {
+        @RequestAttribute(required = false) User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
@@ -39,6 +47,11 @@ public class AccountController {
             }
         }
         return accounts;
+    }
+
+    @GetMapping("/admin/deposit")
+    public void deposit(@RequestParam String userId, @RequestParam String currency, @RequestParam String amount) {
+        clientOrderReceiver.deposit(userId, currency, new BigDecimal(amount), UUID.randomUUID().toString());
     }
 
     private AccountDto accountDto(Account account) {

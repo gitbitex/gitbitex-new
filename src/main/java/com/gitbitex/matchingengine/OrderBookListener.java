@@ -1,9 +1,26 @@
 package com.gitbitex.matchingengine;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
+import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.AppProperties;
-import com.gitbitex.kafka.TopicUtil;
-import com.gitbitex.matchingengine.log.*;
-import com.gitbitex.matchingengine.snapshot.FullOrderBookSnapshot;
+import com.gitbitex.matchingengine.log.AccountChangeMessage;
+import com.gitbitex.matchingengine.log.Log;
+import com.gitbitex.matchingengine.log.LogDispatcher;
+import com.gitbitex.matchingengine.log.LogHandler;
+import com.gitbitex.matchingengine.log.OrderDoneMessage;
+import com.gitbitex.matchingengine.log.OrderFilledMessage;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderOpenMessage;
+import com.gitbitex.matchingengine.log.OrderReceivedMessage;
+import com.gitbitex.matchingengine.log.OrderRejectedMessage;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
@@ -13,30 +30,25 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 @Slf4j
-public abstract class OrderBookListener extends KafkaConsumerThread<String, OrderBookLog> implements OrderBookLogHandler, ConsumerRebalanceListener {
+public class OrderBookListener extends KafkaConsumerThread<String, Log>
+    implements LogHandler, ConsumerRebalanceListener {
     protected final Map<String, OrderBook> orderBookByProductId = new HashMap<>();
     private final List<String> productIds;
     private final OrderBookManager orderBookManager;
-    private final OrderBookLogDispatcher messageDispatcher;
+
     private final AppProperties appProperties;
     private final Duration pollTimeout;
+    private long sequence;
 
     public OrderBookListener(List<String> productIds, OrderBookManager orderBookManager,
-                             KafkaConsumer<String, OrderBookLog> kafkaConsumer,
-                             Duration pollTimeout,
-                             AppProperties appProperties) {
+        KafkaConsumer<String, Log> kafkaConsumer,
+        Duration pollTimeout,
+        AppProperties appProperties) {
         super(kafkaConsumer, logger);
         this.productIds = productIds;
         this.orderBookManager = orderBookManager;
-        this.messageDispatcher = new OrderBookLogDispatcher(this);
+
         this.appProperties = appProperties;
         this.pollTimeout = pollTimeout;
     }
@@ -45,8 +57,8 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.warn("partition revoked: {}", partition.toString());
-            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-            orderBookByProductId.remove(productId);
+            //String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
+            //orderBookByProductId.remove(productId);
         }
     }
 
@@ -54,47 +66,43 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
+            /*String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
             OrderBook orderBook;
             FullOrderBookSnapshot snapshot = orderBookManager.getFullOrderBookSnapshot(productId);
             if (snapshot != null) {
-                orderBook = snapshot.decodeOrderBook();
+                orderBook =new OrderBook(snapshot);
                 consumer.seek(partition, orderBook.getLogOffset() + 1);
             } else {
                 orderBook = new OrderBook(productId);
             }
-            orderBookByProductId.put(productId, orderBook);
+            orderBookByProductId.put(productId, orderBook);*/
         }
     }
 
     @Override
     protected void doSubscribe() {
-        List<String> topics = productIds.stream()
-                .map(x -> TopicUtil.getProductTopic(x, appProperties.getOrderBookLogTopic()))
-                .collect(Collectors.toList());
-        consumer.subscribe(topics, this);
+        consumer.subscribe(Collections.singletonList(appProperties.getOrderCommandTopic()), this);
     }
 
     @Override
     protected void doPoll() {
         var records = consumer.poll(pollTimeout);
 
-        for (ConsumerRecord<String, OrderBookLog> record : records) {
-            OrderBookLog log = record.value();
+        for (ConsumerRecord<String, Log> record : records) {
+            Log log = record.value();
             log.setOffset(record.offset());
 
-            // check the sequence to ensure that each message is processed in order
-            OrderBook orderBook = orderBookByProductId.get(log.getProductId());
-            if (log.getSequence() <= orderBook.getSequence().get()) {
+            if (log.getSequence() <= sequence) {
                 logger.warn("discard log sequence= {}", log.getSequence());
                 continue;
-            } else if (orderBook.getSequence().get() + 1 != log.getSequence()) {
-                throw new RuntimeException("unexpected sequence");
+            } else if (log.getSequence() != sequence + 1) {
+                throw new RuntimeException("unexpected sequence:" + log.getSequence());
             }
+            sequence = log.getSequence();
 
-            messageDispatcher.dispatch(log);
+            logger.info("{}", JSON.toJSONString(log));
+            LogDispatcher.dispatch(log, this);
 
-            afterRecordProcessed(log.getProductId());
         }
 
         afterRecordsProcessed(records.count());
@@ -107,23 +115,57 @@ public abstract class OrderBookListener extends KafkaConsumerThread<String, Orde
     }
 
     @Override
-    public void on(OrderReceivedLog log) {
-        orderBookByProductId.get(log.getProductId()).restoreLog(log);
+    public void on(OrderRejectedMessage log) {
+
     }
 
     @Override
-    public void on(OrderOpenLog log) {
-        orderBookByProductId.get(log.getProductId()).restoreLog(log);
+    public void on(OrderReceivedMessage log) {
+        OrderBook orderBook = orderBookByProductId.get(log.getProductId());
+        if (orderBook == null) {
+            orderBook = new OrderBook(log.getProductId(), null, null, new AtomicLong());
+            orderBookByProductId.put(log.getProductId(),orderBook);
+        }
+        orderBook.restoreLog(log);
+    }
+
+    @Override
+    public void on(OrderOpenMessage log) {
+        OrderBook orderBook = orderBookByProductId.get(log.getProductId());
+        if (orderBook == null) {
+            orderBook = new OrderBook(log.getProductId(), null, null, new AtomicLong());
+            orderBookByProductId.put(log.getProductId(),orderBook);
+        }
+        orderBook.restoreLog(log);
     }
 
     @Override
     public void on(OrderMatchLog log) {
-        orderBookByProductId.get(log.getProductId()).restoreLog(log);
+        OrderBook orderBook = orderBookByProductId.get(log.getProductId());
+        if (orderBook == null) {
+            orderBook = new OrderBook(log.getProductId(), null, null, new AtomicLong());
+            orderBookByProductId.put(log.getProductId(),orderBook);
+        }
+        orderBook.restoreLog(log);
     }
 
     @Override
-    public void on(OrderDoneLog log) {
-        orderBookByProductId.get(log.getProductId()).restoreLog(log);
+    public void on(OrderDoneMessage log) {
+        OrderBook orderBook = orderBookByProductId.get(log.getProductId());
+        if (orderBook == null) {
+            orderBook = new OrderBook(log.getProductId(), null, null, new AtomicLong());
+            orderBookByProductId.put(log.getProductId(),orderBook);
+        }
+        orderBook.restoreLog(log);
     }
 
+    @Override
+    public void on(OrderFilledMessage log) {
+
+    }
+
+    @Override
+    public void on(AccountChangeMessage log) {
+
+    }
 }

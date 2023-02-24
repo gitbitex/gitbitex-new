@@ -13,11 +13,12 @@ import java.util.stream.Collectors;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
+import com.gitbitex.matchingengine.log.Log;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.common.message.OrderMessage;
 import com.gitbitex.kafka.TopicUtil;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.marketdata.util.DateUtil;
-import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
 @Slf4j
-public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> implements ConsumerRebalanceListener {
+public class TickerThread extends KafkaConsumerThread<String, Log> implements ConsumerRebalanceListener {
     private final List<String> productIds;
     private final TickerManager tickerManager;
     private final AppProperties appProperties;
@@ -36,7 +37,7 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> impl
     private long uncommittedRecordCount;
 
     public TickerThread(List<String> productIds, TickerManager tickerManager,
-        KafkaConsumer<String, OrderBookLog> consumer,
+        KafkaConsumer<String, Log> consumer,
         AppProperties appProperties) {
         super(consumer, logger);
         this.productIds = productIds;
@@ -83,8 +84,8 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> impl
         var records = consumer.poll(Duration.ofSeconds(5));
         uncommittedRecordCount += records.count();
 
-        for (ConsumerRecord<String, OrderBookLog> record : records) {
-            OrderBookLog log = record.value();
+        for (ConsumerRecord<String, Log> record : records) {
+            Log log = record.value();
             if (log instanceof OrderMatchLog) {
                 OrderMatchLog orderMatchLog = ((OrderMatchLog)log);
                 orderMatchLog.setOffset(record.offset());
@@ -92,7 +93,7 @@ public class TickerThread extends KafkaConsumerThread<String, OrderBookLog> impl
             }
         }
 
-        if (uncommittedRecordCount > 1000) {
+        if (uncommittedRecordCount > 10) {
             consumer.commitSync();
             uncommittedRecordCount = 0;
         }

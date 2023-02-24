@@ -36,11 +36,10 @@ public class OrderBookLogPublishThread extends KafkaConsumerThread<String, Strin
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-        consumer.commitSync();
-
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
         }
+        consumer.commitSync();
     }
 
     @Override
@@ -67,7 +66,7 @@ public class OrderBookLogPublishThread extends KafkaConsumerThread<String, Strin
             logTopic.publishAsync(record.value());
         }
 
-        if (uncommittedRecordCount > 10000) {
+        if (uncommittedRecordCount > 10) {
             consumer.commitSync();
             uncommittedRecordCount = 0;
         }

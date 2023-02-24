@@ -31,7 +31,7 @@ docker run -d --name mysql \
   -e MYSQL_ROOT_PASSWORD=123456 \
   mysql:5.7
 
-# Please wait for MySQL to start before executing the following command
+# Please wait for MySQL to start before executing the following orderMessage
 docker exec -it mysql mysql -uroot -p123456 -e "create database gitbitex;"
 
 # start gitbitex
@@ -43,12 +43,12 @@ docker run -d --name gitbitex \
 ```
 
 ## Build
-The project uses **jib**(https://cloud.google.com/java/getting-started/jib?hl=en) for docker image construction, so there is no dockerfile file. You can use the following command to generate an image locally:
+The project uses **jib**(https://cloud.google.com/java/getting-started/jib?hl=en) for docker image construction, so there is no dockerfile file. You can use the following orderMessage to generate an image locally:
 ```shell
 mvn clean compile jib:dockerBuild
 ```
 
-If you don't want to use docker, you can directly build a jar package with the following command, and then start it with Java command
+If you don't want to use docker, you can directly build a jar package with the following orderMessage, and then start it with Java orderMessage
 ```shell
 mvn clean package -Dmaven.test.skip=true
 ```

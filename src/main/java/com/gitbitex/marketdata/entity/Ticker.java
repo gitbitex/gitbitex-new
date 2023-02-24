@@ -1,11 +1,11 @@
 package com.gitbitex.marketdata.entity;
 
+import java.math.BigDecimal;
+import java.util.Date;
+
 import com.gitbitex.order.entity.Order.OrderSide;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.math.BigDecimal;
-import java.util.Date;
 
 @Getter
 @Setter

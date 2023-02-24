@@ -1,5 +1,4 @@
 
-
 CREATE TABLE IF NOT EXISTS `account` (
                            `id` bigint(20) NOT NULL AUTO_INCREMENT,
                            `created_at` datetime DEFAULT NULL,
@@ -70,6 +69,7 @@ CREATE TABLE IF NOT EXISTS `fill` (
                         `fill_id` varchar(255) NOT NULL DEFAULT '',
                         `order_id` varchar(255) DEFAULT NULL,
                         `product_id` varchar(255) DEFAULT NULL,
+                        `user_id` varchar(255) DEFAULT NULL,
                         `fee` decimal(32,16) DEFAULT NULL,
                         `side` int(11) DEFAULT NULL,
                         `size` decimal(32,16) NOT NULL DEFAULT '0.00000000',

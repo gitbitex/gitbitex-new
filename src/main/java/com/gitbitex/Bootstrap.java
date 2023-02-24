@@ -1,42 +1,45 @@
 package com.gitbitex;
 
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Slf4jReporter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.stream.Collectors;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+
 import com.gitbitex.account.AccountManager;
 import com.gitbitex.account.AccountantThread;
-import com.gitbitex.account.command.AccountCommandDeserializer;
+import com.gitbitex.matchingengine.log.OrderMessageDeserializer;
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.marketdata.*;
+import com.gitbitex.marketdata.CandleMakerThread;
+import com.gitbitex.marketdata.OrderBookLogPublishThread;
+import com.gitbitex.marketdata.TickerManager;
+import com.gitbitex.marketdata.TickerThread;
+import com.gitbitex.order.TradePersistenceThread;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.MatchingThread;
-import com.gitbitex.matchingengine.command.OrderBookCommandDeserializer;
-import com.gitbitex.matchingengine.log.OrderBookLogDeserializer;
-import com.gitbitex.matchingengine.snapshot.*;
-import com.gitbitex.order.OrderCommandShardingThread;
+import com.gitbitex.matchingengine.command.MatchingEngineCommandDeserializer;
+import com.gitbitex.matchingengine.snapshot.FullOrderBookSnapshotThread;
+import com.gitbitex.matchingengine.snapshot.L2BatchOrderBookSnapshotThread;
+import com.gitbitex.matchingengine.snapshot.L2OrderBookSnapshotThread;
+import com.gitbitex.matchingengine.snapshot.L3OrderBookSnapshotThread;
+import com.gitbitex.matchingengine.snapshot.OrderBookManager;
+import com.gitbitex.order.OrderBookMessageShardingThread;
 import com.gitbitex.order.OrderManager;
 import com.gitbitex.order.OrderPersistenceThread;
-import com.gitbitex.order.command.OrderCommandDeserializer;
 import com.gitbitex.product.ProductManager;
 import com.gitbitex.product.entity.Product;
 import com.gitbitex.product.repository.ProductRepository;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.support.kafka.KafkaProperties;
-import com.gitbitex.support.metric.JsonSlf4Reporter;
 import lombok.RequiredArgsConstructor;
 import lombok.var;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -53,20 +56,16 @@ public class Bootstrap {
     private final AppProperties appProperties;
     private final KafkaProperties kafkaProperties;
     private final RedissonClient redissonClient;
-    private final JsonSlf4Reporter jsonSlf4Reporter;
-    private final MetricRegistry metricRegistry;
     private final List<Thread> threads = new ArrayList<>();
 
     @PostConstruct
     public void init() {
-        jsonSlf4Reporter.start(1, TimeUnit.SECONDS);
-
         startAccountant(appProperties.getAccountantThreadNum());
         startOrderProcessor(appProperties.getOrderProcessorThreadNum());
 
         List<String> productIds = productRepository.findAll().stream()
-                .map(Product::getProductId)
-                .collect(Collectors.toList());
+            .map(Product::getProductId)
+            .collect(Collectors.toList());
 
         startMatchingEngine(productIds, 1);
         startFullOrderBookSnapshotTaker(productIds, 1);
@@ -84,7 +83,7 @@ public class Bootstrap {
     public void destroy() {
         for (Thread thread : threads) {
             if (thread instanceof KafkaConsumerThread) {
-                ((KafkaConsumerThread<?, ?>) thread).shutdown();
+                ((KafkaConsumerThread<?, ?>)thread).shutdown();
             }
         }
     }
@@ -92,9 +91,10 @@ public class Bootstrap {
     private void startAccountant(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Accountant";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new AccountCommandDeserializer());
+            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                new OrderMessageDeserializer());
             AccountantThread accountantThread = new AccountantThread(consumer, accountManager, messageProducer,
-                    metricRegistry, appProperties);
+                appProperties);
             accountantThread.setName(groupId + "-" + accountantThread.getId());
             accountantThread.start();
             threads.add(accountantThread);
@@ -104,9 +104,10 @@ public class Bootstrap {
     private void startOrderProcessor(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "OrderProcessor";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderCommandDeserializer());
+            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                new OrderMessageDeserializer());
             OrderPersistenceThread orderPersistenceThread = new OrderPersistenceThread(consumer,
-                    messageProducer, orderManager, metricRegistry, appProperties);
+                messageProducer, orderManager, appProperties);
             orderPersistenceThread.setName(groupId + "-" + orderPersistenceThread.getId());
             orderPersistenceThread.start();
             threads.add(orderPersistenceThread);
@@ -117,8 +118,8 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Matching";
             MatchingThread matchingThread = new MatchingThread(productIds, orderBookManager,
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderBookCommandDeserializer()),
-                    messageProducer, metricRegistry, appProperties);
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineCommandDeserializer()),
+                messageProducer, appProperties);
             matchingThread.setName(groupId + "-" + matchingThread.getId());
             matchingThread.start();
             threads.add(matchingThread);
@@ -129,10 +130,10 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Snapshot-Full";
             FullOrderBookSnapshotThread thread = new FullOrderBookSnapshotThread(productIds,
-                    orderBookManager,
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                            new OrderBookLogDeserializer()),
-                    appProperties);
+                orderBookManager,
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                    new OrderMessageDeserializer()),
+                appProperties);
             thread.setName(groupId + "-" + thread.getId());
             thread.start();
             threads.add(thread);
@@ -143,10 +144,10 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Snapshot-L2";
             L2OrderBookSnapshotThread thread = new L2OrderBookSnapshotThread(productIds,
-                    orderBookManager,
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                            new OrderBookLogDeserializer()),
-                    appProperties);
+                orderBookManager,
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                    new OrderMessageDeserializer()),
+                appProperties);
             thread.setName(groupId + "-" + thread.getId());
             thread.start();
             threads.add(thread);
@@ -157,10 +158,10 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Snapshot-L2Batch";
             L2BatchOrderBookSnapshotThread thread = new L2BatchOrderBookSnapshotThread(productIds,
-                    orderBookManager,
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                            new OrderBookLogDeserializer()),
-                    appProperties);
+                orderBookManager,
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                    new OrderMessageDeserializer()),
+                appProperties);
             thread.setName(groupId + "-" + thread.getId());
             thread.start();
             threads.add(thread);
@@ -171,10 +172,10 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Snapshot-L3";
             L3OrderBookSnapshotThread thread = new L3OrderBookSnapshotThread(productIds,
-                    orderBookManager,
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                            new OrderBookLogDeserializer()),
-                    appProperties);
+                orderBookManager,
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                    new OrderMessageDeserializer()),
+                appProperties);
             thread.setName(groupId + "-" + thread.getId());
             thread.start();
             threads.add(thread);
@@ -184,13 +185,13 @@ public class Bootstrap {
     private void startOrderCommandSharding(List<String> productIds, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "OrderCommandSharding";
-            OrderCommandShardingThread orderCommandShardingThread = new OrderCommandShardingThread(productIds,
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                            new OrderBookLogDeserializer()),
-                    messageProducer, appProperties);
-            orderCommandShardingThread.setName(groupId + "-" + orderCommandShardingThread.getId());
-            orderCommandShardingThread.start();
-            threads.add(orderCommandShardingThread);
+            OrderBookMessageShardingThread orderBookMessageShardingThread = new OrderBookMessageShardingThread(productIds,
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                    new OrderMessageDeserializer()),
+                messageProducer, appProperties,orderManager);
+            orderBookMessageShardingThread.setName(groupId + "-" + orderBookMessageShardingThread.getId());
+            orderBookMessageShardingThread.start();
+            threads.add(orderBookMessageShardingThread);
         }
     }
 
@@ -198,8 +199,8 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "CandlerMaker";
             CandleMakerThread candleMakerThread = new CandleMakerThread(productIds, candleRepository,
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                            new OrderBookLogDeserializer()), appProperties);
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                    new OrderMessageDeserializer()), appProperties);
             candleMakerThread.setName(groupId + "-" + candleMakerThread.getId());
             candleMakerThread.start();
             threads.add(candleMakerThread);
@@ -210,8 +211,8 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Ticker";
             TickerThread tickerThread = new TickerThread(productIds, tickerManager,
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                            new OrderBookLogDeserializer()), appProperties);
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                    new OrderMessageDeserializer()), appProperties);
             tickerThread.setName(groupId + "-" + tickerThread.getId());
             tickerThread.start();
             threads.add(tickerThread);
@@ -222,9 +223,9 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "OrderBookLogPublish";
             TradePersistenceThread tradePersistenceThread = new TradePersistenceThread(productIds, tradeRepository,
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                            new OrderBookLogDeserializer()),
-                    appProperties);
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                    new OrderMessageDeserializer()),
+                appProperties);
             tradePersistenceThread.setName(groupId + "-" + tradePersistenceThread.getId());
             tradePersistenceThread.start();
             threads.add(tradePersistenceThread);
@@ -235,8 +236,8 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "TradePersistence";
             OrderBookLogPublishThread thread = new OrderBookLogPublishThread(productIds,
-                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new StringDeserializer()),
-                    redissonClient, appProperties);
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new StringDeserializer()),
+                redissonClient, appProperties);
             thread.setName(groupId + "-" + thread.getId());
             thread.start();
             threads.add(thread);

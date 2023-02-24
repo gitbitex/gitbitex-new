@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.CrudRepository;
 
 public interface UserRepository extends JpaRepository<User, Long>, CrudRepository<User, Long>,
-        JpaSpecificationExecutor<User> {
+    JpaSpecificationExecutor<User> {
 
     User findByEmail(String email);
 

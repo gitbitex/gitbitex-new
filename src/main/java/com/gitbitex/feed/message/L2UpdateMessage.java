@@ -1,11 +1,11 @@
 package com.gitbitex.feed.message;
 
+import java.util.Date;
+import java.util.List;
+
 import com.gitbitex.matchingengine.snapshot.L2OrderBookChange;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.util.Date;
-import java.util.List;
 
 /**
  * {

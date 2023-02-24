@@ -1,84 +1,131 @@
 package com.gitbitex.matchingengine;
 
-import com.alibaba.fastjson.JSON;
-import com.gitbitex.matchingengine.command.CancelOrderCommand;
-import com.gitbitex.matchingengine.command.NewOrderCommand;
-import com.gitbitex.matchingengine.log.*;
-import com.gitbitex.order.entity.Order;
-import com.gitbitex.order.entity.Order.OrderSide;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-
-import java.io.Serializable;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+
+import com.gitbitex.matchingengine.command.CancelOrderCommand;
+import com.gitbitex.matchingengine.command.PlaceOrderCommand;
+import com.gitbitex.matchingengine.log.OrderDoneMessage;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderOpenMessage;
+import com.gitbitex.matchingengine.log.OrderReceivedMessage;
+import com.gitbitex.order.entity.Order;
+import com.gitbitex.order.entity.Order.OrderSide;
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 @Getter
 @Slf4j
-public class OrderBook implements Serializable {
-    private static final long serialVersionUID = 1927816293532124184L;
+public class OrderBook {
     private final String productId;
     private final AtomicLong tradeId;
     private final AtomicLong sequence;
-    private final SlidingBloomFilter orderIdFilter;
     private final BookPage asks;
     private final BookPage bids;
+    //private final LinkedHashSet<String> orderIds = new LinkedHashSet<>();
+    //private final EngineLogger engineLogger;
+    //private final AccountBook accountBook;
     private long commandOffset;
     private long logOffset;
     private boolean stable;
 
-    public OrderBook(String productId) {
+    public OrderBook(String productId, LogWriter logWriter, AccountBook accountBook, AtomicLong sequence) {
         this.productId = productId;
         this.tradeId = new AtomicLong();
-        this.sequence = new AtomicLong();
-        this.orderIdFilter = new SlidingBloomFilter(1000000, 2);
-        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence);
-        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence);
+        this.sequence = sequence;
+        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, accountBook, logWriter);
+        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, accountBook, logWriter);
     }
 
-    public List<OrderBookLog> executeCommand(NewOrderCommand command) {
+    public OrderBook(String productId, OrderBookSnapshot snapshot, LogWriter logWriter, AccountBook accountBook,
+        AtomicLong logSequence) {
+        this.sequence = logSequence;
+        this.productId = productId;
+        if (snapshot != null) {
+            this.tradeId = new AtomicLong(snapshot.getTradeId());
+        } else {
+            this.tradeId = new AtomicLong();
+        }
+        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, accountBook, logWriter);
+        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, accountBook, logWriter);
+        if (snapshot != null) {
+            if (snapshot.getAsks() != null) {
+                snapshot.getAsks().forEach(this.asks::addOrder);
+            }
+            if (snapshot.getBids() != null) {
+                snapshot.getBids().forEach(this.bids::addOrder);
+            }
+        }
+    }
+
+    public static void main(String[] a) {
+        BloomFilter<String> bloomFilter = BloomFilter.create(Funnels.stringFunnel(StandardCharsets.UTF_8), 1000000,
+            0.01);
+        bloomFilter.put("1");
+        System.out.println(bloomFilter.mightContain("1"));
+    }
+
+    public OrderBookSnapshot takeSnapshot() {
+        List<BookOrder> askOrders = this.asks.getOrders().stream()
+            .map(BookOrder::copy)
+            .collect(Collectors.toList());
+        List<BookOrder> bidOrders = this.bids.getOrders().stream()
+            .map(BookOrder::copy)
+            .collect(Collectors.toList());
+
+        OrderBookSnapshot orderBookSnapshot = new OrderBookSnapshot();
+        orderBookSnapshot.setProductId(productId);
+        orderBookSnapshot.setTradeId(tradeId.get());
+        orderBookSnapshot.setAsks(askOrders);
+        orderBookSnapshot.setBids(bidOrders);
+        return orderBookSnapshot;
+    }
+
+    public void executeCommand(PlaceOrderCommand command) {
         Order order = command.getOrder();
 
-        // We must ensure that the order will not be processed repeatedly, but only partially.
-        // If there is a wide range of order ID duplication, we need to increase the capacity of orderIdFilter
-        if (orderIdFilter.contains(order.getOrderId())) {
+        // ensure that the order will not be processed repeatedly
+        /*if (!putOrderIdIfAbsent(order.getOrderId())) {
             logger.warn("received repeated order: {}", JSON.toJSONString(order));
-            return null;
-        }
-        orderIdFilter.put(order.getOrderId());
+            return;
+        }*/
 
         if (order.getSide() == OrderSide.BUY) {
-            return (asks.executeCommand(command, bids));
+            asks.executeCommand(command, bids);
         } else {
-            return (bids.executeCommand(command, asks));
+            bids.executeCommand(command, asks);
         }
     }
 
-    public OrderBookLog executeCommand(CancelOrderCommand message) {
+    public void executeCommand(CancelOrderCommand message) {
         String orderId = message.getOrderId();
         BookOrder order = asks.getOrderById(orderId);
         if (order == null) {
             order = bids.getOrderById(orderId);
         }
         if (order == null) {
-            return null;
+            return;
         }
 
-        return (order.getSide() == OrderSide.BUY ? bids : asks).executeCommand(message);
+        (order.getSide() == OrderSide.BUY ? bids : asks).executeCommand(message);
     }
 
-    public PageLine restoreLog(OrderReceivedLog log) {
+    public PageLine restoreLog(OrderReceivedMessage log) {
         this.sequence.set(log.getSequence());
         this.logOffset = log.getOffset();
         this.commandOffset = log.getCommandOffset();
-        this.orderIdFilter.put(log.getOrder().getOrderId());
         this.stable = log.isCommandFinished();
+        //putOrderIdIfAbsent(log.getOrder().getOrderId());
         return null;
     }
 
-    public PageLine restoreLog(OrderOpenLog log) {
+    public PageLine restoreLog(OrderOpenMessage log) {
         this.sequence.set(log.getSequence());
         this.logOffset = log.getOffset();
         this.commandOffset = log.getCommandOffset();
@@ -101,7 +148,7 @@ public class OrderBook implements Serializable {
         return this.decreaseOrderSize(log.getMakerOrderId(), log.getSide(), log.getSize());
     }
 
-    public PageLine restoreLog(OrderDoneLog log) {
+    public PageLine restoreLog(OrderDoneMessage log) {
         this.sequence.set(log.getSequence());
         this.logOffset = log.getOffset();
         this.commandOffset = log.getCommandOffset();
@@ -123,4 +170,13 @@ public class OrderBook implements Serializable {
     private PageLine removeOrderById(String orderId, OrderSide side) {
         return (side == OrderSide.BUY ? bids : asks).removeOrderById(orderId);
     }
+
+    /*private boolean putOrderIdIfAbsent(String orderId) {
+        if (orderIds.size() == 100000) {
+            for (int i = 0; i < 100; i++) {
+                //orderIds.remove(orderIds.de)
+            }
+        }
+        return (orderIds.add(orderId));
+    }*/
 }

@@ -1,12 +1,12 @@
 package com.gitbitex.matchingengine;
 
-import com.gitbitex.order.entity.Order.OrderSide;
-import lombok.Getter;
-
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+
+import com.gitbitex.order.entity.Order.OrderSide;
+import lombok.Getter;
 
 public class PageLine implements Serializable {
     @Getter

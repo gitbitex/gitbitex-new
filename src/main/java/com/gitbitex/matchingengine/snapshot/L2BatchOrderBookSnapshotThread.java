@@ -1,19 +1,20 @@
 package com.gitbitex.matchingengine.snapshot;
 
-import com.gitbitex.AppProperties;
-import com.gitbitex.kafka.TopicUtil;
-import com.gitbitex.matchingengine.OrderBook;
-import com.gitbitex.matchingengine.OrderBookListener;
-import com.gitbitex.matchingengine.log.OrderBookLog;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.TopicPartition;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.gitbitex.AppProperties;
+import com.gitbitex.common.message.OrderMessage;
+import com.gitbitex.kafka.TopicUtil;
+import com.gitbitex.matchingengine.OrderBook;
+import com.gitbitex.matchingengine.OrderBookListener;
+import com.gitbitex.matchingengine.log.Log;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 
 @Slf4j
 public class L2BatchOrderBookSnapshotThread extends OrderBookListener {
@@ -22,10 +23,10 @@ public class L2BatchOrderBookSnapshotThread extends OrderBookListener {
     private final Map<String, L2OrderBook> lastL2OrderBookByProductId = new HashMap<>();
 
     public L2BatchOrderBookSnapshotThread(List<String> productIds, OrderBookManager orderBookManager,
-                                          KafkaConsumer<String, OrderBookLog> kafkaConsumer,
-                                          AppProperties appProperties) {
+        KafkaConsumer<String, Log> kafkaConsumer,
+        AppProperties appProperties) {
         super(productIds, orderBookManager, kafkaConsumer,
-                Duration.ofMillis(appProperties.getL2BatchOrderBookPersistenceInterval()), appProperties);
+            Duration.ofMillis(appProperties.getL2BatchOrderBookPersistenceInterval()), appProperties);
         this.orderBookManager = orderBookManager;
         this.appProperties = appProperties;
     }
@@ -68,7 +69,7 @@ public class L2BatchOrderBookSnapshotThread extends OrderBookListener {
 
     private void takeSnapshot(OrderBook orderBook) {
         if (!orderBook.isStable()) {
-            return;
+            //return;
         }
 
         L2OrderBook lastL2OrderBook = lastL2OrderBookByProductId.get(orderBook.getProductId());
@@ -76,7 +77,8 @@ public class L2BatchOrderBookSnapshotThread extends OrderBookListener {
             if (orderBook.getSequence().get() <= lastL2OrderBook.getSequence()) {
                 return;
             }
-            if (System.currentTimeMillis() - lastL2OrderBook.getTime() < appProperties.getL2BatchOrderBookPersistenceInterval()) {
+            if (System.currentTimeMillis() - lastL2OrderBook.getTime()
+                < appProperties.getL2BatchOrderBookPersistenceInterval()) {
                 return;
             }
         }

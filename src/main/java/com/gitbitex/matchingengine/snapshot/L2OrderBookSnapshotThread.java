@@ -1,19 +1,20 @@
 package com.gitbitex.matchingengine.snapshot;
 
-import com.gitbitex.AppProperties;
-import com.gitbitex.kafka.TopicUtil;
-import com.gitbitex.matchingengine.OrderBook;
-import com.gitbitex.matchingengine.OrderBookListener;
-import com.gitbitex.matchingengine.log.OrderBookLog;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.TopicPartition;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.gitbitex.AppProperties;
+import com.gitbitex.common.message.OrderMessage;
+import com.gitbitex.kafka.TopicUtil;
+import com.gitbitex.matchingengine.OrderBook;
+import com.gitbitex.matchingengine.OrderBookListener;
+import com.gitbitex.matchingengine.log.Log;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 
 @Slf4j
 public class L2OrderBookSnapshotThread extends OrderBookListener {
@@ -22,11 +23,11 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
     private final Map<String, L2OrderBook> lastL2OrderBookByProductId = new HashMap<>();
 
     public L2OrderBookSnapshotThread(List<String> productIds,
-                                     OrderBookManager orderBookManager,
-                                     KafkaConsumer<String, OrderBookLog> kafkaConsumer,
-                                     AppProperties appProperties) {
+        OrderBookManager orderBookManager,
+        KafkaConsumer<String, Log> kafkaConsumer,
+        AppProperties appProperties) {
         super(productIds, orderBookManager, kafkaConsumer,
-                Duration.ofMillis(appProperties.getL2OrderBookPersistenceInterval()), appProperties);
+            Duration.ofMillis(appProperties.getL2OrderBookPersistenceInterval()), appProperties);
         this.orderBookManager = orderBookManager;
         this.appProperties = appProperties;
     }
@@ -34,22 +35,22 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         super.onPartitionsRevoked(partitions);
-        for (TopicPartition partition : partitions) {
+        /*for (TopicPartition partition : partitions) {
             String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
             lastL2OrderBookByProductId.remove(productId);
-        }
+        }*/
     }
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         super.onPartitionsAssigned(partitions);
-        for (TopicPartition partition : partitions) {
+        /*for (TopicPartition partition : partitions) {
             String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
             L2OrderBook lastL2OrderBook = orderBookManager.getL2OrderBook(productId);
             if (lastL2OrderBook != null) {
                 lastL2OrderBookByProductId.put(productId, lastL2OrderBook);
             }
-        }
+        }*/
     }
 
     @Override
@@ -60,7 +61,7 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
 
     private void takeSnapshot(OrderBook orderBook) {
         if (!orderBook.isStable()) {
-            return;
+            //return;
         }
 
         L2OrderBook lastL2OrderBook = lastL2OrderBookByProductId.get(orderBook.getProductId());
@@ -68,7 +69,8 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
             if (orderBook.getSequence().get() <= lastL2OrderBook.getSequence()) {
                 return;
             }
-            if (System.currentTimeMillis() - lastL2OrderBook.getTime() < appProperties.getL2OrderBookPersistenceInterval()) {
+            if (System.currentTimeMillis() - lastL2OrderBook.getTime()
+                < appProperties.getL2OrderBookPersistenceInterval()) {
                 return;
             }
         }
@@ -76,7 +78,8 @@ public class L2OrderBookSnapshotThread extends OrderBookListener {
         long startTime = System.currentTimeMillis();
         L2OrderBook l1OrderBook = new L2OrderBook(orderBook, 1);
         lastL2OrderBook = new L2OrderBook(orderBook);
-        logger.info("l2 order book snapshot ok: {} elapsedTime={}ms", orderBook.getProductId(), System.currentTimeMillis() - startTime);
+        //logger.info("l2 order book snapshot ok: {} elapsedTime={}ms", orderBook.getProductId(),
+        //    System.currentTimeMillis() - startTime);
 
         try {
             orderBookManager.saveL1OrderBook(l1OrderBook);

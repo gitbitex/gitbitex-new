@@ -1,13 +1,18 @@
 package com.gitbitex.account;
 
+import java.math.BigDecimal;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.account.entity.Account;
 import com.gitbitex.account.entity.Bill;
 import com.gitbitex.account.repository.AccountRepository;
 import com.gitbitex.account.repository.BillRepository;
+import com.gitbitex.matchingengine.log.AccountChangeMessage;
+import com.gitbitex.matchingengine.log.OrderDoneMessage;
+import com.gitbitex.matchingengine.log.OrderFilledMessage;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
-import com.gitbitex.order.entity.Fill;
 import com.gitbitex.order.entity.Order;
 import com.gitbitex.order.repository.FillRepository;
 import com.gitbitex.order.repository.OrderRepository;
@@ -20,8 +25,6 @@ import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-
 @RequiredArgsConstructor
 @Slf4j
 @Component
@@ -30,18 +33,16 @@ public class AccountManager {
     private final BillRepository billRepository;
     private final RedissonClient redissonClient;
     private final ProductManager productManager;
-    private final OrderRepository orderRepository;
     private final FillRepository fillRepository;
-
-    public BigDecimal getAvailable(String userId, String currency) {
-        Account account = accountRepository.findAccountByUserIdAndCurrency(userId, currency);
-        return account != null ? account.getAvailable() : BigDecimal.ZERO;
-    }
+    private final OrderRepository orderRepository;
 
     @Transactional(rollbackFor = Exception.class)
-    public void holdFundsForNewOrder(Order order) {
+    public void reviewOrder(Order order) {
+        logger.info("[{}] Review order", order.getOrderId());
+
         Product product = productManager.getProductById(order.getProductId());
 
+        // prevent orders from being processed repeatedly
         String billId = "NEW_ORDER-" + order.getOrderId();
         if (billRepository.findByBillId(billId) != null) {
             return;
@@ -61,55 +62,57 @@ public class AccountManager {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void settleOrderFill(String fillId, String userId) {
-        Fill fill = fillRepository.findByFillId(fillId);
-        Product product = productManager.getProductById(fill.getProductId());
-        String baseBillId = "SETTLE_ORDER_FILL" + "-BASE-" + fillId;
-        String quoteBillId = "SETTLE_ORDER_FILL" + "-QUOTE-" + fillId;
+    public void fillOrder(OrderFilledMessage message) {
+        logger.info("[{}] Fill order", message.getOrderId());
 
-        if (fill.getSide() == Order.OrderSide.BUY) {
+        Product product = productManager.getProductById(message.getProductId());
+        String userId = message.getUserId();
+        String baseBillId = "FILL_ORDER_BASE-" + message.getTradeId();
+        String quoteBillId = "FILL_ORDER_QUOTE-" + message.getTradeId();
+
+        if (message.getSide() == Order.OrderSide.BUY) {
             if (billRepository.findByBillId(baseBillId) == null) {
-                increaseAvailable(userId, product.getBaseCurrency(), fill.getSize(), baseBillId);
+                increaseAvailable(userId, product.getBaseCurrency(), message.getSize(), baseBillId);
             }
             if (billRepository.findByBillId(quoteBillId) == null) {
-                increaseHold(userId, product.getQuoteCurrency(), fill.getFunds().negate(), quoteBillId);
+                increaseHold(userId, product.getQuoteCurrency(), message.getFunds().negate(), quoteBillId);
             }
         } else {
             if (billRepository.findByBillId(baseBillId) == null) {
-                increaseHold(userId, product.getBaseCurrency(), fill.getSize().negate(), baseBillId);
+                increaseHold(userId, product.getBaseCurrency(), message.getSize().negate(), baseBillId);
             }
             if (billRepository.findByBillId(quoteBillId) == null) {
-                increaseAvailable(userId, product.getQuoteCurrency(), fill.getFunds(), quoteBillId);
+                increaseAvailable(userId, product.getQuoteCurrency(), message.getFunds(), quoteBillId);
             }
         }
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void settleOrder(String orderId) {
-        Order order = orderRepository.findByOrderId(orderId);
-        Product product = productManager.getProductById(order.getProductId());
+    public void closeOrder(OrderDoneMessage message) {
+        logger.info("[{}] Close order", message.getOrderId());
 
-        String billId = "SETTLE_ORDER-" + order.getOrderId();
+        Product product = productManager.getProductById(message.getProductId());
+
+        String billId = "CLOSE-ORDER-" + message.getOrderId();
         if (billRepository.findByBillId(billId) != null) {
             return;
         }
 
-        if (order.getSide() == Order.OrderSide.BUY) {
-            BigDecimal remainingFunds = order.getFunds().subtract(order.getExecutedValue());
-            if (remainingFunds.compareTo(BigDecimal.ZERO) > 0) {
-                unhold(order.getUserId(), product.getQuoteCurrency(), remainingFunds, billId);
+        if (message.getSide() == Order.OrderSide.BUY) {
+            //BigDecimal remainingFunds = order.getFunds().subtract(order.getExecutedValue());
+            if (message.getRemainingFunds().compareTo(BigDecimal.ZERO) > 0) {
+                unhold(message.getUserId(), product.getQuoteCurrency(), message.getRemainingFunds(), billId);
             }
         } else {
-            BigDecimal remainingSize = order.getSize().subtract(order.getFilledSize());
-            if (remainingSize.compareTo(BigDecimal.ZERO) > 0) {
-                unhold(order.getUserId(), product.getBaseCurrency(), remainingSize, billId);
+            //BigDecimal remainingSize = order.getSize().subtract(order.getFilledSize());
+            if (message.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
+                unhold(message.getUserId(), product.getBaseCurrency(), message.getRemainingSize(), billId);
             }
         }
     }
 
-    @Transactional(rollbackFor = Exception.class)
-    public void hold(String userId, String currency, BigDecimal amount, String billId) {
-        logger.info("hold {} {} {}", userId, currency, amount);
+    private void hold(String userId, String currency, BigDecimal amount, String billId) {
+        logger.info("hold {} {} {}", userId, amount, currency);
 
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new RuntimeException("amount must be positive");
@@ -118,9 +121,9 @@ public class AccountManager {
         checkBillId(billId);
 
         Account account = accountRepository.findAccountByUserIdAndCurrency(userId, currency);
-        if (account == null || account.getAvailable().compareTo(amount) < 0) {
+        if (account == null || account.getAvailable() == null || account.getAvailable().compareTo(amount) < 0) {
             throw new ServiceException(ErrorCode.INSUFFICIENT_BALANCE,
-                    String.format("insufficient balance：%s", currency));
+                String.format("insufficient balance：%s", currency));
         }
         account.setAvailable(account.getAvailable().subtract(amount));
         account.setHold(account.getHold() != null ? account.getHold().add(amount) : amount);
@@ -136,9 +139,8 @@ public class AccountManager {
         billRepository.save(bill);
     }
 
-    @Transactional(rollbackFor = Exception.class)
-    public void unhold(String userId, String currency, BigDecimal amount, String billId) {
-        logger.info("unhold {} {} {}", userId, currency, amount);
+    private void unhold(String userId, String currency, BigDecimal amount, String billId) {
+        logger.info("unhold {} {} {}", userId, amount, currency);
 
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new RuntimeException("amount must be positive");
@@ -147,9 +149,9 @@ public class AccountManager {
         checkBillId(billId);
 
         Account account = accountRepository.findAccountByUserIdAndCurrency(userId, currency);
-        if (account == null || account.getHold().compareTo(amount) < 0) {
+        if (account == null || account.getHold() == null || account.getHold().compareTo(amount) < 0) {
             throw new ServiceException(ErrorCode.INSUFFICIENT_BALANCE,
-                    String.format("insufficient hold balance：%s", currency));
+                String.format("insufficient hold balance：%s", currency));
         }
         account.setAvailable(account.getAvailable() != null ? account.getAvailable().add(amount) : amount);
         account.setHold(account.getHold().subtract(amount));
@@ -165,8 +167,21 @@ public class AccountManager {
         billRepository.save(bill);
     }
 
-    public Bill getBillById(String billId) {
-        return billRepository.findByBillId(billId);
+    @Transactional(rollbackFor = Exception.class)
+    public void deposit(AccountChangeMessage message) {
+        String userId = message.getUserId();
+        String currency = message.getCurrency();
+        String billId = "DEPOSIT-" + message.getTransactionId();
+
+        Account account = accountRepository.findAccountByUserIdAndCurrency(userId, currency);
+        if (account == null) {
+            account = new Account();
+            account.setUserId(userId);
+            account.setCurrency(currency);
+        }
+        account.setAvailable(message.getAvailable());
+        account.setHold(message.getHold());
+        save(account);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -190,8 +205,7 @@ public class AccountManager {
         billRepository.save(bill);
     }
 
-    @Transactional(rollbackFor = Exception.class)
-    public void increaseHold(String userId, String currency, BigDecimal amount, String billId) {
+    private void increaseHold(String userId, String currency, BigDecimal amount, String billId) {
         checkBillId(billId);
 
         Account account = accountRepository.findAccountByUserIdAndCurrency(userId, currency);
@@ -212,7 +226,7 @@ public class AccountManager {
     }
 
     private void save(Account account) {
-        checkAccount(account);
+        validateAccount(account);
         accountRepository.save(account);
         tryNotifyAccountUpdate(account);
     }
@@ -226,9 +240,9 @@ public class AccountManager {
         }
     }
 
-    private void checkAccount(Account account) {
+    private void validateAccount(Account account) {
         if ((account.getAvailable() != null && account.getAvailable().compareTo(BigDecimal.ZERO) < 0) ||
-                (account.getHold() != null && account.getHold().compareTo(BigDecimal.ZERO) < 0)) {
+            (account.getHold() != null && account.getHold().compareTo(BigDecimal.ZERO) < 0)) {
             throw new RuntimeException("bad account: " + JSON.toJSONString(account));
         }
     }

@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.CrudRepository;
 
 public interface AccountRepository extends JpaRepository<Account, Long>, CrudRepository<Account, Long>,
-        JpaSpecificationExecutor<Account> {
+    JpaSpecificationExecutor<Account> {
 
     Account findAccountByUserIdAndCurrency(String userId, String currency);
 }

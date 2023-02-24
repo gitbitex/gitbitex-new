@@ -1,6 +1,7 @@
 package com.gitbitex.feed;
 
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.feed.message.Request;
 import com.gitbitex.feed.message.SubscribeRequest;
 import com.gitbitex.feed.message.UnsubscribeRequest;
@@ -35,15 +36,15 @@ public class FeedTextWebSocketHandler extends TextWebSocketHandler {
             case "subscribe": {
                 SubscribeRequest subscribeRequest = JSON.parseObject(message.getPayload(), SubscribeRequest.class);
                 sessionManager.subOrUnSub(session, subscribeRequest.getProductIds(), subscribeRequest.getCurrencyIds(),
-                        subscribeRequest.getChannels(), true);
+                    subscribeRequest.getChannels(), true);
                 break;
             }
             case "unsubscribe": {
                 UnsubscribeRequest unsubscribeRequest = JSON.parseObject(message.getPayload(),
-                        UnsubscribeRequest.class);
+                    UnsubscribeRequest.class);
                 sessionManager.subOrUnSub(session, unsubscribeRequest.getProductIds(),
-                        unsubscribeRequest.getCurrencyIds(),
-                        unsubscribeRequest.getChannels(), false);
+                    unsubscribeRequest.getCurrencyIds(),
+                    unsubscribeRequest.getChannels(), false);
                 break;
             }
             case "ping":

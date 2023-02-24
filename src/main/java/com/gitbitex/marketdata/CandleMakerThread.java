@@ -14,12 +14,13 @@ import java.util.stream.Collectors;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
+import com.gitbitex.matchingengine.log.Log;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.common.message.OrderMessage;
 import com.gitbitex.kafka.TopicUtil;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.util.DateUtil;
-import com.gitbitex.matchingengine.log.OrderBookLog;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +34,7 @@ import org.apache.kafka.common.TopicPartition;
  * My job is to produce candles
  */
 @Slf4j
-public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog> implements ConsumerRebalanceListener {
+public class CandleMakerThread extends KafkaConsumerThread<String, Log> implements ConsumerRebalanceListener {
     private static final int[] MINUTES = new int[] {1, 5, 15, 30, 60, 360, 1440};
     private final List<String> productIds;
     private final Map<String, Map<Integer, Candle>> candlesByProductId = new HashMap<>();
@@ -43,7 +44,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
 
     public CandleMakerThread(List<String> productIds,
         CandleRepository candleRepository,
-        KafkaConsumer<String, OrderBookLog> consumer,
+        KafkaConsumer<String, Log> consumer,
         AppProperties appProperties) {
         super(consumer, logger);
         this.productIds = productIds;
@@ -53,13 +54,12 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-        consumer.commitSync();
-
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
             String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
             candlesByProductId.remove(productId);
         }
+        consumer.commitSync();
     }
 
     @Override
@@ -85,14 +85,14 @@ public class CandleMakerThread extends KafkaConsumerThread<String, OrderBookLog>
         var records = consumer.poll(Duration.ofSeconds(5));
         uncommittedRecordCount += records.count();
 
-        for (ConsumerRecord<String, OrderBookLog> record : records) {
-            OrderBookLog log = record.value();
+        for (ConsumerRecord<String, Log> record : records) {
+            Log log = record.value();
             if (log instanceof OrderMatchLog) {
                 on(((OrderMatchLog)log), record.offset());
             }
         }
 
-        if (uncommittedRecordCount > 1000) {
+        if (uncommittedRecordCount > 10) {
             consumer.commitSync();
             uncommittedRecordCount = 0;
         }
