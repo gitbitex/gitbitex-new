@@ -4,7 +4,7 @@ import javax.annotation.PostConstruct;
 
 import com.alibaba.fastjson.JSON;
 
-import com.gitbitex.account.entity.Account;
+import com.gitbitex.marketdata.entity.Account;
 import com.gitbitex.common.message.OrderBookLog;
 import com.gitbitex.matchingengine.log.OrderDoneMessage;
 import com.gitbitex.matchingengine.log.OrderMatchLog;

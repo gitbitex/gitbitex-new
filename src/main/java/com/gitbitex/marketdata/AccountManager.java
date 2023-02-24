@@ -1,13 +1,13 @@
-package com.gitbitex.account;
+package com.gitbitex.marketdata;
 
 import java.math.BigDecimal;
 
 import com.alibaba.fastjson.JSON;
 
-import com.gitbitex.account.entity.Account;
-import com.gitbitex.account.entity.Bill;
-import com.gitbitex.account.repository.AccountRepository;
-import com.gitbitex.account.repository.BillRepository;
+import com.gitbitex.marketdata.entity.Account;
+import com.gitbitex.marketdata.entity.Bill;
+import com.gitbitex.marketdata.repository.AccountRepository;
+import com.gitbitex.marketdata.repository.BillRepository;
 import com.gitbitex.matchingengine.log.AccountChangeMessage;
 import com.gitbitex.matchingengine.log.OrderDoneMessage;
 import com.gitbitex.matchingengine.log.OrderFilledMessage;

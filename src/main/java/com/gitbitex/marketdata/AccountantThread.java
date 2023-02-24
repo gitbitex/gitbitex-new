@@ -1,4 +1,4 @@
-package com.gitbitex.account;
+package com.gitbitex.marketdata;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -7,7 +7,6 @@ import java.util.Collections;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.common.message.OrderMessage;
 import com.gitbitex.matchingengine.log.AccountChangeMessage;
 import com.gitbitex.matchingengine.log.Log;
 import com.gitbitex.matchingengine.log.LogHandler;

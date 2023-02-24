@@ -6,7 +6,7 @@ import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import com.gitbitex.account.AccountManager;
+import com.gitbitex.marketdata.AccountManager;
 import com.gitbitex.user.entity.User;
 import com.gitbitex.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

@@ -8,8 +8,8 @@ import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
-import com.gitbitex.account.AccountManager;
-import com.gitbitex.account.AccountantThread;
+import com.gitbitex.marketdata.AccountManager;
+import com.gitbitex.marketdata.AccountantThread;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.CandleMakerThread;
 import com.gitbitex.marketdata.OrderBookLogPublishThread;

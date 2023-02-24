@@ -31,6 +31,8 @@ public class ClientOrderReceiver {
         // send order to accountant
         PlaceOrderCommand orderPlacedMessage = new PlaceOrderCommand();
         orderPlacedMessage.setOrder(order);
+        orderPlacedMessage.setBaseCurrency(product.getBaseCurrency());
+        orderPlacedMessage.setQuoteCurrency(product.getQuoteCurrency());
         messageProducer.sendToMatchingEngine("all", orderPlacedMessage, null);
     }
 

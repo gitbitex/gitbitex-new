@@ -1,4 +1,4 @@
-package com.gitbitex.account.entity;
+package com.gitbitex.marketdata.entity;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -18,9 +18,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 @Getter
 @Setter
 @Entity
-@DynamicUpdate
 @DynamicInsert
-public class Bill {
+@DynamicUpdate
+public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
@@ -31,20 +31,11 @@ public class Bill {
     @UpdateTimestamp
     private Date updatedAt;
 
-    private String billId;
-
     private String userId;
 
     private String currency;
 
-    private BigDecimal holdIncrement;
+    private BigDecimal hold;
 
-    private BigDecimal availableIncrement;
-
-    private String type;
-
-    private boolean settled;
-
-    private String notes;
+    private BigDecimal available;
 }
-

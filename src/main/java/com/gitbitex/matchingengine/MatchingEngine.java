@@ -9,11 +9,6 @@ import java.util.stream.Collectors;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
-import com.gitbitex.matchingengine.log.AccountChangeMessage;
-import com.gitbitex.matchingengine.log.OrderDoneMessage;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderOpenMessage;
-import com.gitbitex.matchingengine.log.OrderReceivedMessage;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.L3OrderBook;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +25,7 @@ public class MatchingEngine {
         this.logWriter = logWriter;
         if (snapshot != null) {
             this.logSequence.set(snapshot.getLogSequence());
-            this.commandOffset= snapshot.getCommandOffset();
+            this.commandOffset = snapshot.getCommandOffset();
             this.accountBook = new AccountBook(snapshot.getAccountBookSnapshot(), logWriter, logSequence);
             if (snapshot.getOrderBookSnapshots() != null) {
                 snapshot.getOrderBookSnapshots().forEach(x -> {
@@ -65,26 +60,6 @@ public class MatchingEngine {
         orderBooks.get(command.getProductId()).executeCommand(command);
     }
 
-    public void restoreLog(AccountChangeMessage log) {
-        accountBook.restoreLog(log);
-    }
-
-    public void restore(OrderOpenMessage log) {
-        orderBooks.get(log.getProductId()).restoreLog(log);
-    }
-
-    public void restore(OrderMatchLog log) {
-        orderBooks.get(log.getProductId()).restoreLog(log);
-    }
-
-    public void restore(OrderDoneMessage log) {
-        orderBooks.get(log.getProductId()).restoreLog(log);
-    }
-
-    public void restore(OrderReceivedMessage log) {
-        orderBooks.get(log.getProductId()).restoreLog(log);
-    }
-
     public EngineSnapshot takeSnapshot() {
         AccountBookSnapshot accountBookSnapshot = accountBook.takeSnapshot();
         List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream().map(OrderBook::takeSnapshot)
@@ -98,7 +73,7 @@ public class MatchingEngine {
         return snapshot;
     }
 
-    public L2OrderBook takeL2OrderBookSnapshot(String productId,int depth ) {
+    public L2OrderBook takeL2OrderBookSnapshot(String productId, int depth) {
         OrderBook orderBook = orderBooks.get(productId);
         if (orderBook == null) {
             return null;

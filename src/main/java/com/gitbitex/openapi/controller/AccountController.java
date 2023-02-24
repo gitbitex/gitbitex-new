@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.gitbitex.account.entity.Account;
-import com.gitbitex.account.repository.AccountRepository;
+import com.gitbitex.marketdata.entity.Account;
+import com.gitbitex.marketdata.repository.AccountRepository;
 import com.gitbitex.openapi.model.AccountDto;
 import com.gitbitex.order.ClientOrderReceiver;
 import com.gitbitex.user.entity.User;

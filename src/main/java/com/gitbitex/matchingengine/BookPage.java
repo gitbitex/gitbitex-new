@@ -51,8 +51,8 @@ public class BookPage implements Serializable {
         BeanUtils.copyProperties(order, takerOrder);
 
         String takerUserId = takerOrder.getUserId();
-        String baseCurrency = "BTC";
-        String quoteCurrency = "USDT";
+        String baseCurrency = command.getBaseCurrency();
+        String quoteCurrency = command.getQuoteCurrency();
 
         if (takerOrder.getSide() == OrderSide.BUY) {
             if (takerOrder.getFunds().compareTo( accountBook.getAvailable(takerUserId,quoteCurrency) ) > 0) {

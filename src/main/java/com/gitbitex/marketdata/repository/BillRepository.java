@@ -1,6 +1,6 @@
-package com.gitbitex.account.repository;
+package com.gitbitex.marketdata.repository;
 
-import com.gitbitex.account.entity.Bill;
+import com.gitbitex.marketdata.entity.Bill;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.CrudRepository;
