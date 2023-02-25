@@ -1,6 +1,5 @@
 package com.gitbitex.matchingengine.command;
 
-import com.gitbitex.common.message.OrderMessage;
 import lombok.Getter;
 import lombok.Setter;
 

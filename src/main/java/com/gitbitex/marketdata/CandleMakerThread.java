@@ -20,7 +20,6 @@ import com.gitbitex.matchingengine.log.LogHandler;
 import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderFilledMessage;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.kafka.TopicUtil;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.util.DateUtil;
@@ -63,8 +62,6 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
-            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-            candlesByProductId.remove(productId);
         }
         //consumer.commitSync();
     }
@@ -73,8 +70,6 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-            candlesByProductId.put(productId, new HashMap<>());
         }
     }
 

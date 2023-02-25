@@ -3,7 +3,6 @@ package com.gitbitex.matchingengine;
 
 import com.gitbitex.marketdata.enums.OrderSide;
 import com.gitbitex.marketdata.enums.OrderType;
-import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.log.*;
 import com.gitbitex.matchingengine.log.OrderRejectedLog.RejectReason;
 
@@ -69,7 +68,7 @@ public class BookPage implements Serializable {
             for (Order makerOrder : line.getOrders()) {
                 // get taker size
                 BigDecimal takerSize;
-                if (takerOrder.getSide() == OrderSide.BUY && takerOrder.getType() ==  OrderType.MARKET) {
+                if (takerOrder.getSide() == OrderSide.BUY && takerOrder.getType() == OrderType.MARKET) {
                     // The market order does not specify a price, so the size of the maker order needs to be
                     // calculated by the price of the maker order
                     takerSize = takerOrder.getFunds().divide(price, 4, RoundingMode.DOWN);
@@ -116,7 +115,7 @@ public class BookPage implements Serializable {
         // Note: The market order will never be added to the order book, and the market order without fully filled
         // will be cancelled
         if (takerOrder.getSize().compareTo(BigDecimal.ZERO) > 0) {
-            if (takerOrder.getType() ==  OrderType.LIMIT) {
+            if (takerOrder.getType() == OrderType.LIMIT) {
                 takerPage.addOrder(takerOrder);
                 logWriter.add(orderOpenLog(takerOrder));
             } else if (takerOrder.getType() == OrderType.MARKET) {
@@ -142,6 +141,7 @@ public class BookPage implements Serializable {
     }
 
     public void cancelOrder(String orderId) {
+        Product product = productBook.getProduct(productId);
         Order order = orderById.get(orderId);
         if (order == null) {
             return;
@@ -150,7 +150,7 @@ public class BookPage implements Serializable {
         removeOrderById(orderId);
 
         logWriter.add(orderDoneLog(order, OrderDoneLog.DoneReason.CANCELLED));
-        unholdOrderFunds(order, "BTC", "USDT");
+        unholdOrderFunds(order, product.getBaseCurrency(), product.getQuoteCurrency());
     }
 
     public PageLine addOrder(Order order) {
@@ -198,7 +198,7 @@ public class BookPage implements Serializable {
         if (takerOrder.getType() == OrderType.MARKET) {
             return true;
         }
-        if (takerOrder.getSide() ==  OrderSide.BUY) {
+        if (takerOrder.getSide() == OrderSide.BUY) {
             return takerOrder.getPrice().compareTo(makerOrderPrice) >= 0;
         } else {
             return takerOrder.getPrice().compareTo(makerOrderPrice) <= 0;

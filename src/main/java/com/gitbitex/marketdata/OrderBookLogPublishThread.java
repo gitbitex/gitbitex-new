@@ -4,10 +4,8 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.kafka.TopicUtil;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import lombok.var;

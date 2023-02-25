@@ -10,5 +10,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class AccountBookSnapshot {
-    private List<Account> accounts=new ArrayList<>();
+    private List<Account> accounts;
 }

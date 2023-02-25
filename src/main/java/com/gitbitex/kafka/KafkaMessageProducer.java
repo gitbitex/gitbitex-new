@@ -6,8 +6,6 @@ import java.util.concurrent.Future;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.common.message.OrderBookLog;
-import com.gitbitex.common.message.OrderMessage;
 import com.gitbitex.matchingengine.command.MatchingEngineCommand;
 import com.gitbitex.matchingengine.log.Log;
 import lombok.extern.slf4j.Slf4j;
@@ -25,27 +23,8 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         this.appProperties = appProperties;
     }
 
-    public Future<RecordMetadata> sendToAccountant(String userId, OrderMessage orderMessage, Callback callback) {
-        String topic = appProperties.getAccountCommandTopic();
-        ProducerRecord<String, String> record = new ProducerRecord<>(topic, userId, JSON.toJSONString(orderMessage));
 
-        return super.send(record, (metadata, exception) -> {
-            if (callback != null) {
-                callback.onCompletion(metadata, exception);
-            }
-        });
-    }
 
-    public Future<RecordMetadata> sendToOrderProcessor(String orderId, OrderMessage orderMessage, Callback callback) {
-        String topic = appProperties.getOrderCommandTopic();
-        ProducerRecord<String, String> record = new ProducerRecord<>(topic, orderId, JSON.toJSONString(orderMessage));
-
-        return super.send(record, (metadata, exception) -> {
-            if (callback != null) {
-                callback.onCompletion(metadata, exception);
-            }
-        });
-    }
 
     public Future<RecordMetadata> sendToMatchingEngine(String productId, MatchingEngineCommand orderMessage, Callback callback) {
         String topic =  appProperties.getOrderBookCommandTopic();

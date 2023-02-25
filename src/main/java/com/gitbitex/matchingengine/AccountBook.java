@@ -22,7 +22,7 @@ public class AccountBook {
     public AccountBook(AccountBookSnapshot snapshot, LogWriter logWriter, AtomicLong sequence) {
         this.logWriter = logWriter;
         this.sequence = sequence;
-        if (snapshot!=null) {
+        if (snapshot!=null && snapshot.getAccounts()!=null) {
             this.addAll(snapshot.getAccounts());
         }
     }
