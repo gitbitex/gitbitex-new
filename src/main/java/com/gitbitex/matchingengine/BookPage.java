@@ -25,7 +25,7 @@ public class BookPage implements Serializable {
     public BookPage(String productId, Comparator<BigDecimal> priceComparator,
                     AtomicLong tradeId, AtomicLong sequence,
                     AccountBook accountBook, ProductBook productBook,
-                    LogWriter logWriter,List<Order> orders
+                    LogWriter logWriter, List<Order> orders
     ) {
         this.lineByPrice = new TreeMap<>(priceComparator);
         this.productId = productId;
@@ -34,7 +34,7 @@ public class BookPage implements Serializable {
         this.logWriter = logWriter;
         this.accountBook = accountBook;
         this.productBook = productBook;
-        if (orders!=null){
+        if (orders != null) {
             orders.forEach(this::addOrder);
         }
     }
@@ -70,6 +70,8 @@ public class BookPage implements Serializable {
         }
 
         logWriter.add(orderReceivedLog(takerOrder));
+
+        List<Order> makerOrders = new ArrayList<>();
 
         MATCHING:
         for (PageLine line : lineByPrice.values()) {
@@ -111,12 +113,18 @@ public class BookPage implements Serializable {
                 logWriter.add(orderMatchLog(takerOrder, makerOrder, tradeSize, tradeId.incrementAndGet()));
                 accountBook.exchange(takerUserId, makerOrder.getUserId(), baseCurrency, quoteCurrency, takerOrder.getSide(), tradeSize, tradeFunds);
 
-                // if the maker order is fully filled, remove it from the order book.
-                if (makerOrder.getSize().compareTo(BigDecimal.ZERO) == 0) {
-                    line.removeOrderById(makerOrder.getOrderId());
-                    logWriter.add(orderDoneLog(makerOrder, OrderDoneLog.DoneReason.FILLED));
-                    unholdOrderFunds(makerOrder, baseCurrency, quoteCurrency);
-                }
+                makerOrders.add(makerOrder);
+            }
+        }
+
+        for (Order makerOrder : makerOrders) {
+            PageLine line = this.lineByPrice.get(makerOrder.getPrice());
+
+            // if the maker order is fully filled, remove it from the order book.
+            if (makerOrder.getSize().compareTo(BigDecimal.ZERO) == 0) {
+                line.removeOrderById(makerOrder.getOrderId());
+                logWriter.add(orderDoneLog(makerOrder, OrderDoneLog.DoneReason.FILLED));
+                unholdOrderFunds(makerOrder, baseCurrency, quoteCurrency);
             }
 
             // remove line with empty order list
@@ -217,7 +225,9 @@ public class BookPage implements Serializable {
         log.setPrice(order.getPrice());
         log.setFunds(order.getFunds());
         log.setSide(order.getSide());
+        log.setSize(order.getSize());
         log.setOrderId(order.getOrderId());
+        log.setOrderType(order.getType());
         log.setTime(new Date());
         log.setRejectReason(rejectReason);
         return log;
@@ -227,12 +237,13 @@ public class BookPage implements Serializable {
         OrderReceivedLog log = new OrderReceivedLog();
         log.setSequence(sequence.incrementAndGet());
         log.setProductId(productId);
-        log.setSequence(sequence.incrementAndGet());
         log.setUserId(order.getUserId());
         log.setPrice(order.getPrice());
         log.setFunds(order.getFunds());
         log.setSide(order.getSide());
+        log.setSize(order.getSize());
         log.setOrderId(order.getOrderId());
+        log.setOrderType(order.getType());
         log.setTime(new Date());
         return log;
     }

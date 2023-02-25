@@ -1,21 +1,19 @@
 package com.gitbitex.matchingengine.log;
 
-import java.util.Date;
-
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.Date;
 
 @Getter
 @Setter
 public class Log {
     private long sequence;
     private long offset;
-    private long commandOffset;
-    @Deprecated
-    private boolean commandFinished;
     private Date time;
     private LogType type;
-    public enum LogType{
+
+    public enum LogType {
         ACCOUNT_CHANGE,
         ORDER_REJECTED,
         ORDER_RECEIVED,

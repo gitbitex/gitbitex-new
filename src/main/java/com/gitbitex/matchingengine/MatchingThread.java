@@ -8,9 +8,7 @@ import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
-import lombok.var;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
@@ -46,7 +44,7 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            MatchingEngineSnapshot snapshot = orderBookManager.getFullOrderBookSnapshot();
+            MatchingEngineSnapshot snapshot= null;//= orderBookManager.getFullOrderBookSnapshot();
             this.matchingEngine = new MatchingEngine(snapshot, logWriter);
             if (snapshot != null) {
                 consumer.seek(partition, snapshot.getCommandOffset() + 1);
@@ -61,13 +59,13 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
 
     @Override
     protected void doPoll() {
-        var records = consumer.poll(Duration.ofSeconds(5));
-        for (ConsumerRecord<String, MatchingEngineCommand> record : records) {
-            MatchingEngineCommand command = record.value();
-            command.setOffset(record.offset());
+        consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
+            MatchingEngineCommand command = x.value();
+            command.setOffset(x.offset());
             logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
-        }
+        });
+
 
         MatchingEngineSnapshot snapshot = matchingEngine.takeSnapshot();
         //logger.info(JSON.toJSONString(snapshot, true));

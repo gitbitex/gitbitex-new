@@ -63,20 +63,11 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
 
     @Override
     protected void doPoll() {
-        var records = consumer.poll(Duration.ofSeconds(5));
-        uncommittedRecordCount += records.count();
-
-        for (ConsumerRecord<String, Log> record : records) {
-            Log log = record.value();
-            log.setOffset(record.offset());
-            logger.info("{}", JSON.toJSONString(log));
+        consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
+            Log log = x.value();
+            log.setOffset(x.offset());
             LogDispatcher.dispatch(log, this);
-        }
-
-        if (uncommittedRecordCount > 10) {
-            consumer.commitSync();
-            uncommittedRecordCount = 0;
-        }
+        });
     }
 
     @Override

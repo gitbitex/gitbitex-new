@@ -1,7 +1,10 @@
 package com.gitbitex.liquidity;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -9,6 +12,11 @@ import java.util.concurrent.TimeUnit;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
+
+import com.gitbitex.enums.OrderSide;
+import com.gitbitex.enums.OrderType;
+import com.gitbitex.marketdata.entity.Order;
+import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import com.gitbitex.order.ClientOrderReceiver;
 import com.google.common.util.concurrent.RateLimiter;
 import lombok.Getter;
@@ -20,6 +28,8 @@ import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -29,8 +39,9 @@ public class CoinbaseTrader {
     private final ExecutorService executor = Executors.newFixedThreadPool(1);
     private final AppProperties appProperties;
 
-    //@PostConstruct
+    @PostConstruct
     public void init() throws URISyntaxException {
+
         if (appProperties.getLiquidityTraderUserIds().isEmpty()) {
             return;
         }
@@ -84,7 +95,7 @@ public class CoinbaseTrader {
 
     public class MyClient extends org.java_websocket.client.WebSocketClient {
         //String productId = "BTC-USDT";
-        String userId = "ad80fcfe-c3a1-46a1-acf8-1d6a909b2c5a";
+        String userId = "32829815-083d-433e-94ba-0fbfe1559552";
 
         public MyClient(URI serverUri) {
             super(serverUri, new Draft_6455(), null, 1000);
@@ -94,8 +105,7 @@ public class CoinbaseTrader {
         public void onOpen(ServerHandshake serverHandshake) {
             logger.info("open");
 
-            send("{\"type\":\"subscribe\",\"product_ids\":[\"BTC-USD\",\"ETH-USD\",\"LTC-USD\",\"ETC-USD\"," +
-                "\"DOGE-USD\",\"ADA-USD\",\"DOT-USD\"],\"channels\":[\"full\"],\"token\":\"\"}");
+            send("{\"type\":\"subscribe\",\"product_ids\":[\"BTC-USD\"],\"channels\":[\"full\"],\"token\":\"\"}");
         }
 
         @Override
@@ -107,11 +117,19 @@ public class CoinbaseTrader {
                     String productId = message.getProduct_id() + "T";
                     switch (message.getType()) {
                         case "received":
-                            if (!rateLimiter.tryAcquire()) {
-                                return;
-                            }
+                            logger.info(JSON.toJSONString(message));
 
                             if (message.getPrice() != null) {
+                                Order order=new Order();
+                                order.setOrderId(UUID.randomUUID().toString());
+                                order.setProductId(productId);
+                                order.setClientOid(UUID.randomUUID().toString());
+                                order.setPrice(new BigDecimal(message.getPrice()));
+                                order.setSize(new BigDecimal(message.getSize()));
+                                order.setSide(OrderSide.valueOf(message.getSide().toUpperCase()));
+                                order.setType(OrderType.LIMIT);
+                                order.setUserId(userId);
+                                //clientOrderReceiver.handlePlaceOrderRequest(order);
 
 
                                 /*

@@ -2,6 +2,7 @@ package com.gitbitex.order;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Date;
 
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
@@ -71,6 +72,7 @@ public class ClientOrderReceiver {
         placeOrderCommand.setFunds(funds);
         placeOrderCommand.setBaseCurrency(product.getBaseCurrency());
         placeOrderCommand.setQuoteCurrency(product.getQuoteCurrency());
+        placeOrderCommand.setTime(new Date());
 
         messageProducer.sendToMatchingEngine("all", placeOrderCommand, null);
     }

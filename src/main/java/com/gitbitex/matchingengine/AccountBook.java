@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class AccountBook {
@@ -158,8 +157,8 @@ public class AccountBook {
         accountChangeLog.setCurrency(account.getCurrency());
         accountChangeLog.setHold(account.getHold());
         accountChangeLog.setAvailable(account.getAvailable());
-        accountChangeLog.setHoldIncr(holdIncr);
-        accountChangeLog.setAvailableIncr(availableIncr);
+        accountChangeLog.setHoldIncrement(holdIncr);
+        accountChangeLog.setAvailableIncrement(availableIncr);
         return accountChangeLog;
     }
 

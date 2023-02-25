@@ -106,7 +106,7 @@ public class Bootstrap {
 
     private void startOrderCommandSharding(List<String> productIds, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "OrderCommandSharding";
+            String groupId = "OrderPersistenceThread";
             OrderPersistenceThread orderPersistenceThread = new OrderPersistenceThread(
                 productIds,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),

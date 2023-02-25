@@ -1,17 +1,15 @@
 package com.gitbitex.marketdata;
 
 import com.gitbitex.AppProperties;
+import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.matchingengine.log.*;
 import com.gitbitex.matchingengine.log.OrderDoneLog.DoneReason;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import lombok.var;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
@@ -42,7 +40,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
-            consumer.commitSync();
+            //consumer.commitSync();
         }
     }
 
@@ -60,19 +58,11 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
 
     @Override
     protected void doPoll() {
-        var records = consumer.poll(Duration.ofSeconds(5));
-        uncommittedRecordCount += records.count();
-
-        for (ConsumerRecord<String, Log> record : records) {
-            Log log = record.value();
-            log.setOffset(record.offset());
+        consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
+            Log log = x.value();
+            log.setOffset(x.offset());
             LogDispatcher.dispatch(log, this);
-        }
-
-        if (uncommittedRecordCount > 10) {
-            consumer.commitSync();
-            uncommittedRecordCount = 0;
-        }
+        });
     }
 
     @Override

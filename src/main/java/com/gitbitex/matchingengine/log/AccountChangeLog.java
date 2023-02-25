@@ -1,27 +1,27 @@
 package com.gitbitex.matchingengine.log;
 
-import java.math.BigDecimal;
-
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
-public   class AccountChangeLog extends Log {
+public class AccountChangeLog extends Log {
     private String userId;
     private String currency;
     private BigDecimal hold;
     private BigDecimal available;
-    private BigDecimal holdIncr;
-    private BigDecimal availableIncr;
+    private BigDecimal holdIncrement;
+    private BigDecimal availableIncrement;
     private String transactionId;
     private ChangeReason reason;
 
-    public AccountChangeLog(){
+    public AccountChangeLog() {
         this.setType(LogType.ACCOUNT_CHANGE);
     }
 
-    public enum ChangeReason{
+    public enum ChangeReason {
         DEPOSIT,
         WITHDRAWAL,
         HOLD,
