@@ -127,6 +127,7 @@ public class Bootstrap {
             candleMakerThread.setName(groupId + "-" + candleMakerThread.getId());
             candleMakerThread.start();
             threads.add(candleMakerThread);
+
         }
     }
 
