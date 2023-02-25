@@ -1,19 +1,9 @@
 package com.gitbitex.matchingengine;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.matchingengine.command.CancelOrderCommand;
-import com.gitbitex.matchingengine.command.CommandDispatcher;
-import com.gitbitex.matchingengine.command.DepositCommand;
-import com.gitbitex.matchingengine.command.MatchingEngineCommand;
-import com.gitbitex.matchingengine.command.MatchingEngineCommandHandler;
-import com.gitbitex.matchingengine.command.PlaceOrderCommand;
+import com.gitbitex.matchingengine.command.*;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
@@ -24,17 +14,21 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+
 @Slf4j
 public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCommand>
-    implements MatchingEngineCommandHandler, ConsumerRebalanceListener {
+        implements MatchingEngineCommandHandler, ConsumerRebalanceListener {
     private final OrderBookManager orderBookManager;
     private final AppProperties appProperties;
     private final LogWriter logWriter;
     private MatchingEngine matchingEngine;
 
     public MatchingThread(OrderBookManager orderBookManager,
-        KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, KafkaMessageProducer messageProducer,
-        AppProperties appProperties) {
+                          KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, KafkaMessageProducer messageProducer,
+                          AppProperties appProperties) {
         super(messageKafkaConsumer, logger);
         this.orderBookManager = orderBookManager;
         this.appProperties = appProperties;
@@ -52,9 +46,8 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            EngineSnapshot snapshot = orderBookManager.getFullOrderBookSnapshot();
+            MatchingEngineSnapshot snapshot = orderBookManager.getFullOrderBookSnapshot();
             this.matchingEngine = new MatchingEngine(snapshot, logWriter);
-
             if (snapshot != null) {
                 consumer.seek(partition, snapshot.getCommandOffset() + 1);
             }
@@ -76,7 +69,7 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
             CommandDispatcher.dispatch(command, this);
         }
 
-        EngineSnapshot snapshot = matchingEngine.takeSnapshot();
+        MatchingEngineSnapshot snapshot = matchingEngine.takeSnapshot();
         //logger.info(JSON.toJSONString(snapshot, true));
         orderBookManager.saveFullOrderBookSnapshot(snapshot);
 

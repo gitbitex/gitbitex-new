@@ -24,7 +24,7 @@ public class MatchingEngine {
     private final AtomicLong logSequence = new AtomicLong();
     private long commandOffset;
 
-    public MatchingEngine(EngineSnapshot snapshot, LogWriter logWriter) {
+    public MatchingEngine(MatchingEngineSnapshot snapshot, LogWriter logWriter) {
         this.logWriter = logWriter;
         if (snapshot != null) {
             this.logSequence.set(snapshot.getLogSequence());
@@ -67,12 +67,12 @@ public class MatchingEngine {
         orderBooks.get(command.getProductId()).cancelOrder(command.getOrderId());
     }
 
-    public EngineSnapshot takeSnapshot() {
+    public MatchingEngineSnapshot takeSnapshot() {
         AccountBookSnapshot accountBookSnapshot = accountBook.takeSnapshot();
         List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream().map(OrderBook::takeSnapshot)
                 .collect(Collectors.toList());
 
-        EngineSnapshot snapshot = new EngineSnapshot();
+        MatchingEngineSnapshot snapshot = new MatchingEngineSnapshot();
         snapshot.setAccountBookSnapshot(accountBookSnapshot);
         snapshot.setOrderBookSnapshots(orderBookSnapshots);
         snapshot.setLogSequence(logSequence.get());
