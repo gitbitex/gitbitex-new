@@ -10,16 +10,16 @@ import lombok.extern.slf4j.Slf4j;
 public class LogDispatcher {
 
     public static void dispatch(Log orderMessage,LogHandler handler) {
-         if (orderMessage instanceof OrderRejectedMessage) {
-            handler.on((OrderRejectedMessage)orderMessage);
+         if (orderMessage instanceof OrderRejectedLog) {
+            handler.on((OrderRejectedLog)orderMessage);
         } else if (orderMessage instanceof OrderFilledMessage) {
             handler.on((OrderFilledMessage)orderMessage);
-        } else if (orderMessage instanceof OrderOpenMessage) {
-            handler.on((OrderOpenMessage)orderMessage);
-        } else if (orderMessage instanceof OrderReceivedMessage) {
-            handler.on((OrderReceivedMessage)orderMessage);
-        } else if (orderMessage instanceof OrderDoneMessage) {
-            handler.on((OrderDoneMessage)orderMessage);
+        } else if (orderMessage instanceof OrderOpenLog) {
+            handler.on((OrderOpenLog)orderMessage);
+        } else if (orderMessage instanceof OrderReceivedLog) {
+            handler.on((OrderReceivedLog)orderMessage);
+        } else if (orderMessage instanceof OrderDoneLog) {
+            handler.on((OrderDoneLog)orderMessage);
         } else if (orderMessage instanceof OrderMatchLog) {
             handler.on((OrderMatchLog)orderMessage);
 

@@ -1,24 +1,22 @@
 package com.gitbitex.matchingengine;
 
+import com.gitbitex.marketdata.entity.Order.OrderSide;
+import com.gitbitex.matchingengine.command.CancelOrderCommand;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
-
-import com.gitbitex.matchingengine.command.CancelOrderCommand;
-import com.gitbitex.matchingengine.command.PlaceOrderCommand;
-import com.gitbitex.matchingengine.log.OrderDoneMessage;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderOpenMessage;
-import com.gitbitex.matchingengine.log.OrderReceivedMessage;
-import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.entity.Order.OrderSide;
-import com.google.common.hash.BloomFilter;
-import com.google.common.hash.Funnels;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 
 @Getter
 @Slf4j
@@ -35,16 +33,19 @@ public class OrderBook {
     private long logOffset;
     private boolean stable;
 
-    public OrderBook(String productId, LogWriter logWriter, AccountBook accountBook, AtomicLong sequence) {
+    public OrderBook(String productId, LogWriter logWriter,
+                     AccountBook accountBook, ProductBook productBook,
+                     AtomicLong sequence) {
         this.productId = productId;
         this.tradeId = new AtomicLong();
         this.sequence = sequence;
-        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, accountBook, logWriter);
-        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, accountBook, logWriter);
+        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, accountBook,productBook, logWriter);
+        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, accountBook, productBook, logWriter);
     }
 
-    public OrderBook(String productId, OrderBookSnapshot snapshot, LogWriter logWriter, AccountBook accountBook,
-        AtomicLong logSequence) {
+    public OrderBook(String productId, OrderBookSnapshot snapshot, LogWriter logWriter,
+                     AccountBook accountBook, ProductBook productBook,
+                     AtomicLong logSequence) {
         this.sequence = logSequence;
         this.productId = productId;
         if (snapshot != null) {
@@ -52,8 +53,8 @@ public class OrderBook {
         } else {
             this.tradeId = new AtomicLong();
         }
-        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, accountBook, logWriter);
-        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, accountBook, logWriter);
+        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, accountBook, productBook, logWriter);
+        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, accountBook, productBook, logWriter);
         if (snapshot != null) {
             if (snapshot.getAsks() != null) {
                 snapshot.getAsks().forEach(this.asks::addOrder);
@@ -66,18 +67,18 @@ public class OrderBook {
 
     public static void main(String[] a) {
         BloomFilter<String> bloomFilter = BloomFilter.create(Funnels.stringFunnel(StandardCharsets.UTF_8), 1000000,
-            0.01);
+                0.01);
         bloomFilter.put("1");
         System.out.println(bloomFilter.mightContain("1"));
     }
 
     public OrderBookSnapshot takeSnapshot() {
         List<BookOrder> askOrders = this.asks.getOrders().stream()
-            .map(BookOrder::copy)
-            .collect(Collectors.toList());
+                .map(BookOrder::copy)
+                .collect(Collectors.toList());
         List<BookOrder> bidOrders = this.bids.getOrders().stream()
-            .map(BookOrder::copy)
-            .collect(Collectors.toList());
+                .map(BookOrder::copy)
+                .collect(Collectors.toList());
 
         OrderBookSnapshot orderBookSnapshot = new OrderBookSnapshot();
         orderBookSnapshot.setProductId(productId);
@@ -87,19 +88,11 @@ public class OrderBook {
         return orderBookSnapshot;
     }
 
-    public void executeCommand(PlaceOrderCommand command) {
-        Order order = command.getOrder();
-
-        // ensure that the order will not be processed repeatedly
-        /*if (!putOrderIdIfAbsent(order.getOrderId())) {
-            logger.warn("received repeated order: {}", JSON.toJSONString(order));
-            return;
-        }*/
-
+    public void executeCommand(BookOrder order) {
         if (order.getSide() == OrderSide.BUY) {
-            asks.executeCommand(command, bids);
+            asks.executeCommand(order, bids);
         } else {
-            bids.executeCommand(command, asks);
+            bids.executeCommand(order, asks);
         }
     }
 
@@ -116,7 +109,7 @@ public class OrderBook {
         (order.getSide() == OrderSide.BUY ? bids : asks).executeCommand(message);
     }
 
-    public PageLine restoreLog(OrderReceivedMessage log) {
+    public PageLine restoreLog(OrderReceivedLog log) {
         this.sequence.set(log.getSequence());
         this.logOffset = log.getOffset();
         this.commandOffset = log.getCommandOffset();
@@ -125,7 +118,7 @@ public class OrderBook {
         return null;
     }
 
-    public PageLine restoreLog(OrderOpenMessage log) {
+    public PageLine restoreLog(OrderOpenLog log) {
         this.sequence.set(log.getSequence());
         this.logOffset = log.getOffset();
         this.commandOffset = log.getCommandOffset();
@@ -148,7 +141,7 @@ public class OrderBook {
         return this.decreaseOrderSize(log.getMakerOrderId(), log.getSide(), log.getSize());
     }
 
-    public PageLine restoreLog(OrderDoneMessage log) {
+    public PageLine restoreLog(OrderDoneLog log) {
         this.sequence.set(log.getSequence());
         this.logOffset = log.getOffset();
         this.commandOffset = log.getCommandOffset();

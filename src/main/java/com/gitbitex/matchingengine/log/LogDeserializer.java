@@ -24,17 +24,17 @@ public class LogDeserializer implements Deserializer<Log> {
                 case ACCOUNT_CHANGE:
                     return JSON.parseObject(jsonString, AccountChangeMessage.class);
                 case ORDER_DONE:
-                    return JSON.parseObject(jsonString, OrderDoneMessage.class);
+                    return JSON.parseObject(jsonString, OrderDoneLog.class);
                 case ORDER_MATCH:
                     return JSON.parseObject(jsonString, OrderMatchLog.class);
                 case ORDER_OPEN:
-                    return JSON.parseObject(jsonString, OrderOpenMessage.class);
+                    return JSON.parseObject(jsonString, OrderOpenLog.class);
                 case ORDER_RECEIVED:
-                    return JSON.parseObject(jsonString, OrderReceivedMessage.class);
+                    return JSON.parseObject(jsonString, OrderReceivedLog.class);
                 case ORDER_FILLED:
                     return JSON.parseObject(jsonString, OrderFilledMessage.class);
                 case ORDER_REJECTED:
-                    return JSON.parseObject(jsonString, OrderRejectedMessage.class);
+                    return JSON.parseObject(jsonString, OrderRejectedLog.class);
                 default:
                     logger.warn("Unhandled order message type: {}", orderMessage.getType());
                     return orderMessage;

@@ -24,16 +24,55 @@ public class ClientOrderReceiver {
 
     public void handlePlaceOrderRequest(Order order) {
         Product product = productManager.getProductById(order.getProductId());
+        BigDecimal size = order.getSize();
+        BigDecimal price = order.getPrice();
+        BigDecimal funds = order.getFunds();
+        OrderSide side = order.getSide();
 
-        formatOrder(order, product);
-        validateOrder(order);
+        switch (order.getType()) {
+            case LIMIT:
+                size = size.setScale(product.getBaseScale(), RoundingMode.DOWN);
+                price = price.setScale(product.getQuoteScale(), RoundingMode.DOWN);
+                funds = side == Order.OrderSide.BUY ? size.multiply(price) : BigDecimal.ZERO;
+                break;
+            case MARKET:
+                price = BigDecimal.ZERO;
+                if (side == Order.OrderSide.BUY) {
+                    size = BigDecimal.ZERO;
+                    funds = funds.setScale(product.getQuoteScale(), RoundingMode.DOWN);
+                } else {
+                    size = size.setScale(product.getBaseScale(), RoundingMode.DOWN);
+                    funds = BigDecimal.ZERO;
+                }
+                break;
+            default:
+                throw new RuntimeException("unknown order type: " + order.getType());
+        }
+
+        if (side == Order.OrderSide.SELL) {
+            if (size.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("bad SELL order: size must be positive");
+            }
+        } else {
+            if (funds.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("bad BUY order: funds must be positive");
+            }
+        }
 
         // send order to accountant
-        PlaceOrderCommand orderPlacedMessage = new PlaceOrderCommand();
-        orderPlacedMessage.setOrder(order);
-        orderPlacedMessage.setBaseCurrency(product.getBaseCurrency());
-        orderPlacedMessage.setQuoteCurrency(product.getQuoteCurrency());
-        messageProducer.sendToMatchingEngine("all", orderPlacedMessage, null);
+        PlaceOrderCommand placeOrderCommand = new PlaceOrderCommand();
+        placeOrderCommand.setProductId(product.getProductId());
+        placeOrderCommand.setOrderId(order.getOrderId());
+        placeOrderCommand.setUserId(order.getUserId());
+        placeOrderCommand.setOrderType(order.getType());
+        placeOrderCommand.setOrderSide(order.getSide());
+        placeOrderCommand.setSize(size);
+        placeOrderCommand.setPrice(price);
+        placeOrderCommand.setFunds(funds);
+        placeOrderCommand.setBaseCurrency(product.getBaseCurrency());
+        placeOrderCommand.setQuoteCurrency(product.getQuoteCurrency());
+
+        messageProducer.sendToMatchingEngine("all", placeOrderCommand, null);
     }
 
     public void handleCancelOrderRequest(Order order) {

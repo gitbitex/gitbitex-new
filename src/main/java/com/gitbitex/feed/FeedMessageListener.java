@@ -4,17 +4,13 @@ import javax.annotation.PostConstruct;
 
 import com.alibaba.fastjson.JSON;
 
+import com.gitbitex.feed.message.*;
 import com.gitbitex.marketdata.entity.Account;
 import com.gitbitex.common.message.OrderBookLog;
-import com.gitbitex.matchingengine.log.OrderDoneMessage;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderOpenMessage;
-import com.gitbitex.matchingengine.log.OrderReceivedMessage;
-import com.gitbitex.feed.message.AccountMessage;
-import com.gitbitex.feed.message.CandleMessage;
-import com.gitbitex.feed.message.OrderMatchMessage;
-import com.gitbitex.feed.message.OrderMessage;
-import com.gitbitex.feed.message.TickerMessage;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
@@ -71,9 +67,9 @@ public class FeedMessageListener {
             String fullChannel = log.getProductId() + ".full";
             switch (log.getType()) {
                 case ORDER_RECEIVED:
-                    OrderReceivedMessage orderReceivedMessage = JSON.parseObject(msg, OrderReceivedMessage.class);
+                    OrderReceivedLog orderReceivedLog = JSON.parseObject(msg, OrderReceivedLog.class);
                     sessionManager.sendMessageToChannel(fullChannel,
-                        (orderReceivedMessage(orderReceivedMessage)));
+                        (orderReceivedMessage(orderReceivedLog)));
                     break;
                 case ORDER_MATCH:
                     OrderMatchLog orderMatchLog = JSON.parseObject(msg, OrderMatchLog.class);
@@ -82,33 +78,29 @@ public class FeedMessageListener {
                     sessionManager.sendMessageToChannel(fullChannel, (matchMessage(orderMatchLog)));
                     break;
                 case ORDER_OPEN:
-                    OrderOpenMessage orderOpenMessage = JSON.parseObject(msg, OrderOpenMessage.class);
-                    sessionManager.sendMessageToChannel(fullChannel, (orderOpenMessage(orderOpenMessage)));
+                    OrderOpenLog orderOpenLog = JSON.parseObject(msg, OrderOpenLog.class);
+                    sessionManager.sendMessageToChannel(fullChannel, (orderOpenMessage(orderOpenLog)));
                     break;
                 case ORDER_DONE:
-                    OrderDoneMessage orderDoneMessage = JSON.parseObject(msg, OrderDoneMessage.class);
-                    sessionManager.sendMessageToChannel(fullChannel, (orderDoneMessage(orderDoneMessage)));
+                    OrderDoneLog orderDoneLog = JSON.parseObject(msg, OrderDoneLog.class);
+                    sessionManager.sendMessageToChannel(fullChannel, (orderDoneMessage(orderDoneLog)));
                     break;
                 default:
             }
         });
     }
 
-    private com.gitbitex.feed.message.OrderReceivedMessage orderReceivedMessage(OrderReceivedMessage log) {
-        com.gitbitex.feed.message.OrderReceivedMessage message = new com.gitbitex.feed.message.OrderReceivedMessage();
+    private OrderReceivedMessage orderReceivedMessage(OrderReceivedLog log) {
+         OrderReceivedMessage message = new com.gitbitex.feed.message.OrderReceivedMessage();
         message.setProductId(log.getProductId());
         message.setTime(log.getTime().toInstant().toString());
         message.setSequence(log.getSequence());
-        message.setOrderId(log.getOrder().getOrderId());
-        message.setSize(log.getOrder().getSize().stripTrailingZeros().toPlainString());
-        message.setPrice(
-            log.getOrder().getPrice() != null ? log.getOrder().getPrice().stripTrailingZeros().toPlainString() :
-                null);
-        message.setFunds(
-            log.getOrder().getFunds() != null ? log.getOrder().getFunds().stripTrailingZeros().toPlainString() :
-                null);
-        message.setSide(log.getOrder().getSide().name().toUpperCase());
-        message.setOrderType(log.getOrder().getType().name().toUpperCase());
+        message.setOrderId(log.getOrderId());
+        message.setSize(log.getSize().stripTrailingZeros().toPlainString());
+        message.setPrice(log.getPrice() != null ? log.getPrice().stripTrailingZeros().toPlainString() : null);
+        message.setFunds(log.getFunds() != null ? log.getFunds().stripTrailingZeros().toPlainString() : null);
+        message.setSide(log.getSide().name().toUpperCase());
+        message.setOrderType(log.getType().name().toUpperCase());
         return message;
     }
 
@@ -126,7 +118,7 @@ public class FeedMessageListener {
         return message;
     }
 
-    private com.gitbitex.feed.message.OrderOpenMessage orderOpenMessage(OrderOpenMessage log) {
+    private com.gitbitex.feed.message.OrderOpenMessage orderOpenMessage(OrderOpenLog log) {
         com.gitbitex.feed.message.OrderOpenMessage message = new com.gitbitex.feed.message.OrderOpenMessage();
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());
@@ -137,7 +129,7 @@ public class FeedMessageListener {
         return message;
     }
 
-    private com.gitbitex.feed.message.OrderDoneMessage orderDoneMessage(OrderDoneMessage log) {
+    private com.gitbitex.feed.message.OrderDoneMessage orderDoneMessage(OrderDoneLog log) {
         com.gitbitex.feed.message.OrderDoneMessage message = new com.gitbitex.feed.message.OrderDoneMessage();
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());

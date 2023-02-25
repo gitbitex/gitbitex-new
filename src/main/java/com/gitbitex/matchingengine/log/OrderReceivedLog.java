@@ -1,29 +1,28 @@
-package com.gitbitex.matchingengine.command;
+package com.gitbitex.matchingengine.log;
 
 import com.gitbitex.marketdata.entity.Order;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.procedure.spi.ParameterRegistrationImplementor;
 
 import java.math.BigDecimal;
 import java.util.Date;
 
 @Getter
 @Setter
-public class PlaceOrderCommand extends MatchingEngineCommand {
+public class OrderReceivedLog extends Log {
     private String productId;
     private String orderId;
     private String userId;
     private BigDecimal size;
     private BigDecimal price;
     private BigDecimal funds;
+    private Order.OrderSide side;
     private Order.OrderType orderType;
-    private Order.OrderSide orderSide;
-    private String baseCurrency;
-    private String quoteCurrency;
+    private String clientOid;
     private Date time;
 
-    public PlaceOrderCommand() {
-        this.setType(CommandType.PLACE_ORDER);
+    public OrderReceivedLog() {
+        this.setType(LogType.ORDER_RECEIVED);
     }
 }
+

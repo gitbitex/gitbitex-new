@@ -11,13 +11,13 @@ import com.gitbitex.matchingengine.log.AccountChangeMessage;
 import com.gitbitex.matchingengine.log.Log;
 import com.gitbitex.matchingengine.log.LogDispatcher;
 import com.gitbitex.matchingengine.log.LogHandler;
-import com.gitbitex.matchingengine.log.OrderDoneMessage;
-import com.gitbitex.matchingengine.log.OrderDoneMessage.DoneReason;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
+import com.gitbitex.matchingengine.log.OrderDoneLog.DoneReason;
 import com.gitbitex.matchingengine.log.OrderFilledMessage;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderOpenMessage;
-import com.gitbitex.matchingengine.log.OrderReceivedMessage;
-import com.gitbitex.matchingengine.log.OrderRejectedMessage;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.matchingengine.log.OrderRejectedLog;
 import com.gitbitex.marketdata.entity.Order.OrderStatus;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
@@ -84,17 +84,17 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
     }
 
     @Override
-    public void on(OrderRejectedMessage log) {
-        orderManager.rejectOrder(log.getOrder());
+    public void on(OrderRejectedLog log) {
+        //orderManager.rejectOrder(log.getOrder());
     }
 
     @SneakyThrows
-    public void on(OrderReceivedMessage log) {
-        orderManager.receiveOrder(log.getOrder());
+    public void on(OrderReceivedLog log) {
+        //orderManager.receiveOrder(log.getOrder());
     }
 
     @SneakyThrows
-    public void on(OrderOpenMessage log) {
+    public void on(OrderOpenLog log) {
         orderManager.openOrder(log.getOrderId());
     }
 
@@ -103,7 +103,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
     }
 
     @SneakyThrows
-    public void on(OrderDoneMessage log) {
+    public void on(OrderDoneLog log) {
         orderManager.closeOrder(log.getOrderId(),
             log.getDoneReason() == DoneReason.CANCELLED ? OrderStatus.CANCELLED : OrderStatus.FILLED);
     }

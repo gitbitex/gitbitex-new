@@ -10,14 +10,14 @@ import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.log.AccountChangeMessage;
 import com.gitbitex.matchingengine.log.Log;
 import com.gitbitex.matchingengine.log.LogHandler;
-import com.gitbitex.matchingengine.log.OrderDoneMessage;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderFilledMessage;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.LogDispatcher;
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.matchingengine.log.OrderOpenMessage;
-import com.gitbitex.matchingengine.log.OrderReceivedMessage;
-import com.gitbitex.matchingengine.log.OrderRejectedMessage;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.matchingengine.log.OrderRejectedLog;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import lombok.var;
@@ -83,17 +83,17 @@ public class AccountantThread extends KafkaConsumerThread<String, Log>
     }
 
     @Override
-    public void on(OrderRejectedMessage log) {
+    public void on(OrderRejectedLog log) {
 
     }
 
     @Override
-    public void on(OrderReceivedMessage log) {
+    public void on(OrderReceivedLog log) {
 
     }
 
     @Override
-    public void on(OrderOpenMessage log) {
+    public void on(OrderOpenLog log) {
 
     }
 
@@ -103,7 +103,7 @@ public class AccountantThread extends KafkaConsumerThread<String, Log>
     }
 
     @Override
-    public void on(OrderDoneMessage log) {
+    public void on(OrderDoneLog log) {
 
     }
 

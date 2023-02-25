@@ -9,7 +9,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderDoneMessage extends Log {
+public class OrderDoneLog extends Log {
     private String productId;
     private String orderId;
     private BigDecimal remainingSize;
@@ -20,7 +20,7 @@ public class OrderDoneMessage extends Log {
     private DoneReason doneReason;
     private String userId;
 
-    public OrderDoneMessage() {
+    public OrderDoneLog() {
         this.setType(LogType.ORDER_DONE);
     }
 

@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MatchingEngine {
+    private final ProductBook productBook=new ProductBook();
     private final AccountBook accountBook;
     @Getter
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
@@ -31,7 +32,7 @@ public class MatchingEngine {
             this.accountBook = new AccountBook(snapshot.getAccountBookSnapshot(), logWriter, logSequence);
             if (snapshot.getOrderBookSnapshots() != null) {
                 snapshot.getOrderBookSnapshots().forEach(x -> {
-                    OrderBook orderBook = new OrderBook(x.getProductId(), x, logWriter, accountBook, logSequence);
+                    OrderBook orderBook = new OrderBook(x.getProductId(), x, logWriter, accountBook, productBook, logSequence);
                     this.orderBooks.put(orderBook.getProductId(), orderBook);
                 });
             }
@@ -48,13 +49,14 @@ public class MatchingEngine {
 
     public void executeCommand(PlaceOrderCommand command) {
         commandOffset = command.getOffset();
-        String productId = command.getOrder().getProductId();
-        OrderBook orderBook = orderBooks.get(command.getOrder().getProductId());
+        BookOrder order = new BookOrder(command);
+        String productId = command.getProductId();
+        OrderBook orderBook = orderBooks.get(productId);
         if (orderBook == null) {
-            orderBook = new OrderBook(command.getOrder().getProductId(), logWriter, accountBook, logSequence);
+            orderBook = new OrderBook(productId, logWriter, accountBook,productBook, logSequence);
             orderBooks.put(productId, orderBook);
         }
-        orderBook.executeCommand(command);
+        orderBook.executeCommand(order);
     }
 
     public void executeCommand(CancelOrderCommand command) {
