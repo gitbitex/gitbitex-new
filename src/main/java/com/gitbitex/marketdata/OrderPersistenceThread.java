@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.KafkaMessageProducer;
+import com.gitbitex.marketdata.enums.OrderStatus;
 import com.gitbitex.matchingengine.log.AccountChangeMessage;
 import com.gitbitex.matchingengine.log.Log;
 import com.gitbitex.matchingengine.log.LogDispatcher;
@@ -18,7 +19,7 @@ import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.OrderOpenLog;
 import com.gitbitex.matchingengine.log.OrderReceivedLog;
 import com.gitbitex.matchingengine.log.OrderRejectedLog;
-import com.gitbitex.marketdata.entity.Order.OrderStatus;
+
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;

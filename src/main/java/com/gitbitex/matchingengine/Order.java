@@ -1,20 +1,19 @@
 package com.gitbitex.matchingengine;
 
-import com.gitbitex.marketdata.entity.Order.OrderSide;
-import com.gitbitex.marketdata.entity.Order.OrderType;
+import com.gitbitex.marketdata.enums.OrderSide;
+import com.gitbitex.marketdata.enums.OrderType;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.BeanUtils;
 
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
 
 @Getter
 @Setter
-public class BookOrder implements Serializable {
+public class Order implements Serializable {
     private String userId;
     private String orderId;
     private OrderType type;
@@ -25,9 +24,9 @@ public class BookOrder implements Serializable {
     private boolean postOnly;
     private Date time;
 
-    public BookOrder(){}
+    public Order(){}
 
-    public BookOrder(PlaceOrderCommand command){
+    public Order(PlaceOrderCommand command){
         this.userId=command.getUserId();
         this.orderId=command.getOrderId();
         this.type=command.getOrderType();
@@ -38,8 +37,8 @@ public class BookOrder implements Serializable {
         this.time=command.getTime();
     }
 
-    public BookOrder copy() {
-        BookOrder copy = new BookOrder();
+    public Order copy() {
+        Order copy = new Order();
         BeanUtils.copyProperties(this, copy);
         return copy;
     }

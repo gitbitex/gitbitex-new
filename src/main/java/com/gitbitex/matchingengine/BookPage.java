@@ -1,8 +1,8 @@
 package com.gitbitex.matchingengine;
 
-import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.entity.Order.OrderSide;
-import com.gitbitex.marketdata.entity.Order.OrderType;
+
+import com.gitbitex.marketdata.enums.OrderSide;
+import com.gitbitex.marketdata.enums.OrderType;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.log.*;
 import com.gitbitex.matchingengine.log.OrderRejectedLog.RejectReason;
@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class BookPage implements Serializable {
     private final String productId;
     private final TreeMap<BigDecimal, PageLine> lineByPrice;
-    private final LinkedHashMap<String, BookOrder> orderById = new LinkedHashMap<>();
+    private final LinkedHashMap<String, Order> orderById = new LinkedHashMap<>();
     private final AtomicLong tradeId;
     private final AtomicLong sequence;
     private final LogWriter logWriter;
@@ -35,7 +35,7 @@ public class BookPage implements Serializable {
         this.productBook = productBook;
     }
 
-    public void executeCommand(BookOrder takerOrder, BookPage takerPage) {
+    public void executeCommand(Order takerOrder, BookPage takerPage) {
         Product product = productBook.getProduct(productId);
         String takerUserId = takerOrder.getUserId();
         String baseCurrency = product.getBaseCurrency();
@@ -66,10 +66,10 @@ public class BookPage implements Serializable {
                 break;
             }
 
-            for (BookOrder makerOrder : line.getOrders()) {
+            for (Order makerOrder : line.getOrders()) {
                 // get taker size
                 BigDecimal takerSize;
-                if (takerOrder.getSide() == Order.OrderSide.BUY && takerOrder.getType() == Order.OrderType.MARKET) {
+                if (takerOrder.getSide() == OrderSide.BUY && takerOrder.getType() ==  OrderType.MARKET) {
                     // The market order does not specify a price, so the size of the maker order needs to be
                     // calculated by the price of the maker order
                     takerSize = takerOrder.getFunds().divide(price, 4, RoundingMode.DOWN);
@@ -116,7 +116,7 @@ public class BookPage implements Serializable {
         // Note: The market order will never be added to the order book, and the market order without fully filled
         // will be cancelled
         if (takerOrder.getSize().compareTo(BigDecimal.ZERO) > 0) {
-            if (takerOrder.getType() == Order.OrderType.LIMIT) {
+            if (takerOrder.getType() ==  OrderType.LIMIT) {
                 takerPage.addOrder(takerOrder);
                 logWriter.add(orderOpenLog(takerOrder));
             } else if (takerOrder.getType() == OrderType.MARKET) {
@@ -129,7 +129,7 @@ public class BookPage implements Serializable {
         }
     }
 
-    private void unholdOrderFunds(BookOrder makerOrder, String baseCurrency, String quoteCurrency) {
+    private void unholdOrderFunds(Order makerOrder, String baseCurrency, String quoteCurrency) {
         if (makerOrder.getSide() == OrderSide.BUY) {
             if (makerOrder.getFunds().compareTo(BigDecimal.ZERO) > 0) {
                 accountBook.unhold(makerOrder.getUserId(), quoteCurrency, makerOrder.getFunds());
@@ -143,7 +143,7 @@ public class BookPage implements Serializable {
 
     public void executeCommand(CancelOrderCommand command) {
         String orderId = command.getOrderId();
-        BookOrder order = orderById.get(orderId);
+        Order order = orderById.get(orderId);
         if (order == null) {
             return;
         }
@@ -154,23 +154,23 @@ public class BookPage implements Serializable {
         unholdOrderFunds(order, "BTC", "USDT");
     }
 
-    public PageLine addOrder(BookOrder order) {
+    public PageLine addOrder(Order order) {
         PageLine line = lineByPrice.computeIfAbsent(order.getPrice(),
-                k -> new PageLine(order.getPrice(), order.getSide()));
+                k -> new PageLine(order.getPrice()));
         line.addOrder(order);
         orderById.put(order.getOrderId(), order);
         return line;
     }
 
     public PageLine decreaseOrderSize(String orderId, BigDecimal size) {
-        BookOrder order = orderById.get(orderId);
+        Order order = orderById.get(orderId);
         PageLine line = lineByPrice.get(order.getPrice());
         line.decreaseOrderSize(orderId, size);
         return line;
     }
 
     public PageLine removeOrderById(String orderId) {
-        BookOrder order = orderById.remove(orderId);
+        Order order = orderById.remove(orderId);
         if (order == null) {
             return null;
         }
@@ -187,26 +187,26 @@ public class BookPage implements Serializable {
         return this.lineByPrice.values();
     }
 
-    public Collection<BookOrder> getOrders() {
+    public Collection<Order> getOrders() {
         return this.orderById.values();
     }
 
-    public BookOrder getOrderById(String orderId) {
+    public Order getOrderById(String orderId) {
         return this.orderById.get(orderId);
     }
 
-    private boolean isPriceCrossed(BookOrder takerOrder, BigDecimal makerOrderPrice) {
+    private boolean isPriceCrossed(Order takerOrder, BigDecimal makerOrderPrice) {
         if (takerOrder.getType() == OrderType.MARKET) {
             return true;
         }
-        if (takerOrder.getSide() == Order.OrderSide.BUY) {
+        if (takerOrder.getSide() ==  OrderSide.BUY) {
             return takerOrder.getPrice().compareTo(makerOrderPrice) >= 0;
         } else {
             return takerOrder.getPrice().compareTo(makerOrderPrice) <= 0;
         }
     }
 
-    private OrderDoneLog.DoneReason determineDoneReason(BookOrder order) {
+    private OrderDoneLog.DoneReason determineDoneReason(Order order) {
         if (order.getType() == OrderType.MARKET && order.getSide() == OrderSide.BUY) {
             if (order.getFunds().compareTo(BigDecimal.ZERO) > 0) {
                 return OrderDoneLog.DoneReason.CANCELLED;
@@ -220,7 +220,7 @@ public class BookPage implements Serializable {
     }
 
 
-    private OrderRejectedLog orderRejectedLog(BookOrder order, RejectReason rejectReason) {
+    private OrderRejectedLog orderRejectedLog(Order order, RejectReason rejectReason) {
         OrderRejectedLog log = new OrderRejectedLog();
         log.setSequence(sequence.incrementAndGet());
         log.setProductId(productId);
@@ -234,7 +234,7 @@ public class BookPage implements Serializable {
         return log;
     }
 
-    private OrderReceivedLog orderReceivedLog(BookOrder order) {
+    private OrderReceivedLog orderReceivedLog(Order order) {
         OrderReceivedLog log = new OrderReceivedLog();
         log.setSequence(sequence.incrementAndGet());
         log.setProductId(productId);
@@ -248,7 +248,7 @@ public class BookPage implements Serializable {
         return log;
     }
 
-    private OrderOpenLog orderOpenLog(BookOrder takerOrder) {
+    private OrderOpenLog orderOpenLog(Order takerOrder) {
         OrderOpenLog log = new OrderOpenLog();
         log.setSequence(sequence.incrementAndGet());
         log.setProductId(productId);
@@ -261,7 +261,7 @@ public class BookPage implements Serializable {
         return log;
     }
 
-    private OrderMatchLog orderMatchLog(BookOrder takerOrder, BookOrder makerOrder, BigDecimal size, long tradeId) {
+    private OrderMatchLog orderMatchLog(Order takerOrder, Order makerOrder, BigDecimal size, long tradeId) {
         OrderMatchLog log = new OrderMatchLog();
         log.setSequence(sequence.incrementAndGet());
         log.setTradeId(tradeId);
@@ -278,7 +278,7 @@ public class BookPage implements Serializable {
         return log;
     }
 
-    private OrderDoneLog orderDoneLog(BookOrder order, OrderDoneLog.DoneReason doneReason) {
+    private OrderDoneLog orderDoneLog(Order order, OrderDoneLog.DoneReason doneReason) {
         OrderDoneLog log = new OrderDoneLog();
         log.setSequence(sequence.incrementAndGet());
         log.setProductId(productId);

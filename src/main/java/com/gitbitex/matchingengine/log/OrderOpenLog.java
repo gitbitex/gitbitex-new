@@ -3,6 +3,7 @@ package com.gitbitex.matchingengine.log;
 import java.math.BigDecimal;
 
 import com.gitbitex.marketdata.entity.Order;
+import com.gitbitex.marketdata.enums.OrderSide;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,7 +14,7 @@ public class OrderOpenLog extends Log {
     private String orderId;
     private BigDecimal remainingSize;
     private BigDecimal price;
-    private Order.OrderSide side;
+    private OrderSide side;
     private String userId;
 
     public OrderOpenLog() {

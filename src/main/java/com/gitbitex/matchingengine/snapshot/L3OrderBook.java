@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.gitbitex.matchingengine.BookOrder;
+import com.gitbitex.matchingengine.Order;
 import com.gitbitex.matchingengine.OrderBook;
 import lombok.Getter;
 import lombok.Setter;
@@ -39,7 +39,7 @@ public class L3OrderBook {
         public Line() {
         }
 
-        public Line(BookOrder order) {
+        public Line(Order order) {
             this.add(order.getOrderId());
             this.add(order.getPrice().stripTrailingZeros().toPlainString());
             this.add(order.getSize().stripTrailingZeros().toPlainString());

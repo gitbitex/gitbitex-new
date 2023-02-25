@@ -7,15 +7,15 @@ import java.util.stream.Collectors;
 
 import javax.validation.Valid;
 
+import com.gitbitex.marketdata.enums.OrderSide;
+import com.gitbitex.marketdata.enums.OrderStatus;
+import com.gitbitex.marketdata.enums.OrderType;
+import com.gitbitex.marketdata.enums.TimeInForcePolicy;
 import com.gitbitex.openapi.model.OrderDto;
 import com.gitbitex.openapi.model.PagedList;
 import com.gitbitex.openapi.model.PlaceOrderRequest;
 import com.gitbitex.order.ClientOrderReceiver;
 import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.entity.Order.OrderSide;
-import com.gitbitex.marketdata.entity.Order.OrderStatus;
-import com.gitbitex.marketdata.entity.Order.OrderType;
-import com.gitbitex.marketdata.entity.Order.TimeInForcePolicy;
 import com.gitbitex.marketdata.repository.OrderRepository;
 import com.gitbitex.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -48,8 +48,8 @@ public class OrderController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        OrderType type = Order.OrderType.valueOf(request.getType().toUpperCase());
-        OrderSide side = Order.OrderSide.valueOf(request.getSide().toUpperCase());
+        OrderType type = OrderType.valueOf(request.getType().toUpperCase());
+        OrderSide side = OrderSide.valueOf(request.getSide().toUpperCase());
         BigDecimal size = new BigDecimal(request.getSize());
         BigDecimal price = request.getPrice() != null ? new BigDecimal(request.getPrice()) : null;
         BigDecimal funds = request.getFunds() != null ? new BigDecimal(request.getFunds()) : null;
@@ -103,9 +103,9 @@ public class OrderController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        OrderSide orderSide = side != null ? Order.OrderSide.valueOf(side.toUpperCase()) : null;
+        OrderSide orderSide = side != null ? OrderSide.valueOf(side.toUpperCase()) : null;
 
-        Page<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, Order.OrderStatus.OPEN,
+        Page<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, OrderStatus.OPEN,
             orderSide, 1, 20000);
 
         for (Order order : orderPage.getContent()) {
@@ -123,7 +123,7 @@ public class OrderController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        Order.OrderStatus orderStatus = status != null ? Order.OrderStatus.valueOf(status.toUpperCase()) : null;
+        OrderStatus orderStatus = status != null ? OrderStatus.valueOf(status.toUpperCase()) : null;
 
         Page<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, orderStatus, null, page,
             pageSize);

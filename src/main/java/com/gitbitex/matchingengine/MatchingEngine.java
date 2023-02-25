@@ -49,7 +49,7 @@ public class MatchingEngine {
 
     public void executeCommand(PlaceOrderCommand command) {
         commandOffset = command.getOffset();
-        BookOrder order = new BookOrder(command);
+        Order order = new Order(command);
         String productId = command.getProductId();
         OrderBook orderBook = orderBooks.get(productId);
         if (orderBook == null) {

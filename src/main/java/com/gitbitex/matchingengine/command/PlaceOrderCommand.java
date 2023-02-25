@@ -1,6 +1,8 @@
 package com.gitbitex.matchingengine.command;
 
 import com.gitbitex.marketdata.entity.Order;
+import com.gitbitex.marketdata.enums.OrderSide;
+import com.gitbitex.marketdata.enums.OrderType;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.procedure.spi.ParameterRegistrationImplementor;
@@ -17,8 +19,8 @@ public class PlaceOrderCommand extends MatchingEngineCommand {
     private BigDecimal size;
     private BigDecimal price;
     private BigDecimal funds;
-    private Order.OrderType orderType;
-    private Order.OrderSide orderSide;
+    private OrderType orderType;
+    private OrderSide orderSide;
     private String baseCurrency;
     private String quoteCurrency;
     private Date time;

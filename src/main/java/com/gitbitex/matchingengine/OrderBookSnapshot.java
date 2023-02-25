@@ -10,6 +10,6 @@ import lombok.Setter;
 public class OrderBookSnapshot {
     private String productId;
     private long tradeId;
-    private List<BookOrder> asks;
-    private List<BookOrder> bids;
+    private List<Order> asks;
+    private List<Order> bids;
 }

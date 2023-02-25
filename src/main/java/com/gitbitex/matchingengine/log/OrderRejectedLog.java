@@ -1,6 +1,8 @@
 package com.gitbitex.matchingengine.log;
 
 import com.gitbitex.marketdata.entity.Order;
+import com.gitbitex.marketdata.enums.OrderSide;
+import com.gitbitex.marketdata.enums.OrderType;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,8 +18,8 @@ public class OrderRejectedLog extends Log {
     private BigDecimal size;
     private BigDecimal price;
     private BigDecimal funds;
-    private Order.OrderSide side;
-    private Order.OrderType orderType;
+    private OrderSide side;
+    private OrderType orderType;
     private String clientOid;
     private Date time;
     private RejectReason rejectReason;

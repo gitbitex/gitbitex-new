@@ -7,8 +7,9 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import com.gitbitex.marketdata.enums.OrderSide;
 import com.gitbitex.matchingengine.log.AccountChangeMessage;
-import com.gitbitex.marketdata.entity.Order.OrderSide;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.Nullable;
 
@@ -133,7 +134,7 @@ public class AccountBook {
     }
 
     public void exchange(String takerUserId, String makerUserId, String baseCurrency, String quoteCurrency,
-        OrderSide takerSide, BigDecimal size, BigDecimal funds) {
+                         OrderSide takerSide, BigDecimal size, BigDecimal funds) {
         if (takerSide == OrderSide.BUY) {
             incrHold(takerUserId, quoteCurrency, funds.negate());
             incrAvailable(takerUserId, baseCurrency, size);

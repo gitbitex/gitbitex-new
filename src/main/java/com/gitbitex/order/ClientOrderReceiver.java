@@ -3,12 +3,12 @@ package com.gitbitex.order;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+import com.gitbitex.marketdata.enums.OrderSide;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.entity.Order.OrderSide;
 import com.gitbitex.product.ProductManager;
 import com.gitbitex.product.entity.Product;
 import lombok.RequiredArgsConstructor;
@@ -33,11 +33,11 @@ public class ClientOrderReceiver {
             case LIMIT:
                 size = size.setScale(product.getBaseScale(), RoundingMode.DOWN);
                 price = price.setScale(product.getQuoteScale(), RoundingMode.DOWN);
-                funds = side == Order.OrderSide.BUY ? size.multiply(price) : BigDecimal.ZERO;
+                funds = side ==  OrderSide.BUY ? size.multiply(price) : BigDecimal.ZERO;
                 break;
             case MARKET:
                 price = BigDecimal.ZERO;
-                if (side == Order.OrderSide.BUY) {
+                if (side ==  OrderSide.BUY) {
                     size = BigDecimal.ZERO;
                     funds = funds.setScale(product.getQuoteScale(), RoundingMode.DOWN);
                 } else {
@@ -49,7 +49,7 @@ public class ClientOrderReceiver {
                 throw new RuntimeException("unknown order type: " + order.getType());
         }
 
-        if (side == Order.OrderSide.SELL) {
+        if (side ==  OrderSide.SELL) {
             if (size.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new RuntimeException("bad SELL order: size must be positive");
             }
@@ -109,11 +109,11 @@ public class ClientOrderReceiver {
             case LIMIT:
                 size = size.setScale(product.getBaseScale(), RoundingMode.DOWN);
                 price = price.setScale(product.getQuoteScale(), RoundingMode.DOWN);
-                funds = side == Order.OrderSide.BUY ? size.multiply(price) : BigDecimal.ZERO;
+                funds = side ==  OrderSide.BUY ? size.multiply(price) : BigDecimal.ZERO;
                 break;
             case MARKET:
                 price = BigDecimal.ZERO;
-                if (side == Order.OrderSide.BUY) {
+                if (side ==  OrderSide.BUY) {
                     size = BigDecimal.ZERO;
                     funds = funds.setScale(product.getQuoteScale(), RoundingMode.DOWN);
                 } else {
@@ -135,7 +135,7 @@ public class ClientOrderReceiver {
         BigDecimal funds = order.getFunds();
         OrderSide side = order.getSide();
 
-        if (side == Order.OrderSide.SELL) {
+        if (side == OrderSide.SELL) {
             if (size.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new RuntimeException("bad SELL order: size must be positive");
             }

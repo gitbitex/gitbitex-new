@@ -7,8 +7,8 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.marketdata.entity.Fill;
 import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.entity.Order.OrderSide;
-import com.gitbitex.marketdata.entity.Order.OrderStatus;
+import com.gitbitex.marketdata.enums.OrderSide;
+import com.gitbitex.marketdata.enums.OrderStatus;
 import com.gitbitex.marketdata.repository.FillRepository;
 import com.gitbitex.marketdata.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;

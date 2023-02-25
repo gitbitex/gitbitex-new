@@ -1,6 +1,7 @@
 package com.gitbitex.matchingengine;
 
-import com.gitbitex.marketdata.entity.Order.OrderSide;
+
+import com.gitbitex.marketdata.enums.OrderSide;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
@@ -73,11 +74,11 @@ public class OrderBook {
     }
 
     public OrderBookSnapshot takeSnapshot() {
-        List<BookOrder> askOrders = this.asks.getOrders().stream()
-                .map(BookOrder::copy)
+        List<Order> askOrders = this.asks.getOrders().stream()
+                .map(Order::copy)
                 .collect(Collectors.toList());
-        List<BookOrder> bidOrders = this.bids.getOrders().stream()
-                .map(BookOrder::copy)
+        List<Order> bidOrders = this.bids.getOrders().stream()
+                .map(Order::copy)
                 .collect(Collectors.toList());
 
         OrderBookSnapshot orderBookSnapshot = new OrderBookSnapshot();
@@ -88,7 +89,7 @@ public class OrderBook {
         return orderBookSnapshot;
     }
 
-    public void executeCommand(BookOrder order) {
+    public void executeCommand(Order order) {
         if (order.getSide() == OrderSide.BUY) {
             asks.executeCommand(order, bids);
         } else {
@@ -98,7 +99,7 @@ public class OrderBook {
 
     public void executeCommand(CancelOrderCommand message) {
         String orderId = message.getOrderId();
-        BookOrder order = asks.getOrderById(orderId);
+        Order order = asks.getOrderById(orderId);
         if (order == null) {
             order = bids.getOrderById(orderId);
         }
@@ -123,7 +124,7 @@ public class OrderBook {
         this.logOffset = log.getOffset();
         this.commandOffset = log.getCommandOffset();
         this.stable = log.isCommandFinished();
-        BookOrder order = new BookOrder();
+        Order order = new Order();
         order.setOrderId(log.getOrderId());
         order.setPrice(log.getPrice());
         order.setSize(log.getRemainingSize());
@@ -152,7 +153,7 @@ public class OrderBook {
         return null;
     }
 
-    private PageLine addOrder(BookOrder order) {
+    private PageLine addOrder(Order order) {
         return (order.getSide() == OrderSide.BUY ? bids : asks).addOrder(order);
     }
 
