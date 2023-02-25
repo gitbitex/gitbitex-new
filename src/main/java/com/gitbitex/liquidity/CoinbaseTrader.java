@@ -39,7 +39,7 @@ public class CoinbaseTrader {
     private final ExecutorService executor = Executors.newFixedThreadPool(1);
     private final AppProperties appProperties;
 
-    @PostConstruct
+    //@PostConstruct
     public void init() throws URISyntaxException {
 
         if (appProperties.getLiquidityTraderUserIds().isEmpty()) {

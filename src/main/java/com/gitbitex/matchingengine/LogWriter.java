@@ -13,7 +13,10 @@ public class LogWriter {
     private final KafkaMessageProducer producer;
 
     public void add(Log log){
-        logger.info(JSON.toJSONString(log));
-        producer.sendOrderBookLog(log,null);
+        long t1=System.currentTimeMillis();
+        //logger.info(JSON.toJSONString(log));
+        //producer.sendOrderBookLog(log,null);
+        long t2=System.currentTimeMillis();
+        long diff=t2-t1;
     }
 }

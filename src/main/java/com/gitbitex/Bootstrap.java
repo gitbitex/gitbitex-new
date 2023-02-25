@@ -55,18 +55,18 @@ public class Bootstrap {
 
     @PostConstruct
     public void init() {
-        startAccountant(appProperties.getAccountantThreadNum());
+        //startAccountant(appProperties.getAccountantThreadNum());
 
         List<String> productIds = productRepository.findAll().stream()
             .map(Product::getProductId)
             .collect(Collectors.toList());
 
         startMatchingEngine(productIds, 1);
-        startOrderCommandSharding(productIds, 1);
-        startCandleMaker(productIds, 1);
-        startTicker(productIds, 1);
-        startTradePersistence(productIds, 1);
-        startOrderBookLogPublish(productIds, 1);
+        //startOrderCommandSharding(productIds, 1);
+        //startCandleMaker(productIds, 1);
+        //startTicker(productIds, 1);
+        //startTradePersistence(productIds, 1);
+        //startOrderBookLogPublish(productIds, 1);
     }
 
     @PreDestroy

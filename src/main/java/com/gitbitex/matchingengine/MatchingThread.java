@@ -15,6 +15,10 @@ import org.apache.kafka.common.TopicPartition;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 
 @Slf4j
 public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCommand>
@@ -31,6 +35,27 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
         this.orderBookManager = orderBookManager;
         this.appProperties = appProperties;
         this.logWriter = new LogWriter(messageProducer);
+
+        executorService.submit(new Runnable() {
+            @Override
+            public void run() {
+                long i=0;
+                while (true){
+                    MatchingEngineCommand command= null;
+                    try {
+                        command = commands.take();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    if (command==null){
+                        continue;
+                    }
+                    CommandDispatcher.dispatch(command,MatchingThread.this);
+                    i++;
+                    System.out.println(i);
+                }
+            }
+        });
     }
 
     @Override
@@ -44,7 +69,7 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            MatchingEngineSnapshot snapshot= null;//= orderBookManager.getFullOrderBookSnapshot();
+            MatchingEngineSnapshot snapshot = orderBookManager.getFullOrderBookSnapshot();
             this.matchingEngine = new MatchingEngine(snapshot, logWriter);
             if (snapshot != null) {
                 consumer.seek(partition, snapshot.getCommandOffset() + 1);
@@ -56,25 +81,32 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
     protected void doSubscribe() {
         consumer.subscribe(Collections.singletonList(appProperties.getOrderBookCommandTopic()), this);
     }
+    long i=0;
 
+    BlockingQueue<MatchingEngineCommand> commands=new LinkedBlockingQueue<>();
+    ExecutorService executorService= Executors.newFixedThreadPool(1);
     @Override
     protected void doPoll() {
+
         consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
             MatchingEngineCommand command = x.value();
             command.setOffset(x.offset());
-            logger.info("{}", JSON.toJSONString(command));
-            CommandDispatcher.dispatch(command, this);
+            //logger.info("{}", JSON.toJSONString(command));
+            //CommandDispatcher.dispatch(command, this);
+            commands.offer(command);
+            i++;
         });
 
+        //System.out.println(i);
 
-        MatchingEngineSnapshot snapshot = matchingEngine.takeSnapshot();
+        //MatchingEngineSnapshot snapshot = matchingEngine.takeSnapshot();
         //logger.info(JSON.toJSONString(snapshot, true));
-        orderBookManager.saveFullOrderBookSnapshot(snapshot);
+        //orderBookManager.saveFullOrderBookSnapshot(snapshot);
 
         matchingEngine.getOrderBooks().keySet().forEach(x -> {
-            L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);
+            //L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);
             //logger.info(JSON.toJSONString(l2OrderBook, true));
-            orderBookManager.saveL2BatchOrderBook(l2OrderBook);
+            //orderBookManager.saveL2BatchOrderBook(l2OrderBook);
         });
 
     }

@@ -41,6 +41,7 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
 
         ProducerRecord<String, String> record = new ProducerRecord<>(appProperties.getOrderBookLogTopic(), "all", JSON.toJSONString(log));
 
+
         return super.send(record, (metadata, exception) -> {
             if (callback != null) {
                 callback.onCompletion(metadata, exception);
