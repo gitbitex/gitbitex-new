@@ -12,4 +12,13 @@ public class Account {
     private String currency;
     private BigDecimal available;
     private BigDecimal hold;
+
+    public Account copy(){
+        Account copy=new Account();
+        copy.setUserId(userId);
+        copy.setCurrency(currency);
+        copy.setAvailable(available);
+        copy.setHold(hold);
+        return copy;
+    }
 }

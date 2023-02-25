@@ -2,8 +2,8 @@ package com.gitbitex.matchingengine.log;
 
 import java.math.BigDecimal;
 
-import com.gitbitex.marketdata.enums.OrderSide;
-import com.gitbitex.marketdata.enums.OrderType;
+import com.gitbitex.enums.OrderSide;
+import com.gitbitex.enums.OrderType;
 import lombok.Getter;
 import lombok.Setter;
 

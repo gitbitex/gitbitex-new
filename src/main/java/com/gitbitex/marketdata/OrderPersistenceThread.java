@@ -3,7 +3,7 @@ package com.gitbitex.marketdata;
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.enums.OrderStatus;
+import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.matchingengine.log.*;
 import com.gitbitex.matchingengine.log.OrderDoneLog.DoneReason;
 import com.gitbitex.support.kafka.KafkaConsumerThread;

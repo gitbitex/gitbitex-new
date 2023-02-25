@@ -1,11 +1,9 @@
 package com.gitbitex.matchingengine.command;
 
-import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.enums.OrderSide;
-import com.gitbitex.marketdata.enums.OrderType;
+import com.gitbitex.enums.OrderSide;
+import com.gitbitex.enums.OrderType;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.procedure.spi.ParameterRegistrationImplementor;
 
 import java.math.BigDecimal;
 import java.util.Date;

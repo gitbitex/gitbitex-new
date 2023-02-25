@@ -1,7 +1,7 @@
 package com.gitbitex.matchingengine;
 
-import com.gitbitex.marketdata.enums.OrderSide;
-import com.gitbitex.marketdata.enums.OrderType;
+import com.gitbitex.enums.OrderSide;
+import com.gitbitex.enums.OrderType;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import lombok.Getter;
 import lombok.Setter;

@@ -29,10 +29,10 @@ public class MatchingEngine {
         if (snapshot != null) {
             this.logSequence.set(snapshot.getLogSequence());
             this.commandOffset = snapshot.getCommandOffset();
-            this.accountBook = new AccountBook(snapshot.getAccountBookSnapshot(), logWriter, logSequence);
+            this.accountBook = new AccountBook(snapshot.getAccounts(), logWriter, logSequence);
             if (snapshot.getOrderBookSnapshots() != null) {
                 snapshot.getOrderBookSnapshots().forEach(x -> {
-                    OrderBook orderBook = new OrderBook(x.getProductId(), x, logWriter, accountBook, productBook, logSequence);
+                    OrderBook orderBook = new OrderBook( x, logWriter, accountBook, productBook, logSequence);
                     this.orderBooks.put(orderBook.getProductId(), orderBook);
                 });
             }
@@ -68,12 +68,19 @@ public class MatchingEngine {
     }
 
     public MatchingEngineSnapshot takeSnapshot() {
-        AccountBookSnapshot accountBookSnapshot = accountBook.takeSnapshot();
-        List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream().map(OrderBook::takeSnapshot)
+        List<Product> products = this.productBook.getProducts().values().stream()
+                .map(Product::copy)
+                .collect(Collectors.toList());
+        List<Account> accounts = this.accountBook.getAccounts().values().stream()
+                .map(Account::copy)
+                .collect(Collectors.toList());
+        List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream()
+                .map(OrderBook::takeSnapshot)
                 .collect(Collectors.toList());
 
         MatchingEngineSnapshot snapshot = new MatchingEngineSnapshot();
-        snapshot.setAccountBookSnapshot(accountBookSnapshot);
+        snapshot.setProducts(products);
+        snapshot.setAccounts(accounts);
         snapshot.setOrderBookSnapshots(orderBookSnapshots);
         snapshot.setLogSequence(logSequence.get());
         snapshot.setCommandOffset(commandOffset);

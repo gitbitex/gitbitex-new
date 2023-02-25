@@ -5,7 +5,6 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 
-import com.gitbitex.marketdata.enums.OrderSide;
 import lombok.Getter;
 
 public class PageLine implements Serializable {

@@ -11,7 +11,7 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 
 
-import com.gitbitex.marketdata.enums.OrderSide;
+import com.gitbitex.enums.OrderSide;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;

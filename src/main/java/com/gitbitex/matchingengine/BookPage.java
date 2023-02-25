@@ -1,8 +1,8 @@
 package com.gitbitex.matchingengine;
 
 
-import com.gitbitex.marketdata.enums.OrderSide;
-import com.gitbitex.marketdata.enums.OrderType;
+import com.gitbitex.enums.OrderSide;
+import com.gitbitex.enums.OrderType;
 import com.gitbitex.matchingengine.log.*;
 import com.gitbitex.matchingengine.log.OrderRejectedLog.RejectReason;
 
@@ -22,9 +22,11 @@ public class BookPage implements Serializable {
     private final AccountBook accountBook;
     private final ProductBook productBook;
 
-    public BookPage(String productId, Comparator<BigDecimal> priceComparator, AtomicLong tradeId, AtomicLong sequence,
+    public BookPage(String productId, Comparator<BigDecimal> priceComparator,
+                    AtomicLong tradeId, AtomicLong sequence,
                     AccountBook accountBook, ProductBook productBook,
-                    LogWriter logWriter) {
+                    LogWriter logWriter,List<Order> orders
+    ) {
         this.lineByPrice = new TreeMap<>(priceComparator);
         this.productId = productId;
         this.tradeId = tradeId;
@@ -32,6 +34,28 @@ public class BookPage implements Serializable {
         this.logWriter = logWriter;
         this.accountBook = accountBook;
         this.productBook = productBook;
+        if (orders!=null){
+            orders.forEach(this::addOrder);
+        }
+    }
+
+    private boolean holdOrderFunds(Order takerOrder, Product product) {
+        String takerUserId = takerOrder.getUserId();
+        String baseCurrency = product.getBaseCurrency();
+        String quoteCurrency = product.getQuoteCurrency();
+
+        if (takerOrder.getSide() == OrderSide.BUY) {
+            if (takerOrder.getFunds().compareTo(accountBook.getAvailable(takerUserId, quoteCurrency)) > 0) {
+                return false;
+            }
+            accountBook.hold(takerUserId, quoteCurrency, takerOrder.getFunds());
+        } else {
+            if (takerOrder.getSize().compareTo(accountBook.getAvailable(takerUserId, baseCurrency)) > 0) {
+                return false;
+            }
+            accountBook.hold(takerUserId, baseCurrency, takerOrder.getSize());
+        }
+        return true;
     }
 
     public void executeCommand(Order takerOrder, BookPage takerPage) {
@@ -40,21 +64,12 @@ public class BookPage implements Serializable {
         String baseCurrency = product.getBaseCurrency();
         String quoteCurrency = product.getQuoteCurrency();
 
-        if (takerOrder.getSide() == OrderSide.BUY) {
-            if (takerOrder.getFunds().compareTo(accountBook.getAvailable(takerUserId, quoteCurrency)) > 0) {
-                logWriter.add(orderRejectedLog(takerOrder, RejectReason.INSUFFICIENT_FUNDS));
-                return;
-            }
-            accountBook.hold(takerUserId, quoteCurrency, takerOrder.getFunds());
-        } else {
-            if (takerOrder.getSize().compareTo(accountBook.getAvailable(takerUserId, baseCurrency)) > 0) {
-                logWriter.add(orderRejectedLog(takerOrder, RejectReason.INSUFFICIENT_FUNDS));
-                return;
-            }
-            accountBook.hold(takerUserId, baseCurrency, takerOrder.getSize());
+        if (!holdOrderFunds(takerOrder, product)) {
+            logWriter.add(orderRejectedLog(takerOrder, RejectReason.INSUFFICIENT_FUNDS));
+            return;
         }
-        logWriter.add(orderReceivedLog(takerOrder));
 
+        logWriter.add(orderReceivedLog(takerOrder));
 
         MATCHING:
         for (PageLine line : lineByPrice.values()) {
@@ -128,18 +143,6 @@ public class BookPage implements Serializable {
         }
     }
 
-    private void unholdOrderFunds(Order makerOrder, String baseCurrency, String quoteCurrency) {
-        if (makerOrder.getSide() == OrderSide.BUY) {
-            if (makerOrder.getFunds().compareTo(BigDecimal.ZERO) > 0) {
-                accountBook.unhold(makerOrder.getUserId(), quoteCurrency, makerOrder.getFunds());
-            }
-        } else {
-            if (makerOrder.getSize().compareTo(BigDecimal.ZERO) > 0) {
-                accountBook.unhold(makerOrder.getUserId(), baseCurrency, makerOrder.getSize());
-            }
-        }
-    }
-
     public void cancelOrder(String orderId) {
         Product product = productBook.getProduct(productId);
         Order order = orderById.get(orderId);
@@ -158,13 +161,6 @@ public class BookPage implements Serializable {
                 k -> new PageLine(order.getPrice()));
         line.addOrder(order);
         orderById.put(order.getOrderId(), order);
-        return line;
-    }
-
-    public PageLine decreaseOrderSize(String orderId, BigDecimal size) {
-        Order order = orderById.get(orderId);
-        PageLine line = lineByPrice.get(order.getPrice());
-        line.decreaseOrderSize(orderId, size);
         return line;
     }
 
@@ -190,10 +186,6 @@ public class BookPage implements Serializable {
         return this.orderById.values();
     }
 
-    public Order getOrderById(String orderId) {
-        return this.orderById.get(orderId);
-    }
-
     private boolean isPriceCrossed(Order takerOrder, BigDecimal makerOrderPrice) {
         if (takerOrder.getType() == OrderType.MARKET) {
             return true;
@@ -205,19 +197,17 @@ public class BookPage implements Serializable {
         }
     }
 
-    private OrderDoneLog.DoneReason determineDoneReason(Order order) {
-        if (order.getType() == OrderType.MARKET && order.getSide() == OrderSide.BUY) {
-            if (order.getFunds().compareTo(BigDecimal.ZERO) > 0) {
-                return OrderDoneLog.DoneReason.CANCELLED;
+    private void unholdOrderFunds(Order makerOrder, String baseCurrency, String quoteCurrency) {
+        if (makerOrder.getSide() == OrderSide.BUY) {
+            if (makerOrder.getFunds().compareTo(BigDecimal.ZERO) > 0) {
+                accountBook.unhold(makerOrder.getUserId(), quoteCurrency, makerOrder.getFunds());
+            }
+        } else {
+            if (makerOrder.getSize().compareTo(BigDecimal.ZERO) > 0) {
+                accountBook.unhold(makerOrder.getUserId(), baseCurrency, makerOrder.getSize());
             }
         }
-
-        if (order.getSize().compareTo(BigDecimal.ZERO) > 0) {
-            return OrderDoneLog.DoneReason.CANCELLED;
-        }
-        return OrderDoneLog.DoneReason.FILLED;
     }
-
 
     private OrderRejectedLog orderRejectedLog(Order order, RejectReason rejectReason) {
         OrderRejectedLog log = new OrderRejectedLog();
@@ -247,15 +237,15 @@ public class BookPage implements Serializable {
         return log;
     }
 
-    private OrderOpenLog orderOpenLog(Order takerOrder) {
+    private OrderOpenLog orderOpenLog(Order order) {
         OrderOpenLog log = new OrderOpenLog();
         log.setSequence(sequence.incrementAndGet());
         log.setProductId(productId);
-        log.setRemainingSize(takerOrder.getSize());
-        log.setPrice(takerOrder.getPrice());
-        log.setSide(takerOrder.getSide());
-        log.setOrderId(takerOrder.getOrderId());
-        log.setUserId(takerOrder.getUserId());
+        log.setRemainingSize(order.getSize());
+        log.setPrice(order.getPrice());
+        log.setSide(order.getSide());
+        log.setOrderId(order.getOrderId());
+        log.setUserId(order.getUserId());
         log.setTime(new Date());
         return log;
     }

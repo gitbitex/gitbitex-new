@@ -3,7 +3,7 @@ package com.gitbitex;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.enums.OrderStatus;
+import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.product.entity.Product;
 import com.gitbitex.marketdata.OrderManager;
 import com.gitbitex.marketdata.repository.OrderRepository;

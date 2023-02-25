@@ -3,7 +3,7 @@ package com.gitbitex.order;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-import com.gitbitex.marketdata.enums.OrderSide;
+import com.gitbitex.enums.OrderSide;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;

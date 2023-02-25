@@ -6,8 +6,8 @@ import java.util.List;
 import javax.persistence.criteria.Predicate;
 
 import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.enums.OrderSide;
-import com.gitbitex.marketdata.enums.OrderStatus;
+import com.gitbitex.enums.OrderSide;
+import com.gitbitex.enums.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

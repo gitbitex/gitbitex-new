@@ -1,5 +1,11 @@
 package com.gitbitex.matchingengine;
 
+import com.gitbitex.enums.OrderSide;
+import com.gitbitex.matchingengine.log.AccountChangeLog;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.lang.Nullable;
+
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
@@ -7,40 +13,25 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import com.gitbitex.marketdata.enums.OrderSide;
-import com.gitbitex.matchingengine.log.AccountChangeLog;
-
-import lombok.RequiredArgsConstructor;
-import org.springframework.lang.Nullable;
-
 @RequiredArgsConstructor
 public class AccountBook {
+    @Getter
     private final Map<String, Account> accounts = new HashMap<>();
     private final LogWriter logWriter;
     private final AtomicLong sequence;
 
-    public AccountBook(AccountBookSnapshot snapshot, LogWriter logWriter, AtomicLong sequence) {
+    public AccountBook(List<Account> accounts, LogWriter logWriter, AtomicLong sequence) {
         this.logWriter = logWriter;
         this.sequence = sequence;
-        if (snapshot!=null && snapshot.getAccounts()!=null) {
-            this.addAll(snapshot.getAccounts());
+        if (accounts != null  ) {
+            this.addAll(accounts);
         }
-    }
-
-    public AccountBookSnapshot takeSnapshot() {
-        List<Account> copiedAccounts= this.accounts.values().stream()
-            .map(x->x)
-            .collect(Collectors.toList());
-
-        AccountBookSnapshot snapshot=new AccountBookSnapshot();
-        snapshot.setAccounts(copiedAccounts);
-        return snapshot;
     }
 
     public void addAll(List<Account> accounts) {
         for (Account account : accounts) {
             String key = account.getUserId() + "-" + account.getCurrency();
-            this.accounts.put(key,account);
+            this.accounts.put(key, account);
         }
     }
 
@@ -79,6 +70,9 @@ public class AccountBook {
 
     public void hold(String userId, String currency, BigDecimal amount) {
         Account account = getAccount(userId, currency);
+        if (account == null) {
+            throw new NullPointerException("account not found: " + userId + " " + currency);
+        }
         account.setAvailable(account.getAvailable().subtract(amount));
         account.setHold(account.getHold().add(amount));
 
@@ -88,6 +82,9 @@ public class AccountBook {
 
     public void unhold(String userId, String currency, BigDecimal amount) {
         Account account = getAccount(userId, currency);
+        if (account == null) {
+            throw new NullPointerException("account not found: " + userId + " " + currency);
+        }
         account.setAvailable(account.getAvailable().add(amount));
         account.setHold(account.getHold().subtract(amount));
 

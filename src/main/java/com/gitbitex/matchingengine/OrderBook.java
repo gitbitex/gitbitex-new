@@ -1,7 +1,7 @@
 package com.gitbitex.matchingengine;
 
 
-import com.gitbitex.marketdata.enums.OrderSide;
+import com.gitbitex.enums.OrderSide;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,40 +15,28 @@ import java.util.stream.Collectors;
 public class OrderBook {
     private final String productId;
     private final AtomicLong tradeId;
-    private final AtomicLong sequence;
+    private final AtomicLong logSequence;
     private final BookPage asks;
     private final BookPage bids;
 
     public OrderBook(String productId, LogWriter logWriter,
                      AccountBook accountBook, ProductBook productBook,
-                     AtomicLong sequence) {
+                     AtomicLong logSequence) {
         this.productId = productId;
         this.tradeId = new AtomicLong();
-        this.sequence = sequence;
-        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, accountBook, productBook, logWriter);
-        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, accountBook, productBook, logWriter);
+        this.logSequence = logSequence;
+        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, logSequence, accountBook, productBook, logWriter, null);
+        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, logSequence, accountBook, productBook, logWriter, null);
     }
 
-    public OrderBook(String productId, OrderBookSnapshot snapshot, LogWriter logWriter,
+    public OrderBook(OrderBookSnapshot snapshot, LogWriter logWriter,
                      AccountBook accountBook, ProductBook productBook,
                      AtomicLong logSequence) {
-        this.sequence = logSequence;
-        this.productId = productId;
-        if (snapshot != null) {
-            this.tradeId = new AtomicLong(snapshot.getTradeId());
-        } else {
-            this.tradeId = new AtomicLong();
-        }
-        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, sequence, accountBook, productBook, logWriter);
-        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, sequence, accountBook, productBook, logWriter);
-        if (snapshot != null) {
-            if (snapshot.getAsks() != null) {
-                snapshot.getAsks().forEach(this.asks::addOrder);
-            }
-            if (snapshot.getBids() != null) {
-                snapshot.getBids().forEach(this.bids::addOrder);
-            }
-        }
+        this.logSequence = logSequence;
+        this.productId = snapshot.getProductId();
+        this.tradeId = new AtomicLong(snapshot.getTradeId());
+        this.asks = new BookPage(productId, Comparator.naturalOrder(), tradeId, this.logSequence, accountBook, productBook, logWriter, snapshot.getAsks());
+        this.bids = new BookPage(productId, Comparator.reverseOrder(), tradeId, this.logSequence, accountBook, productBook, logWriter, snapshot.getBids());
     }
 
     public OrderBookSnapshot takeSnapshot() {

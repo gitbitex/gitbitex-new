@@ -1,4 +1,4 @@
-package com.gitbitex.marketdata.enums;
+package com.gitbitex.enums;
 
 public enum OrderType {
     /**

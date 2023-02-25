@@ -7,10 +7,10 @@ import java.util.stream.Collectors;
 
 import javax.validation.Valid;
 
-import com.gitbitex.marketdata.enums.OrderSide;
-import com.gitbitex.marketdata.enums.OrderStatus;
-import com.gitbitex.marketdata.enums.OrderType;
-import com.gitbitex.marketdata.enums.TimeInForcePolicy;
+import com.gitbitex.enums.OrderSide;
+import com.gitbitex.enums.OrderStatus;
+import com.gitbitex.enums.OrderType;
+import com.gitbitex.enums.TimeInForcePolicy;
 import com.gitbitex.openapi.model.OrderDto;
 import com.gitbitex.openapi.model.PagedList;
 import com.gitbitex.openapi.model.PlaceOrderRequest;

@@ -24,7 +24,7 @@ public class L3OrderBook {
 
     public L3OrderBook(OrderBook orderBook) {
         this.productId = orderBook.getProductId();
-        this.sequence = orderBook.getSequence().get();
+        this.sequence = orderBook.getLogSequence().get();
         this.tradeId = orderBook.getTradeId().get();
         this.time = System.currentTimeMillis();
         this.asks = orderBook.getAsks().getOrders().stream()

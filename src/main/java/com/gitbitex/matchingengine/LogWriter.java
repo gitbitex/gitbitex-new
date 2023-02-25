@@ -10,11 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public class LogWriter {
-    private final KafkaMessageProducer messageProducer;
+    private final KafkaMessageProducer producer;
 
-    public void add(Log o){
-
-        logger.info(JSON.toJSONString(o));
-        messageProducer.sendOrderBookLog(o,null);
+    public void add(Log log){
+        logger.info(JSON.toJSONString(log));
+        producer.sendOrderBookLog(log,null);
     }
 }
