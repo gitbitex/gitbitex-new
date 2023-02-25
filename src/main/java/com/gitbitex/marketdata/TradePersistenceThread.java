@@ -9,7 +9,7 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Trade;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.matchingengine.log.AccountChangeMessage;
+import com.gitbitex.matchingengine.log.AccountChangeLog;
 import com.gitbitex.matchingengine.log.Log;
 import com.gitbitex.matchingengine.log.LogDispatcher;
 import com.gitbitex.matchingengine.log.LogHandler;
@@ -125,7 +125,7 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
     }
 
     @Override
-    public void on(AccountChangeMessage log) {
+    public void on(AccountChangeLog log) {
 
     }
 }

@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.matchingengine.log.AccountChangeMessage;
+import com.gitbitex.matchingengine.log.AccountChangeLog;
 import com.gitbitex.matchingengine.log.Log;
 import com.gitbitex.matchingengine.log.LogDispatcher;
 import com.gitbitex.matchingengine.log.LogHandler;
@@ -189,7 +189,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
     }
 
     @Override
-    public void on(AccountChangeMessage log) {
+    public void on(AccountChangeLog log) {
 
     }
 }

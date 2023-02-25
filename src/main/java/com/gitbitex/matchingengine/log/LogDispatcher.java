@@ -23,8 +23,8 @@ public class LogDispatcher {
         } else if (orderMessage instanceof OrderMatchLog) {
             handler.on((OrderMatchLog)orderMessage);
 
-        } else if (orderMessage instanceof AccountChangeMessage) {
-            handler.on((AccountChangeMessage)orderMessage);
+        } else if (orderMessage instanceof AccountChangeLog) {
+            handler.on((AccountChangeLog)orderMessage);
 
 
 

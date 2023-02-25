@@ -22,7 +22,7 @@ public class LogDeserializer implements Deserializer<Log> {
 
             switch (orderMessage.getType()) {
                 case ACCOUNT_CHANGE:
-                    return JSON.parseObject(jsonString, AccountChangeMessage.class);
+                    return JSON.parseObject(jsonString, AccountChangeLog.class);
                 case ORDER_DONE:
                     return JSON.parseObject(jsonString, OrderDoneLog.class);
                 case ORDER_MATCH:

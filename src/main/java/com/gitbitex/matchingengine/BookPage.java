@@ -141,8 +141,7 @@ public class BookPage implements Serializable {
         }
     }
 
-    public void executeCommand(CancelOrderCommand command) {
-        String orderId = command.getOrderId();
+    public void cancelOrder(String orderId) {
         Order order = orderById.get(orderId);
         if (order == null) {
             return;

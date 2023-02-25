@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import com.gitbitex.marketdata.enums.OrderSide;
-import com.gitbitex.matchingengine.log.AccountChangeMessage;
+import com.gitbitex.matchingengine.log.AccountChangeLog;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.Nullable;
@@ -73,8 +73,8 @@ public class AccountBook {
         }
         account.setAvailable(account.getAvailable().add(amount));
 
-        AccountChangeMessage accountChangeMessage = accountChangeMessage(account, amount, BigDecimal.ZERO);
-        logWriter.add(accountChangeMessage);
+        AccountChangeLog accountChangeLog = accountChangeMessage(account, amount, BigDecimal.ZERO);
+        logWriter.add(accountChangeLog);
     }
 
     public void hold(String userId, String currency, BigDecimal amount) {
@@ -82,8 +82,8 @@ public class AccountBook {
         account.setAvailable(account.getAvailable().subtract(amount));
         account.setHold(account.getHold().add(amount));
 
-        AccountChangeMessage accountChangeMessage = accountChangeMessage(account, amount, BigDecimal.ZERO);
-        logWriter.add(accountChangeMessage);
+        AccountChangeLog accountChangeLog = accountChangeMessage(account, amount, BigDecimal.ZERO);
+        logWriter.add(accountChangeLog);
     }
 
     public void unhold(String userId, String currency, BigDecimal amount) {
@@ -91,8 +91,8 @@ public class AccountBook {
         account.setAvailable(account.getAvailable().add(amount));
         account.setHold(account.getHold().subtract(amount));
 
-        AccountChangeMessage accountChangeMessage = accountChangeMessage(account, amount, BigDecimal.ZERO);
-        logWriter.add(accountChangeMessage);
+        AccountChangeLog accountChangeLog = accountChangeMessage(account, amount, BigDecimal.ZERO);
+        logWriter.add(accountChangeLog);
     }
 
     public void incrAvailable(String userId, String currency, BigDecimal amount) {
@@ -110,8 +110,8 @@ public class AccountBook {
 
         account.setAvailable(account.getAvailable().add(amount));
 
-        AccountChangeMessage accountChangeMessage = accountChangeMessage(account, BigDecimal.ZERO, amount);
-        logWriter.add(accountChangeMessage);
+        AccountChangeLog accountChangeLog = accountChangeMessage(account, BigDecimal.ZERO, amount);
+        logWriter.add(accountChangeLog);
     }
 
     public void incrHold(String userId, String currency, BigDecimal amount) {
@@ -129,8 +129,8 @@ public class AccountBook {
 
         account.setHold(account.getHold().add(amount));
 
-        AccountChangeMessage accountChangeMessage = accountChangeMessage(account, amount, BigDecimal.ZERO);
-        logWriter.add(accountChangeMessage);
+        AccountChangeLog accountChangeLog = accountChangeMessage(account, amount, BigDecimal.ZERO);
+        logWriter.add(accountChangeLog);
     }
 
     public void exchange(String takerUserId, String makerUserId, String baseCurrency, String quoteCurrency,
@@ -148,22 +148,22 @@ public class AccountBook {
         }
     }
 
-    public void restoreLog(AccountChangeMessage log) {
+    public void restoreLog(AccountChangeLog log) {
         Account account = createAccount(log.getUserId(), log.getCurrency());
         account.setAvailable(log.getAvailable());
         account.setHold(log.getHold());
     }
 
-    public AccountChangeMessage accountChangeMessage(Account account, BigDecimal holdIncr, BigDecimal availableIncr) {
-        AccountChangeMessage accountChangeMessage = new AccountChangeMessage();
-        accountChangeMessage.setSequence(sequence.incrementAndGet());
-        accountChangeMessage.setUserId(account.getUserId());
-        accountChangeMessage.setCurrency(account.getCurrency());
-        accountChangeMessage.setHold(account.getHold());
-        accountChangeMessage.setAvailable(account.getAvailable());
-        accountChangeMessage.setHoldIncr(holdIncr);
-        accountChangeMessage.setAvailableIncr(availableIncr);
-        return accountChangeMessage;
+    public AccountChangeLog accountChangeMessage(Account account, BigDecimal holdIncr, BigDecimal availableIncr) {
+        AccountChangeLog accountChangeLog = new AccountChangeLog();
+        accountChangeLog.setSequence(sequence.incrementAndGet());
+        accountChangeLog.setUserId(account.getUserId());
+        accountChangeLog.setCurrency(account.getCurrency());
+        accountChangeLog.setHold(account.getHold());
+        accountChangeLog.setAvailable(account.getAvailable());
+        accountChangeLog.setHoldIncr(holdIncr);
+        accountChangeLog.setAvailableIncr(availableIncr);
+        return accountChangeLog;
     }
 
 

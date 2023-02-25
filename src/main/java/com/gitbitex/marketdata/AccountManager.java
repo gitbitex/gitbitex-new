@@ -11,7 +11,7 @@ import com.gitbitex.marketdata.repository.AccountRepository;
 import com.gitbitex.marketdata.repository.BillRepository;
 import com.gitbitex.marketdata.repository.FillRepository;
 import com.gitbitex.marketdata.repository.OrderRepository;
-import com.gitbitex.matchingengine.log.AccountChangeMessage;
+import com.gitbitex.matchingengine.log.AccountChangeLog;
 import com.gitbitex.product.ProductManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ public class AccountManager {
     private final OrderRepository orderRepository;
 
     @Transactional(rollbackFor = Exception.class)
-    public void deposit(AccountChangeMessage message) {
+    public void deposit(AccountChangeLog message) {
         String userId = message.getUserId();
         String currency = message.getCurrency();
         String billId = "DEPOSIT-" + message.getTransactionId();

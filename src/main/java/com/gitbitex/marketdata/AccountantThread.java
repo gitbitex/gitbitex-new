@@ -7,7 +7,7 @@ import java.util.Collections;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.matchingengine.log.AccountChangeMessage;
+import com.gitbitex.matchingengine.log.AccountChangeLog;
 import com.gitbitex.matchingengine.log.Log;
 import com.gitbitex.matchingengine.log.LogHandler;
 import com.gitbitex.matchingengine.log.OrderDoneLog;
@@ -113,7 +113,7 @@ public class AccountantThread extends KafkaConsumerThread<String, Log>
     }
 
     @Override
-    public void on(AccountChangeMessage message) {
+    public void on(AccountChangeLog message) {
         accountManager.deposit(message);
     }
 
