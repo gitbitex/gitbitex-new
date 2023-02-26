@@ -10,8 +10,7 @@ import java.util.Date;
 
 @Getter
 @Setter
-public class OrderRejectedLog extends Log {
-    private String productId;
+public class OrderRejectedLog extends OrderLog {
     private String orderId;
     private String userId;
     private BigDecimal size;

@@ -9,7 +9,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderMatchLog extends Log {
+public class OrderMatchLog extends OrderLog {
     private String productId;
     private long sequence;
     private long tradeId;

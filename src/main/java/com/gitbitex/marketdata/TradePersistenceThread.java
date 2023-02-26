@@ -29,13 +29,13 @@ import org.apache.kafka.common.TopicPartition;
 
 @Slf4j
 public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
-    implements ConsumerRebalanceListener, LogHandler {
+        implements ConsumerRebalanceListener, LogHandler {
     private final TradeRepository tradeRepository;
     private final AppProperties appProperties;
     private long uncommittedRecordCount;
 
-    public TradePersistenceThread( TradeRepository tradeRepository,
-        KafkaConsumer<String, Log> consumer, AppProperties appProperties) {
+    public TradePersistenceThread(TradeRepository tradeRepository,
+                                  KafkaConsumer<String, Log> consumer, AppProperties appProperties) {
         super(consumer, logger);
         this.tradeRepository = tradeRepository;
         this.appProperties = appProperties;
@@ -88,7 +88,7 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
     @Override
     public void on(OrderMatchLog log) {
         Trade trade = tradeRepository.findByProductIdAndTradeId(log.getProductId(),
-            log.getTradeId());
+                log.getTradeId());
         if (trade == null) {
             trade = new Trade();
             trade.setTradeId(log.getTradeId());

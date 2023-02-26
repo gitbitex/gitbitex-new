@@ -7,7 +7,9 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.command.MatchingEngineCommand;
+import com.gitbitex.matchingengine.log.AccountChangeLog;
 import com.gitbitex.matchingengine.log.Log;
+import com.gitbitex.matchingengine.log.OrderLog;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -37,9 +39,8 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         });
     }
 
-    public Future<RecordMetadata> sendOrderBookLog(Log log, Callback callback) {
-
-        ProducerRecord<String, String> record = new ProducerRecord<>(appProperties.getOrderBookLogTopic(), "all", JSON.toJSONString(log));
+    public Future<RecordMetadata> sendOrderBookLog(OrderLog log, Callback callback) {
+        ProducerRecord<String, String> record = new ProducerRecord<>(appProperties.getOrderBookLogTopic(), log.getProductId(), JSON.toJSONString(log));
 
 
         return super.send(record, (metadata, exception) -> {
@@ -48,4 +49,14 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
             }
         });
     }
+
+    public Future<RecordMetadata> sendAccountLog(AccountChangeLog log, Callback callback) {
+        ProducerRecord<String, String> record = new ProducerRecord<>(appProperties.getAccountCommandTopic(), log.getUserId(), JSON.toJSONString(log));
+        return super.send(record, (metadata, exception) -> {
+            if (callback != null) {
+                callback.onCompletion(metadata, exception);
+            }
+        });
+    }
+
 }

@@ -9,8 +9,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderDoneLog extends Log {
-    private String productId;
+public class OrderDoneLog extends OrderLog {
     private String orderId;
     private BigDecimal remainingSize;
     private BigDecimal remainingFunds;

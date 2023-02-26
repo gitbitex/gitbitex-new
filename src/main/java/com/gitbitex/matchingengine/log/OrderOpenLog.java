@@ -8,8 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderOpenLog extends Log {
-    private String productId;
+public class OrderOpenLog extends OrderLog {
     private String orderId;
     private BigDecimal remainingSize;
     private BigDecimal price;

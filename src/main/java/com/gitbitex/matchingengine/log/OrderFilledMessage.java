@@ -8,12 +8,11 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderFilledMessage extends Log {
+public class OrderFilledMessage extends OrderLog {
     private String orderId;
     private BigDecimal size;
     private BigDecimal price;
     private BigDecimal funds;
-    private String productId;
     private long tradeId;
     private OrderSide side;
     private String userId;
