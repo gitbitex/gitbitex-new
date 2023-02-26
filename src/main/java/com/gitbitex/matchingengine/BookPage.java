@@ -224,10 +224,6 @@ public class BookPage implements Serializable {
     }
 
     private OrderRejectedLog orderRejectedLog(Order order, RejectReason rejectReason) {
-        OrderMessage orderMessage=new OrderMessage();
-        orderMessage.setProductId(productId);
-        orderMessage.setOrderId(order.getOrderId());
-
         OrderRejectedLog log = new OrderRejectedLog();
         log.setSequence(sequence.incrementAndGet());
         log.setProductId(productId);
@@ -244,6 +240,18 @@ public class BookPage implements Serializable {
     }
 
     private OrderReceivedLog orderReceivedLog(Order order) {
+        OrderMessage orderMessage=new OrderMessage();
+        orderMessage.setProductId(productId);
+        orderMessage.setUserId(order.getUserId());
+        orderMessage.setPrice(order.getPrice());
+        orderMessage.setFunds(order.getFunds());
+        orderMessage.setSide(order.getSide());
+        orderMessage.setSize(order.getSize());
+        orderMessage.setOrderId(order.getOrderId());
+       // orderMessage.setType(order.getType());
+        orderMessage.setTime(new Date());
+        logWriter.add(orderMessage);
+
         OrderReceivedLog log = new OrderReceivedLog();
         log.setSequence(sequence.incrementAndGet());
         log.setProductId(productId);

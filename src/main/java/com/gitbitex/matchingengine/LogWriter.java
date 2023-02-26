@@ -49,6 +49,8 @@ public class LogWriter {
                 Trade trade = trade((OrderMatchLog) log);
                 //producer.sendTrade(trade, null);
             }
+        }else if (log instanceof OrderMessage){
+            redissonClient.getTopic("order", StringCodec.INSTANCE).publishAsync(JSON.toJSONString(log));
         }
 
         //System.out.println("accountQueue "+ accountQueue.size());
