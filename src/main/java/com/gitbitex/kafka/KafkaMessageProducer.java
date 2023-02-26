@@ -6,6 +6,7 @@ import java.util.concurrent.Future;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
+import com.gitbitex.marketdata.entity.Trade;
 import com.gitbitex.matchingengine.command.MatchingEngineCommand;
 import com.gitbitex.matchingengine.log.AccountChangeLog;
 import com.gitbitex.matchingengine.log.Log;
@@ -52,6 +53,15 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
 
     public Future<RecordMetadata> sendAccountLog(AccountChangeLog log, Callback callback) {
         ProducerRecord<String, String> record = new ProducerRecord<>(appProperties.getAccountCommandTopic(), log.getUserId(), JSON.toJSONString(log));
+        return super.send(record, (metadata, exception) -> {
+            if (callback != null) {
+                callback.onCompletion(metadata, exception);
+            }
+        });
+    }
+
+    public Future<RecordMetadata> sendTrade(Trade log, Callback callback) {
+        ProducerRecord<String, String> record = new ProducerRecord<>(appProperties.getAccountCommandTopic(), log.getProductId(), JSON.toJSONString(log));
         return super.send(record, (metadata, exception) -> {
             if (callback != null) {
                 callback.onCompletion(metadata, exception);

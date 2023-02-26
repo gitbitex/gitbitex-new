@@ -27,6 +27,8 @@ public class AppConfiguration {
         properties.put("compression.type", "zstd");
         properties.put("max.in.flight.requests.per.connection", 1);
         properties.put("retries", 2147483647);
+        properties.put("linger.ms",100);
+        properties.put("batch.size",16384*2);
         return new KafkaMessageProducer(properties, appProperties);
     }
 

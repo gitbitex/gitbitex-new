@@ -12,7 +12,6 @@ import com.gitbitex.marketdata.AccountManager;
 import com.gitbitex.marketdata.AccountantThread;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.CandleMakerThread;
-import com.gitbitex.marketdata.OrderBookLogPublishThread;
 import com.gitbitex.marketdata.OrderPersistenceThread;
 import com.gitbitex.marketdata.OrderManager;
 import com.gitbitex.marketdata.TickerManager;
@@ -97,7 +96,7 @@ public class Bootstrap {
             MatchingThread matchingThread = new MatchingThread(orderBookManager,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
                     new MatchingEngineCommandDeserializer()),
-                messageProducer, appProperties);
+                messageProducer, redissonClient, appProperties);
             matchingThread.setName(groupId + "-" + matchingThread.getId());
             matchingThread.start();
             threads.add(matchingThread);
@@ -154,17 +153,6 @@ public class Bootstrap {
         }
     }
 
-    private void startTradePersistence(List<String> productIds, int nThreads) {
-        for (int i = 0; i < nThreads; i++) {
-            String groupId = "TradePersistence";
-            OrderBookLogPublishThread thread = new OrderBookLogPublishThread(productIds,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new StringDeserializer()),
-                redissonClient, appProperties);
-            thread.setName(groupId + "-" + thread.getId());
-            thread.start();
-            threads.add(thread);
-        }
-    }
 
     public Properties getProperties(String groupId) {
         Properties properties = new Properties();

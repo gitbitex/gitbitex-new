@@ -6,6 +6,7 @@ import com.gitbitex.enums.OrderType;
 import com.gitbitex.matchingengine.log.*;
 import com.gitbitex.matchingengine.log.OrderRejectedLog.RejectReason;
 import lombok.Getter;
+import org.aspectj.weaver.ast.Or;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -109,11 +110,12 @@ public class BookPage implements Serializable {
                     // The market order does not specify a price, so the size of the maker order needs to be
                     // calculated by the price of the maker order
                     takerSize = takerOrder.getFunds().divide(price, 4, RoundingMode.DOWN);
-                    if (takerSize.compareTo(BigDecimal.ZERO) == 0) {
-                        break MATCHING;
-                    }
                 } else {
                     takerSize = takerOrder.getSize();
+                }
+
+                if (takerSize.compareTo(BigDecimal.ZERO) == 0) {
+                    break MATCHING;
                 }
 
                 // take the minimum size of taker and maker as trade size
@@ -130,6 +132,9 @@ public class BookPage implements Serializable {
                 }
 
                 // create a new match log
+                if (tradeSize.compareTo(BigDecimal.ZERO)==0){
+                    throw new RuntimeException("");
+                }
                 logWriter.add(orderMatchLog(takerOrder, makerOrder, tradeSize, tradeFunds, tradeId.incrementAndGet()));
 
                 Map<String, Account> makerAccounts = accountBook.getAccountsByUserId(makerOrder.getUserId());
@@ -218,8 +223,11 @@ public class BookPage implements Serializable {
         }
     }
 
-
     private OrderRejectedLog orderRejectedLog(Order order, RejectReason rejectReason) {
+        OrderMessage orderMessage=new OrderMessage();
+        orderMessage.setProductId(productId);
+        orderMessage.setOrderId(order.getOrderId());
+
         OrderRejectedLog log = new OrderRejectedLog();
         log.setSequence(sequence.incrementAndGet());
         log.setProductId(productId);
@@ -251,6 +259,8 @@ public class BookPage implements Serializable {
     }
 
     private OrderOpenLog orderOpenLog(Order order) {
+
+
         OrderOpenLog log = new OrderOpenLog();
         log.setSequence(sequence.incrementAndGet());
         log.setProductId(productId);

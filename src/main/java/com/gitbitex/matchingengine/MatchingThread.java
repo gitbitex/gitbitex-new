@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.redisson.api.RedissonClient;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -34,11 +35,12 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
 
     public MatchingThread(OrderBookManager orderBookManager,
                           KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, KafkaMessageProducer messageProducer,
+                          RedissonClient redissonClient,
                           AppProperties appProperties) {
         super(messageKafkaConsumer, logger);
         this.orderBookManager = orderBookManager;
         this.appProperties = appProperties;
-        this.logWriter = new LogWriter(messageProducer);
+        this.logWriter = new LogWriter(messageProducer,redissonClient);
 
         executorService.submit(new Runnable() {
             @Override
@@ -115,14 +117,19 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
             MatchingEngineCommand command = x.value();
             command.setOffset(x.offset());
             //logger.info("{}", JSON.toJSONString(command));
-            //CommandDispatcher.dispatch(command, this);
+            CommandDispatcher.dispatch(command, this);
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             //commands.offer(command);
-            commandList.add(command);
+            //commandList.add(command);
             i++;
             System.out.println(i);
         });
 
-        if (i>100000){
+        /*if (i>100000){
             System.out.println("staring");
             t1=System.currentTimeMillis();
             for (MatchingEngineCommand matchingEngineCommand : commandList) {
@@ -132,7 +139,7 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
             t2 = System.currentTimeMillis();
             System.out.println(t2-t1);
             System.exit(1);
-        }
+        }*/
 
 
         //if (i==21410) {

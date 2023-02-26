@@ -30,7 +30,7 @@ public class FeedMessageListener {
         redissonClient.getTopic("order", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             Order order = JSON.parseObject(msg, Order.class);
             String channel = order.getUserId() + "." + order.getProductId() + ".order";
-            sessionManager.sendMessageToChannel(channel, (orderMessage(order)));
+            //sessionManager.sendMessageToChannel(channel, (orderMessage(order)));
         });
 
         redissonClient.getTopic("account", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
@@ -151,7 +151,7 @@ public class FeedMessageListener {
         return message;
     }
 
-    private OrderMessage orderMessage(Order order) {
+    /*private OrderMessage orderMessage(Order order) {
         logger.info(JSON.toJSONString(order));
         OrderMessage message = new OrderMessage();
         message.setUserId(order.getUserId());
@@ -171,7 +171,7 @@ public class FeedMessageListener {
                 order.getExecutedValue() != null ? order.getExecutedValue().stripTrailingZeros().toPlainString() : "0");
         message.setStatus(order.getStatus().name().toLowerCase());
         return message;
-    }
+    }*/
 
     private AccountMessage accountMessage(Account account) {
         AccountMessage message = new AccountMessage();
