@@ -129,7 +129,7 @@ public class CoinbaseTrader {
                                 order.setSide(OrderSide.valueOf(message.getSide().toUpperCase()));
                                 order.setType(OrderType.LIMIT);
                                 order.setUserId(userId);
-                                //clientOrderReceiver.handlePlaceOrderRequest(order);
+                                clientOrderReceiver.handlePlaceOrderRequest(order);
 
 
                                 /*

@@ -7,52 +7,61 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.lang.Nullable;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class AccountBook {
     @Getter
-    private final Map<String, Account> accounts = new HashMap<>();
+    private final Map<String, Map<String, Account>> accounts = new HashMap<>();
     private final LogWriter logWriter;
     private final AtomicLong sequence;
 
     public AccountBook(List<Account> accounts, LogWriter logWriter, AtomicLong sequence) {
         this.logWriter = logWriter;
         this.sequence = sequence;
-        if (accounts != null  ) {
+        if (accounts != null) {
             this.addAll(accounts);
         }
     }
 
     public void addAll(List<Account> accounts) {
         for (Account account : accounts) {
-            String key = account.getUserId() + "-" + account.getCurrency();
-            this.accounts.put(key, account);
+            this.accounts.computeIfAbsent(account.getUserId(), x -> new HashMap<>()).put(account.getCurrency(), account);
         }
     }
 
-    public BigDecimal getAvailable(String userId, String currency) {
-        Account account = getAccount(userId, currency);
-        return account != null ? account.getAvailable() : BigDecimal.ZERO;
+    public List<Account> getAllAccounts(){
+        return accounts.values().stream()
+                .map(Map::values)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+    }
+
+    public Map<String,Account> getAccountsByUserId(String userId){
+        return this.accounts.get(userId);
     }
 
     @Nullable
     public Account getAccount(String userId, String currency) {
-        String key = userId + "-" + currency;
-        return accounts.get(key);
+        Map<String, Account> accountMap = accounts.get(userId);
+        if (accountMap != null) {
+            return accountMap.get(currency);
+        }
+        return null;
     }
 
     private Account createAccount(String userId, String currency) {
-        String key = userId + "-" + currency;
         Account account = new Account();
         account.setUserId(userId);
         account.setCurrency(currency);
         account.setAvailable(BigDecimal.ZERO);
         account.setHold(BigDecimal.ZERO);
-        accounts.put(key, account);
+        this.accounts.computeIfAbsent(account.getUserId(), x -> new HashMap<>()).put(account.getCurrency(), account);
         return account;
     }
 
@@ -67,10 +76,9 @@ public class AccountBook {
         logWriter.add(accountChangeLog);
     }
 
-    public void hold(String userId, String currency, BigDecimal amount) {
-        Account account = getAccount(userId, currency);
+    public void hold(Account account, BigDecimal amount) {
         if (account == null) {
-            throw new NullPointerException("account not found: " + userId + " " + currency);
+            throw new NullPointerException("account");
         }
         account.setAvailable(account.getAvailable().subtract(amount));
         account.setHold(account.getHold().add(amount));
@@ -79,10 +87,9 @@ public class AccountBook {
         logWriter.add(accountChangeLog);
     }
 
-    public void unhold(String userId, String currency, BigDecimal amount) {
-        Account account = getAccount(userId, currency);
+    public void unhold(Account account, BigDecimal amount) {
         if (account == null) {
-            throw new NullPointerException("account not found: " + userId + " " + currency);
+            throw new NullPointerException("account");
         }
         account.setAvailable(account.getAvailable().add(amount));
         account.setHold(account.getHold().subtract(amount));
@@ -91,17 +98,9 @@ public class AccountBook {
         logWriter.add(accountChangeLog);
     }
 
-    public void incrAvailable(String userId, String currency, BigDecimal amount) {
-        Account account = getAccount(userId, currency);
-
-        if (amount.compareTo(BigDecimal.ZERO) > 0) {
-            if (account == null) {
-                account = createAccount(userId, currency);
-            }
-        } else {
-            if (account == null || account.getAvailable().compareTo(amount) < 0) {
-                throw new RuntimeException("Account available balance is insufficient");
-            }
+    public void incrAvailable(Account account, BigDecimal amount) {
+        if (account == null || account.getAvailable().compareTo(amount) < 0) {
+            throw new RuntimeException("Account available balance is insufficient");
         }
 
         account.setAvailable(account.getAvailable().add(amount));
@@ -110,17 +109,9 @@ public class AccountBook {
         logWriter.add(accountChangeLog);
     }
 
-    public void incrHold(String userId, String currency, BigDecimal amount) {
-        Account account = getAccount(userId, currency);
-
-        if (amount.compareTo(BigDecimal.ZERO) > 0) {
-            if (account == null) {
-                account = createAccount(userId, currency);
-            }
-        } else {
-            if (account == null || account.getAvailable().compareTo(amount) < 0) {
-                throw new RuntimeException("Account available balance is insufficient");
-            }
+    public void incrHold(Account account, BigDecimal amount) {
+        if (account == null || account.getAvailable().compareTo(amount) < 0) {
+            throw new RuntimeException("Account available balance is insufficient");
         }
 
         account.setHold(account.getHold().add(amount));
@@ -129,25 +120,32 @@ public class AccountBook {
         logWriter.add(accountChangeLog);
     }
 
-    public void exchange(String takerUserId, String makerUserId, String baseCurrency, String quoteCurrency,
+    public void exchange(Account takerBaseAccount, Account takerQuoteAccount,
+                         Account makerBaseAccount, Account makerQuoteAccount,
                          OrderSide takerSide, BigDecimal size, BigDecimal funds) {
         if (takerSide == OrderSide.BUY) {
-            incrHold(takerUserId, quoteCurrency, funds.negate());
-            incrAvailable(takerUserId, baseCurrency, size);
-            incrHold(makerUserId, baseCurrency, size.negate());
-            incrAvailable(makerUserId, quoteCurrency, funds);
+            if (takerBaseAccount == null) {
+                takerBaseAccount = createAccount(takerQuoteAccount.getUserId(), makerBaseAccount.getCurrency());
+            }
+            if (makerQuoteAccount == null) {
+                makerQuoteAccount = createAccount(makerBaseAccount.getUserId(), takerQuoteAccount.getCurrency());
+            }
+            takerBaseAccount.setAvailable(takerBaseAccount.getAvailable().add(size));
+            takerQuoteAccount.setHold(takerQuoteAccount.getHold().subtract(funds));
+            makerBaseAccount.setHold(makerBaseAccount.getHold().subtract(size));
+            makerQuoteAccount.setAvailable(makerQuoteAccount.getAvailable().add(funds));
         } else {
-            incrHold(makerUserId, quoteCurrency, funds.negate());
-            incrAvailable(makerUserId, baseCurrency, size);
-            incrHold(takerUserId, baseCurrency, size.negate());
-            incrAvailable(takerUserId, quoteCurrency, funds);
+            if (takerQuoteAccount == null) {
+                takerQuoteAccount = createAccount(takerBaseAccount.getUserId(), makerQuoteAccount.getCurrency());
+            }
+            if (makerBaseAccount == null) {
+                makerBaseAccount = createAccount(makerQuoteAccount.getUserId(), takerBaseAccount.getCurrency());
+            }
+            takerBaseAccount.setAvailable(takerBaseAccount.getAvailable().add(size));
+            takerQuoteAccount.setHold(takerQuoteAccount.getHold().subtract(funds));
+            makerBaseAccount.setHold(makerBaseAccount.getHold().subtract(size));
+            makerQuoteAccount.setAvailable(makerQuoteAccount.getAvailable().add(funds));
         }
-    }
-
-    public void restoreLog(AccountChangeLog log) {
-        Account account = createAccount(log.getUserId(), log.getCurrency());
-        account.setAvailable(log.getAvailable());
-        account.setHold(log.getHold());
     }
 
     public AccountChangeLog accountChangeMessage(Account account, BigDecimal holdIncr, BigDecimal availableIncr) {

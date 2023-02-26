@@ -16,11 +16,6 @@ public class CommandDispatcher {
             handler.on((CancelOrderCommand)orderMessage);
         } else if (orderMessage instanceof DepositCommand) {
             handler.on((DepositCommand)orderMessage);
-        } else if (orderMessage instanceof PlaceOrderCommand) {
-            handler.on((PlaceOrderCommand)orderMessage);
-
-
-
         } else {
             logger.warn("Unhandled command: {} {}", orderMessage.getClass().getName(), JSON.toJSONString(orderMessage));
         }

@@ -32,7 +32,7 @@ public class MatchingEngine {
             this.accountBook = new AccountBook(snapshot.getAccounts(), logWriter, logSequence);
             if (snapshot.getOrderBookSnapshots() != null) {
                 snapshot.getOrderBookSnapshots().forEach(x -> {
-                    OrderBook orderBook = new OrderBook( x, logWriter, accountBook, productBook, logSequence);
+                    OrderBook orderBook = new OrderBook(x, logWriter, accountBook, productBook, logSequence);
                     this.orderBooks.put(orderBook.getProductId(), orderBook);
                 });
             }
@@ -71,7 +71,7 @@ public class MatchingEngine {
         List<Product> products = this.productBook.getProducts().values().stream()
                 .map(Product::copy)
                 .collect(Collectors.toList());
-        List<Account> accounts = this.accountBook.getAccounts().values().stream()
+        List<Account> accounts = this.accountBook.getAllAccounts().stream()
                 .map(Account::copy)
                 .collect(Collectors.toList());
         List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream()

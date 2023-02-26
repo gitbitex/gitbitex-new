@@ -9,12 +9,15 @@ public class ProductBook {
     @Getter
     private final Map<String, Product> products = new HashMap<>();
 
-    public Product getProduct(String productId) {
+    public ProductBook(){
         Product product = new Product();
         product.setProductId("BTC-USDT");
         product.setBaseCurrency("BTC");
         product.setQuoteCurrency("USDT");
-        return product;
-        //return products.get(productId);
+        this.products.put(product.getProductId(),product);
+    }
+
+    public Product getProduct(String productId) {
+        return products.get(productId);
     }
 }

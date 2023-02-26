@@ -56,9 +56,9 @@ public class OrderBook {
 
     public void placeOrder(Order order) {
         if (order.getSide() == OrderSide.BUY) {
-            asks.executeCommand(order, bids);
+            asks.placeOrder(order, bids);
         } else {
-            bids.executeCommand(order, asks);
+            bids.placeOrder(order, asks);
         }
     }
 
