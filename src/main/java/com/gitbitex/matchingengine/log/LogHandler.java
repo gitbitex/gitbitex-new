@@ -13,5 +13,9 @@ public interface LogHandler {
 
     void on(OrderFilledMessage log);
 
-    void on(AccountChangeLog log);
+    void on(AccountMessage log);
+
+    void on(OrderMessage message);
+
+    void on(TradeMessage message);
 }

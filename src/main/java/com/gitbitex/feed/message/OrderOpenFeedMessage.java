@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderOpenMessage {
+public class OrderOpenFeedMessage {
     private String type = "open";
     private String productId;
     private long sequence;

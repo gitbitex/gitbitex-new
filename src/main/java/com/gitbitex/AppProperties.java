@@ -12,13 +12,15 @@ import org.springframework.validation.annotation.Validated;
 @Setter
 @Validated
 public class AppProperties {
-    private String accountCommandTopic;
+    private String tradeMessageTopic;
 
-    private String orderCommandTopic;
+    private String accountMessageTopic;
 
-    private String orderBookCommandTopic;
+    private String orderMessageTopic;
 
-    private String orderBookLogTopic;
+    private String matchingEngineCommandTopic;
+
+    private String orderBookMessageTopic;
 
     private int accountantThreadNum;
 

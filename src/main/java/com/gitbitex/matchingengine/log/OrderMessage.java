@@ -1,14 +1,13 @@
 package com.gitbitex.matchingengine.log;
 
+import java.math.BigDecimal;
+import java.util.Date;
+
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
-
 import com.gitbitex.enums.OrderType;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.math.BigDecimal;
-import java.util.Date;
 
 @Getter
 @Setter
@@ -27,6 +26,9 @@ public class OrderMessage extends Log {
 
     private BigDecimal funds;
 
+    private BigDecimal remainingSize;
+    private BigDecimal remainingFunds;
+
     private BigDecimal filledSize;
 
     private BigDecimal executedValue;
@@ -35,9 +37,13 @@ public class OrderMessage extends Log {
 
     private BigDecimal fillFees;
 
-   // private OrderType type;
+    private OrderType orderType;
 
     private OrderSide side;
 
     private OrderStatus status;
+
+    public OrderMessage(){
+        this.setType(LogType.ORDER);
+    }
 }

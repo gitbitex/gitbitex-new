@@ -8,11 +8,11 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 import com.alibaba.fastjson.JSON;
 
-import com.gitbitex.feed.message.L2SnapshotMessage;
-import com.gitbitex.feed.message.L2UpdateMessage;
-import com.gitbitex.feed.message.PongMessage;
-import com.gitbitex.feed.message.TickerMessage;
-import com.gitbitex.marketdata.TickerManager;
+import com.gitbitex.feed.message.L2SnapshotFeedMessage;
+import com.gitbitex.feed.message.L2UpdateFeedMessage;
+import com.gitbitex.feed.message.PongFeedMessage;
+import com.gitbitex.feed.message.TickerFeedMessage;
+import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.L2OrderBookChange;
@@ -73,7 +73,7 @@ public class SessionManager {
                             try {
                                 Ticker ticker = tickerManager.getTicker(productId);
                                 if (ticker != null) {
-                                    sendJson(session, new TickerMessage(ticker));
+                                    sendJson(session, new TickerFeedMessage(ticker));
                                 }
                             } catch (Exception e) {
                                 logger.error("send ticker error: {}", e.getMessage(), e);
@@ -161,7 +161,7 @@ public class SessionManager {
         String key = "LAST_L2_ORDER_BOOK:" + l2OrderBook.getProductId();
 
         if (!session.getAttributes().containsKey(key)) {
-            sendJson(session, new L2SnapshotMessage(l2OrderBook));
+            sendJson(session, new L2SnapshotFeedMessage(l2OrderBook));
             session.getAttributes().put(key, l2OrderBook);
             return;
         }
@@ -177,16 +177,16 @@ public class SessionManager {
         if (changes == null || changes.isEmpty()) {
             return;
         }
-        L2UpdateMessage l2UpdateMessage = new L2UpdateMessage(l2OrderBook.getProductId(), changes);
-        sendJson(session, l2UpdateMessage);
+        L2UpdateFeedMessage l2UpdateFeedMessage = new L2UpdateFeedMessage(l2OrderBook.getProductId(), changes);
+        sendJson(session, l2UpdateFeedMessage);
         session.getAttributes().put(key, l2OrderBook);
     }
 
     public void sendPong(WebSocketSession session) {
         try {
-            PongMessage pongMessage = new PongMessage();
-            pongMessage.setType("pong");
-            session.sendMessage(new TextMessage(JSON.toJSONString(pongMessage)));
+            PongFeedMessage pongFeedMessage = new PongFeedMessage();
+            pongFeedMessage.setType("pong");
+            session.sendMessage(new TextMessage(JSON.toJSONString(pongFeedMessage)));
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -2,7 +2,7 @@ version: '3'
 
 services:
   redis:
-    image: redis
+    image: redis:7.0-alpine
     container_name: redis
     ports:
       - "6379:6379"
@@ -13,16 +13,35 @@ services:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: 123456
-  zookeeper:
-    image: wurstmeister/zookeeper
-    container_name: zookeeper
+  mongo:
+    image: mongo
+    container_name: mongo
     ports:
-      - "2181:2181"
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8082:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: root
+      ME_CONFIG_MONGODB_URL: mongodb://root:root@mongo:27017/
   kafka:
-    image: wurstmeister/kafka
+    image: 'bitnami/kafka:3.4.0'
     container_name: kafka
     ports:
-      - "9092:9092"
+      - '19092:19092'
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: localhost
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:19092,CONTROLLER://:2181
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:19092
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@127.0.0.1:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes

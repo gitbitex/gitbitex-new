@@ -5,10 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Account;
 import com.gitbitex.marketdata.repository.AccountRepository;
+import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.openapi.model.AccountDto;
-import com.gitbitex.order.ClientOrderReceiver;
 import com.gitbitex.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,7 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class AccountController {
     private final AccountRepository accountRepository;
-    private final ClientOrderReceiver clientOrderReceiver;
+    private final KafkaMessageProducer producer;
 
     @GetMapping("/accounts")
     public List<AccountDto> getAccounts(@RequestParam(name = "currency") List<String> currencies,
@@ -50,8 +51,14 @@ public class AccountController {
     }
 
     @GetMapping("/admin/deposit")
-    public void deposit(@RequestParam String userId, @RequestParam String currency, @RequestParam String amount) {
-        clientOrderReceiver.deposit(userId, currency, new BigDecimal(amount), UUID.randomUUID().toString());
+    public String deposit(@RequestParam String userId, @RequestParam String currency, @RequestParam String amount) {
+        DepositCommand command = new DepositCommand();
+        command.setUserId(userId);
+        command.setCurrency(currency);
+        command.setAmount(new BigDecimal(amount));
+        command.setTransactionId(UUID.randomUUID().toString());
+        producer.sendToMatchingEngine("all", command, null);
+        return "ok";
     }
 
     private AccountDto accountDto(Account account) {

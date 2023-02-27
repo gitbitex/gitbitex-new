@@ -5,6 +5,6 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class PongMessage {
+public class PongFeedMessage {
     private String type;
 }

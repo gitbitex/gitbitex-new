@@ -3,32 +3,27 @@ package com.gitbitex.marketdata.entity;
 import java.math.BigDecimal;
 import java.util.Date;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.DynamicInsert;
-import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 @Getter
 @Setter
-@Entity
-@DynamicInsert
-@DynamicUpdate
+@Document
+@CompoundIndex( def = "{'userId': 1, 'currency': 1}", unique = true)
 public class Account {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
 
-    @CreationTimestamp
+    @Id
+    private String id;
+
+    @CreatedDate
     private Date createdAt;
 
-    @UpdateTimestamp
+    @LastModifiedDate
     private Date updatedAt;
 
     private String userId;

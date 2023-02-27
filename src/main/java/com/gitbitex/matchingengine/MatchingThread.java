@@ -4,11 +4,8 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.matchingengine.command.*;
-import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.dsl.ProducerType;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -40,7 +37,7 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
         super(messageKafkaConsumer, logger);
         this.orderBookManager = orderBookManager;
         this.appProperties = appProperties;
-        this.logWriter = new LogWriter(messageProducer,redissonClient);
+        this.logWriter = new LogWriter(messageProducer,redissonClient,appProperties);
 
         executorService.submit(new Runnable() {
             @Override
@@ -97,7 +94,7 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
 
     @Override
     protected void doSubscribe() {
-        consumer.subscribe(Collections.singletonList(appProperties.getOrderBookCommandTopic()), this);
+        consumer.subscribe(Collections.singletonList(appProperties.getMatchingEngineCommandTopic()), this);
     }
     long i=0;
     long t1;
@@ -116,7 +113,7 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
         consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
             MatchingEngineCommand command = x.value();
             command.setOffset(x.offset());
-            //logger.info("{}", JSON.toJSONString(command));
+            logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
             try {
                 Thread.sleep(10);

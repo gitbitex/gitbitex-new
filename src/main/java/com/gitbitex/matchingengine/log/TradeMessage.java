@@ -1,4 +1,4 @@
-package com.gitbitex.marketdata.entity;
+package com.gitbitex.matchingengine.log;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -6,20 +6,10 @@ import java.util.Date;
 import com.gitbitex.enums.OrderSide;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 @Getter
 @Setter
-@Document
-public class Trade {
-    @Id
-    private String id;
-
-    private Date createdAt;
-
-    private Date updatedAt;
-
+public class TradeMessage extends Log {
     private long tradeId;
 
     private String productId;
@@ -36,6 +26,7 @@ public class Trade {
 
     private Date time;
 
-    private long sequence;
-    private long orderBookLogOffset;
+    public TradeMessage() {
+        this.setType(LogType.TRADE);
+    }
 }

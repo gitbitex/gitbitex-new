@@ -1,11 +1,29 @@
 package com.gitbitex.marketdata;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+
+import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.AppProperties;
-import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.matchingengine.log.*;
-import com.gitbitex.matchingengine.log.OrderDoneLog.DoneReason;
+import com.gitbitex.marketdata.manager.OrderManager;
+import com.gitbitex.matchingengine.log.AccountMessage;
+import com.gitbitex.matchingengine.log.Log;
+import com.gitbitex.matchingengine.log.LogDispatcher;
+import com.gitbitex.matchingengine.log.LogHandler;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
+import com.gitbitex.matchingengine.log.OrderFilledMessage;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderMessage;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.matchingengine.log.OrderRejectedLog;
+import com.gitbitex.matchingengine.log.TradeMessage;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -13,25 +31,15 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
 @Slf4j
 public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
-        implements ConsumerRebalanceListener, LogHandler {
-    private final List<String> productIds;
-    private final KafkaMessageProducer messageProducer;
+    implements ConsumerRebalanceListener, LogHandler {
     private final AppProperties appProperties;
     private final OrderManager orderManager;
     private long uncommittedRecordCount;
 
-    public OrderPersistenceThread(List<String> productIds, KafkaConsumer<String, Log> kafkaConsumer,
-                                  KafkaMessageProducer messageProducer, AppProperties appProperties, OrderManager orderManager) {
+    public OrderPersistenceThread(KafkaConsumer<String, Log> kafkaConsumer, AppProperties appProperties, OrderManager orderManager) {
         super(kafkaConsumer, logger);
-        this.productIds = productIds;
-        this.messageProducer = messageProducer;
         this.appProperties = appProperties;
         this.orderManager = orderManager;
     }
@@ -40,7 +48,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
-            //consumer.commitSync();
+            consumer.commitSync();
         }
     }
 
@@ -53,7 +61,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
 
     @Override
     protected void doSubscribe() {
-        consumer.subscribe(Collections.singletonList(appProperties.getOrderBookLogTopic()), this);
+        consumer.subscribe(Collections.singletonList(appProperties.getOrderMessageTopic()), this);
     }
 
     @Override
@@ -67,41 +75,14 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
 
     @Override
     public void on(OrderRejectedLog log) {
-        Order order = new Order();
-        order.setOrderId(log.getOrderId());
-        order.setProductId(log.getProductId());
-        order.setUserId(log.getUserId());
-        order.setStatus(OrderStatus.REJECTED);
-        order.setPrice(log.getPrice());
-        order.setSize(log.getSize());
-        order.setFunds(log.getFunds());
-        order.setClientOid(log.getClientOid());
-        order.setSide(log.getSide());
-        order.setType(log.getOrderType());
-        order.setTime(log.getTime());
-        orderManager.rejectOrder(order);
     }
 
     @SneakyThrows
     public void on(OrderReceivedLog log) {
-        Order order = new Order();
-        order.setOrderId(log.getOrderId());
-        order.setProductId(log.getProductId());
-        order.setUserId(log.getUserId());
-        order.setStatus(OrderStatus.RECEIVED);
-        order.setPrice(log.getPrice());
-        order.setSize(log.getSize());
-        order.setFunds(log.getFunds());
-        order.setClientOid(log.getClientOid());
-        order.setSide(log.getSide());
-        order.setType(log.getOrderType());
-        order.setTime(log.getTime());
-        orderManager.receiveOrder(order);
     }
 
     @SneakyThrows
     public void on(OrderOpenLog log) {
-        orderManager.openOrder(log.getOrderId());
     }
 
     @SneakyThrows
@@ -110,8 +91,6 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
 
     @SneakyThrows
     public void on(OrderDoneLog log) {
-        orderManager.closeOrder(log.getOrderId(),
-                log.getDoneReason() == DoneReason.CANCELLED ? OrderStatus.CANCELLED : OrderStatus.FILLED);
     }
 
     @Override
@@ -119,6 +98,33 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
     }
 
     @Override
-    public void on(AccountChangeLog log) {
+    public void on(AccountMessage log) {
+    }
+
+    @Override
+    public void on(OrderMessage log) {
+        logger.info(JSON.toJSONString(log));
+        Order order = orderManager.findByOrderId(log.getOrderId());
+        if (order == null) {
+            order = new Order();
+        }
+        order.setOrderId(log.getOrderId());
+        order.setProductId(log.getProductId());
+        order.setUserId(log.getUserId());
+        order.setStatus(log.getStatus());
+        order.setPrice(log.getPrice());
+        order.setSize(log.getSize());
+        order.setFunds(log.getFunds());
+        order.setClientOid(log.getClientOid());
+        order.setSide(log.getSide());
+        order.setType(log.getOrderType());
+        order.setTime(log.getTime());
+        order.setCreatedAt(new Date());
+        orderManager.save(order);
+    }
+
+    @Override
+    public void on(TradeMessage message) {
+
     }
 }

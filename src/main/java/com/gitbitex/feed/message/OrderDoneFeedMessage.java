@@ -18,7 +18,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class OrderDoneMessage {
+public class OrderDoneFeedMessage {
     private String type = "done";
     private String productId;
     private long sequence;

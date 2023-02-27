@@ -21,8 +21,14 @@ public class LogDeserializer implements Deserializer<Log> {
             }
 
             switch (orderMessage.getType()) {
-                case ACCOUNT_CHANGE:
-                    return JSON.parseObject(jsonString, AccountChangeLog.class);
+                case TRADE:
+                    return JSON.parseObject(jsonString, TradeMessage.class);
+                case TICKER:
+                    return JSON.parseObject(jsonString, TickerMessage.class);
+                case ORDER:
+                    return JSON.parseObject(jsonString, OrderMessage.class);
+                case ACCOUNT:
+                    return JSON.parseObject(jsonString, AccountMessage.class);
                 case ORDER_DONE:
                     return JSON.parseObject(jsonString, OrderDoneLog.class);
                 case ORDER_MATCH:

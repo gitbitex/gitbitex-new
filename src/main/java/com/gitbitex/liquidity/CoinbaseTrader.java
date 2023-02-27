@@ -1,9 +1,7 @@
 package com.gitbitex.liquidity;
 
-import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -12,12 +10,9 @@ import java.util.concurrent.TimeUnit;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
-
-import com.gitbitex.enums.OrderSide;
-import com.gitbitex.enums.OrderType;
-import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.matchingengine.command.PlaceOrderCommand;
-import com.gitbitex.order.ClientOrderReceiver;
+import com.gitbitex.openapi.controller.OrderController;
+import com.gitbitex.openapi.model.PlaceOrderRequest;
+import com.gitbitex.user.entity.User;
 import com.google.common.util.concurrent.RateLimiter;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -28,14 +23,12 @@ import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class CoinbaseTrader {
     private static final RateLimiter rateLimiter = RateLimiter.create(10);
-    private final ClientOrderReceiver clientOrderReceiver;
+    private final OrderController orderController;
     private final ExecutorService executor = Executors.newFixedThreadPool(1);
     private final AppProperties appProperties;
 
@@ -110,7 +103,8 @@ public class CoinbaseTrader {
 
         @Override
         public void onMessage(String s) {
-            //logger.info(s);
+            User user = new User();
+            user.setUserId(userId);
             executor.execute(() -> {
                 try {
                     ChannelMessage message = JSON.parseObject(s, ChannelMessage.class);
@@ -120,32 +114,15 @@ public class CoinbaseTrader {
                             logger.info(JSON.toJSONString(message));
 
                             if (message.getPrice() != null) {
-                                Order order=new Order();
-                                order.setOrderId(UUID.randomUUID().toString());
+                                PlaceOrderRequest order = new PlaceOrderRequest();
                                 order.setProductId(productId);
                                 order.setClientOid(UUID.randomUUID().toString());
-                                order.setPrice(new BigDecimal(message.getPrice()));
-                                order.setSize(new BigDecimal(message.getSize()));
-                                order.setSide(OrderSide.valueOf(message.getSide().toUpperCase()));
-                                order.setType(OrderType.LIMIT);
-                                order.setUserId(userId);
-                                clientOrderReceiver.handlePlaceOrderRequest(order);
-
-
-                                /*
-                                orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId,
-                                        OrderType.LIMIT,
-                                        OrderSide.valueOf(message.getSide().toUpperCase()),
-                                        new BigDecimal(message.getSize()),
-                                        new BigDecimal(message.getPrice()), null, null, null);
-                                */
-                            } else if (message.getFunds() != null) {
-                                /*
-                                orderManager.placeOrder(UUID.randomUUID().toString(), userId, productId,
-                                        OrderType.MARKET,
-                                        OrderSide.valueOf(message.getSide().toUpperCase()), null, null,
-                                        new BigDecimal(message.getFunds()), null, null);
-                                */
+                                order.setPrice(message.getPrice());
+                                order.setSize(message.getSize());
+                                order.setFunds(message.getFunds());
+                                order.setSide(message.getSide().toLowerCase());
+                                order.setType("limit");
+                                orderController.placeOrder(order, user);
                             }
                             break;
                         case "done":

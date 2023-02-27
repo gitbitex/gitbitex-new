@@ -1,12 +1,26 @@
 package com.gitbitex.feed;
 
+import javax.annotation.PostConstruct;
+
 import com.alibaba.fastjson.JSON;
-import com.gitbitex.feed.message.*;
-import com.gitbitex.marketdata.entity.Account;
+
+import com.gitbitex.feed.message.AccountFeedMessage;
+import com.gitbitex.feed.message.CandleFeedMessage;
+import com.gitbitex.feed.message.OrderDoneFeedMessage;
+import com.gitbitex.feed.message.OrderFeedMessage;
+import com.gitbitex.feed.message.OrderMatchFeedMessage;
+import com.gitbitex.feed.message.OrderOpenFeedMessage;
+import com.gitbitex.feed.message.OrderReceivedFeedMessage;
+import com.gitbitex.feed.message.TickerFeedMessage;
 import com.gitbitex.marketdata.entity.Candle;
-import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.entity.Ticker;
-import com.gitbitex.matchingengine.log.*;
+import com.gitbitex.matchingengine.log.AccountMessage;
+import com.gitbitex.matchingengine.log.Log;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderMessage;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.matchingengine.log.TickerMessage;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
 
 @Component
 @Slf4j
@@ -28,21 +40,21 @@ public class FeedMessageListener {
     @PostConstruct
     public void run() {
         redissonClient.getTopic("order", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            Order order = JSON.parseObject(msg, Order.class);
-            String channel = order.getUserId() + "." + order.getProductId() + ".order";
-            sessionManager.sendMessageToChannel(channel, (orderMessage(order)));
+            OrderMessage orderMessage = JSON.parseObject(msg, OrderMessage.class);
+            String channel = orderMessage.getUserId() + "." + orderMessage.getProductId() + ".order";
+            sessionManager.sendMessageToChannel(channel, orderFeedMessage(orderMessage));
         });
 
         redissonClient.getTopic("account", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            Account account = JSON.parseObject(msg, Account.class);
-            String channel = account.getUserId() + "." + account.getCurrency() + ".funds";
-            sessionManager.sendMessageToChannel(channel, (accountMessage(account)));
+            AccountMessage accountMessage = JSON.parseObject(msg, AccountMessage.class);
+            String channel = accountMessage.getUserId() + "." + accountMessage.getCurrency() + ".funds";
+            sessionManager.sendMessageToChannel(channel, accountFeedMessage(accountMessage));
         });
 
         redissonClient.getTopic("ticker", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            Ticker ticker = JSON.parseObject(msg, Ticker.class);
-            String channel = ticker.getProductId() + ".ticker";
-            sessionManager.sendMessageToChannel(channel, (new TickerMessage(ticker)));
+            TickerMessage tickerMessage = JSON.parseObject(msg, TickerMessage.class);
+            String channel = tickerMessage.getProductId() + ".ticker";
+            sessionManager.sendMessageToChannel(channel, tickerFeedMessage(tickerMessage));
         });
 
         redissonClient.getTopic("candle", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
@@ -62,29 +74,33 @@ public class FeedMessageListener {
             switch (log.getType()) {
                 case ORDER_RECEIVED:
                     OrderReceivedLog orderReceivedLog = JSON.parseObject(msg, OrderReceivedLog.class);
-                    sessionManager.sendMessageToChannel(orderReceivedLog.getProductId() + ".full", (orderReceivedMessage(orderReceivedLog)));
+                    sessionManager.sendMessageToChannel(orderReceivedLog.getProductId() + ".full",
+                        (orderReceivedMessage(orderReceivedLog)));
                     break;
                 case ORDER_MATCH:
                     OrderMatchLog orderMatchLog = JSON.parseObject(msg, OrderMatchLog.class);
                     String matchChannel = orderMatchLog.getProductId() + ".match";
                     sessionManager.sendMessageToChannel(matchChannel, (matchMessage(orderMatchLog)));
-                    sessionManager.sendMessageToChannel(orderMatchLog.getProductId() + ".full", (matchMessage(orderMatchLog)));
+                    sessionManager.sendMessageToChannel(orderMatchLog.getProductId() + ".full",
+                        (matchMessage(orderMatchLog)));
                     break;
                 case ORDER_OPEN:
                     OrderOpenLog orderOpenLog = JSON.parseObject(msg, OrderOpenLog.class);
-                    sessionManager.sendMessageToChannel(orderOpenLog.getProductId() + ".full", (orderOpenMessage(orderOpenLog)));
+                    sessionManager.sendMessageToChannel(orderOpenLog.getProductId() + ".full",
+                        (orderOpenMessage(orderOpenLog)));
                     break;
                 case ORDER_DONE:
                     OrderDoneLog orderDoneLog = JSON.parseObject(msg, OrderDoneLog.class);
-                    sessionManager.sendMessageToChannel(orderDoneLog.getProductId() + ".full", (orderDoneMessage(orderDoneLog)));
+                    sessionManager.sendMessageToChannel(orderDoneLog.getProductId() + ".full",
+                        (orderDoneMessage(orderDoneLog)));
                     break;
                 default:
             }
         });
     }
 
-    private OrderReceivedMessage orderReceivedMessage(OrderReceivedLog log) {
-        OrderReceivedMessage message = new com.gitbitex.feed.message.OrderReceivedMessage();
+    private OrderReceivedFeedMessage orderReceivedMessage(OrderReceivedLog log) {
+        OrderReceivedFeedMessage message = new OrderReceivedFeedMessage();
         message.setProductId(log.getProductId());
         message.setTime(log.getTime().toInstant().toString());
         message.setSequence(log.getSequence());
@@ -97,8 +113,8 @@ public class FeedMessageListener {
         return message;
     }
 
-    private OrderMatchMessage matchMessage(OrderMatchLog log) {
-        OrderMatchMessage message = new OrderMatchMessage();
+    private OrderMatchFeedMessage matchMessage(OrderMatchLog log) {
+        OrderMatchFeedMessage message = new OrderMatchFeedMessage();
         message.setTradeId(log.getTradeId());
         message.setSequence(log.getSequence());
         message.setTakerOrderId(log.getTakerOrderId());
@@ -111,8 +127,8 @@ public class FeedMessageListener {
         return message;
     }
 
-    private com.gitbitex.feed.message.OrderOpenMessage orderOpenMessage(OrderOpenLog log) {
-        com.gitbitex.feed.message.OrderOpenMessage message = new com.gitbitex.feed.message.OrderOpenMessage();
+    private OrderOpenFeedMessage orderOpenMessage(OrderOpenLog log) {
+        OrderOpenFeedMessage message = new OrderOpenFeedMessage();
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());
         message.setProductId(log.getProductId());
@@ -122,8 +138,8 @@ public class FeedMessageListener {
         return message;
     }
 
-    private com.gitbitex.feed.message.OrderDoneMessage orderDoneMessage(OrderDoneLog log) {
-        com.gitbitex.feed.message.OrderDoneMessage message = new com.gitbitex.feed.message.OrderDoneMessage();
+    private OrderDoneFeedMessage orderDoneMessage(OrderDoneLog log) {
+        OrderDoneFeedMessage message = new OrderDoneFeedMessage();
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());
         message.setProductId(log.getProductId());
@@ -138,8 +154,8 @@ public class FeedMessageListener {
         return message;
     }
 
-    private CandleMessage candleMessage(Candle candle) {
-        CandleMessage message = new CandleMessage();
+    private CandleFeedMessage candleMessage(Candle candle) {
+        CandleFeedMessage message = new CandleFeedMessage();
         message.setProductId(candle.getProductId());
         message.setGranularity(candle.getGranularity());
         message.setTime(candle.getTime());
@@ -151,9 +167,9 @@ public class FeedMessageListener {
         return message;
     }
 
-    private OrderMessage orderMessage(Order order) {
+    private OrderFeedMessage orderFeedMessage(OrderMessage order) {
         logger.info(JSON.toJSONString(order));
-        OrderMessage message = new OrderMessage();
+        OrderFeedMessage message = new OrderFeedMessage();
         message.setUserId(order.getUserId());
         message.setProductId(order.getProductId());
         message.setId(order.getOrderId());
@@ -162,25 +178,42 @@ public class FeedMessageListener {
         message.setFunds(order.getFunds().stripTrailingZeros().toPlainString());
         message.setSide(order.getSide().name().toLowerCase());
         message.setOrderType(order.getType().name().toLowerCase());
-        message.setCreatedAt(order.getCreatedAt().toInstant().toString());
+        message.setCreatedAt(order.getTime().toInstant().toString());
         message.setFillFees(
-                order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
+            order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
         message.setFilledSize(
-                order.getFilledSize() != null ? order.getFilledSize().stripTrailingZeros().toPlainString() : "0");
+            order.getFilledSize() != null ? order.getFilledSize().stripTrailingZeros().toPlainString() : "0");
         message.setExecutedValue(
-                order.getExecutedValue() != null ? order.getExecutedValue().stripTrailingZeros().toPlainString() : "0");
+            order.getExecutedValue() != null ? order.getExecutedValue().stripTrailingZeros().toPlainString() : "0");
         message.setStatus(order.getStatus().name().toLowerCase());
         return message;
     }
 
-    private AccountMessage accountMessage(Account account) {
-        AccountMessage message = new AccountMessage();
-        message.setUserId(account.getUserId());
-        message.setCurrencyCode(account.getCurrency());
-        message.setAvailable(
-                account.getAvailable() != null ? account.getAvailable().stripTrailingZeros().toPlainString() : "0");
-        message.setHold(account.getHold() != null ? account.getHold().stripTrailingZeros().toPlainString() : "0");
-        return message;
+    private AccountFeedMessage accountFeedMessage(AccountMessage message) {
+        AccountFeedMessage accountFeedMessage = new AccountFeedMessage();
+        accountFeedMessage.setUserId(message.getUserId());
+        accountFeedMessage.setCurrencyCode(message.getCurrency());
+        accountFeedMessage.setAvailable(message.getAvailable().stripTrailingZeros().toPlainString());
+        accountFeedMessage.setHold(message.getHold().stripTrailingZeros().toPlainString());
+        return accountFeedMessage;
+    }
+
+    private TickerFeedMessage tickerFeedMessage(TickerMessage ticker) {
+        TickerFeedMessage tickerFeedMessage = new TickerFeedMessage();
+        tickerFeedMessage.setProductId(ticker.getProductId());
+        tickerFeedMessage.setTradeId(ticker.getTradeId());
+        tickerFeedMessage.setSequence(ticker.getSequence());
+        tickerFeedMessage.setTime(ticker.getTime().toInstant().toString());
+        tickerFeedMessage.setPrice(ticker.getPrice().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setSide(ticker.getSide().name().toLowerCase());
+        tickerFeedMessage.setLastSize(ticker.getLastSize().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setClose24h(ticker.getClose24h().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setOpen24h(ticker.getOpen24h().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setHigh24h(ticker.getHigh24h().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setLow24h(ticker.getLow24h().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setVolume24h(ticker.getVolume24h().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setVolume30d(ticker.getVolume30d().stripTrailingZeros().toPlainString());
+        return tickerFeedMessage;
     }
 
 }

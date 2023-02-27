@@ -14,7 +14,11 @@ public class Log {
     private LogType type;
 
     public enum LogType {
-        ACCOUNT_CHANGE,
+        TICKER,
+        ORDER,
+        ACCOUNT,
+        TRADE,
+        BILL,
         ORDER_REJECTED,
         ORDER_RECEIVED,
         ORDER_OPEN,

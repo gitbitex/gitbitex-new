@@ -1,30 +1,47 @@
 package com.gitbitex.marketdata.repository;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.persistence.criteria.Predicate;
-
-import com.gitbitex.marketdata.entity.Order;
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
+import com.gitbitex.marketdata.entity.Order;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.PagingAndSortingRepository;
 
-public interface OrderRepository extends JpaRepository<Order, Long>, CrudRepository<Order, Long>,
-    JpaSpecificationExecutor<Order> {
+public interface OrderRepository extends MongoRepository<Order, String>{
 
     Order findByOrderId(String orderId);
 
     default Page<Order> findAll(String userId, String productId, OrderStatus status, OrderSide side,
-                                int pageIndex, int pageSize) {
-        Specification<Order> specification = (root, query, cb) -> {
+        int pageIndex, int pageSize) {
+
+        Order user = new Order();
+        if (userId!=null) {
+            user.setUserId(userId);
+        }
+        if (productId!=null){
+            user.setProductId(productId);
+        }
+        if (status!=null){
+            user.setStatus(status);
+        }
+
+
+        ExampleMatcher matcher = ExampleMatcher.matching().withIgnorePaths("age", "createTime");
+        Example<Order> example = Example.of(user, matcher);
+
+        PageRequest pageable = PageRequest.of(pageIndex - 1, pageSize);
+        return this.findAll(example, pageable);
+
+
+
+
+
+
+       /* Specification<Order> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             if (userId != null) {
@@ -44,6 +61,6 @@ public interface OrderRepository extends JpaRepository<Order, Long>, CrudReposit
 
         Pageable pager = PageRequest.of(pageIndex - 1, pageSize, Sort.by("id").descending());
 
-        return this.findAll(specification, pager);
+        return this.findAll(specification, pager);*/
     }
 }

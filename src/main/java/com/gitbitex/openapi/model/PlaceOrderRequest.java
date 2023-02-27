@@ -8,6 +8,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class PlaceOrderRequest {
+
+
     private String clientOid;
 
     @NotBlank

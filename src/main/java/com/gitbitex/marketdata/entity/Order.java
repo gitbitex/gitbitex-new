@@ -3,42 +3,24 @@ package com.gitbitex.marketdata.entity;
 import java.math.BigDecimal;
 import java.util.Date;
 
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
-
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.DynamicInsert;
-import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 @Getter
 @Setter
-@Entity
-@DynamicInsert
-@DynamicUpdate
-@Table(name = "`order`")
+@Document
 public class Order {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private String orderId;
 
-    @CreationTimestamp
     private Date createdAt;
 
-    @UpdateTimestamp
     private Date updatedAt;
-
-    private String orderId;
 
     private String productId;
 
@@ -60,13 +42,10 @@ public class Order {
 
     private BigDecimal fillFees;
 
-    @Enumerated(EnumType.STRING)
     private OrderType type;
 
-    @Enumerated(EnumType.STRING)
     private OrderSide side;
 
-    @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
     /**
@@ -94,13 +73,6 @@ public class Order {
      * taking liquidity, the order will be rejected and no part of it will execute.
      */
     private boolean postOnly;
-
-
-
-
-
-
-
 
 }
 

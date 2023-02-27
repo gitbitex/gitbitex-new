@@ -1,12 +1,11 @@
 package com.gitbitex.user.repository;
 
 import com.gitbitex.user.entity.User;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.repository.CrudRepository;
 
-public interface UserRepository extends JpaRepository<User, Long>, CrudRepository<User, Long>,
-    JpaSpecificationExecutor<User> {
+public interface UserRepository extends MongoRepository<User, Long>, CrudRepository<User, Long>
+    {
 
     User findByEmail(String email);
 

@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class AccountMessage {
+public class AccountFeedMessage {
     private String type = "funds";
     private String productId;
     private String userId;

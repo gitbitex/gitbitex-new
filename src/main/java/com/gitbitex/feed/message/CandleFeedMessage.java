@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class CandleMessage {
+public class CandleFeedMessage {
     private String type = "candle";
     private String productId;
     private long sequence;

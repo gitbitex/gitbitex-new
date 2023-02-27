@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class TickerMessage {
+public class TickerFeedMessage {
     private String type = "ticker";
     private String productId;
     private long tradeId;
@@ -22,7 +22,9 @@ public class TickerMessage {
     private String volume24h;
     private String volume30d;
 
-    public TickerMessage(Ticker ticker) {
+    public TickerFeedMessage (){}
+
+    public TickerFeedMessage(Ticker ticker) {
         this.setProductId(ticker.getProductId());
         this.setTradeId(ticker.getTradeId());
         this.setSequence(ticker.getSequence());

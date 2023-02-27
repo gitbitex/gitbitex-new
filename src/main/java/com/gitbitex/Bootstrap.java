@@ -3,20 +3,18 @@ package com.gitbitex;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
-import com.gitbitex.marketdata.AccountManager;
-import com.gitbitex.marketdata.AccountantThread;
 import com.gitbitex.kafka.KafkaMessageProducer;
+import com.gitbitex.marketdata.AccountPersistenceThread;
 import com.gitbitex.marketdata.CandleMakerThread;
 import com.gitbitex.marketdata.OrderPersistenceThread;
-import com.gitbitex.marketdata.OrderManager;
-import com.gitbitex.marketdata.TickerManager;
-import com.gitbitex.marketdata.TickerThread;
 import com.gitbitex.marketdata.TradePersistenceThread;
+import com.gitbitex.marketdata.manager.AccountManager;
+import com.gitbitex.marketdata.manager.OrderManager;
+import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.MatchingThread;
@@ -24,7 +22,6 @@ import com.gitbitex.matchingengine.command.MatchingEngineCommandDeserializer;
 import com.gitbitex.matchingengine.log.LogDeserializer;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.product.ProductManager;
-import com.gitbitex.product.entity.Product;
 import com.gitbitex.product.repository.ProductRepository;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import com.gitbitex.support.kafka.KafkaProperties;
@@ -54,18 +51,10 @@ public class Bootstrap {
 
     @PostConstruct
     public void init() {
-        //startAccountant(appProperties.getAccountantThreadNum());
-
-        List<String> productIds = productRepository.findAll().stream()
-            .map(Product::getProductId)
-            .collect(Collectors.toList());
-
-        startMatchingEngine(productIds, 1);
-        //startOrderCommandSharding(productIds, 1);
-        //startCandleMaker(productIds, 1);
-        //startTicker(productIds, 1);
-        //startTradePersistence(productIds, 1);
-        //startOrderBookLogPublish(productIds, 1);
+        startMatchingEngine(1);
+        startOrderPersistenceThread(1);
+        startTradePersistenceThread(1);
+        startAccountPersistenceThread(appProperties.getAccountantThreadNum());
     }
 
     @PreDestroy
@@ -77,20 +66,21 @@ public class Bootstrap {
         }
     }
 
-    private void startAccountant(int nThreads) {
+    private void startAccountPersistenceThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "Accountant";
+            String groupId = "Account";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
                 new LogDeserializer());
-            AccountantThread accountantThread = new AccountantThread(consumer, accountManager, messageProducer,
+            AccountPersistenceThread accountPersistenceThread = new AccountPersistenceThread(consumer, accountManager,
+                messageProducer,
                 appProperties);
-            accountantThread.setName(groupId + "-" + accountantThread.getId());
-            accountantThread.start();
-            threads.add(accountantThread);
+            accountPersistenceThread.setName(groupId + "-" + accountPersistenceThread.getId());
+            accountPersistenceThread.start();
+            threads.add(accountPersistenceThread);
         }
     }
 
-    private void startMatchingEngine(List<String> productIds, int nThreads) {
+    private void startMatchingEngine(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Matching";
             MatchingThread matchingThread = new MatchingThread(orderBookManager,
@@ -103,14 +93,12 @@ public class Bootstrap {
         }
     }
 
-    private void startOrderCommandSharding(List<String> productIds, int nThreads) {
+    private void startOrderPersistenceThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "OrderPersistenceThread";
+            String groupId = "Order";
             OrderPersistenceThread orderPersistenceThread = new OrderPersistenceThread(
-                productIds,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                    new LogDeserializer()),
-                messageProducer, appProperties, orderManager);
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new LogDeserializer()),
+                appProperties, orderManager);
             orderPersistenceThread.setName(groupId + "-" + orderPersistenceThread.getId());
             orderPersistenceThread.start();
             threads.add(orderPersistenceThread);
@@ -130,21 +118,9 @@ public class Bootstrap {
         }
     }
 
-    private void startTicker(List<String> productIds, int nThreads) {
+    private void startTradePersistenceThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "Ticker1";
-            TickerThread tickerThread = new TickerThread(tickerManager,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new LogDeserializer()),
-                appProperties);
-            tickerThread.setName(groupId + "-" + tickerThread.getId());
-            tickerThread.start();
-            threads.add(tickerThread);
-        }
-    }
-
-    private void startOrderBookLogPublish(List<String> productIds, int nThreads) {
-        for (int i = 0; i < nThreads; i++) {
-            String groupId = "OrderBookLogPublish";
+            String groupId = "Trade";
             TradePersistenceThread tradePersistenceThread = new TradePersistenceThread(tradeRepository,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new LogDeserializer()),
                 appProperties);
@@ -153,7 +129,6 @@ public class Bootstrap {
             threads.add(tradePersistenceThread);
         }
     }
-
 
     public Properties getProperties(String groupId) {
         Properties properties = new Properties();

@@ -7,18 +7,14 @@ import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class AccountChangeLog extends Log {
+public class AccountMessage extends Log {
     private String userId;
     private String currency;
     private BigDecimal hold;
     private BigDecimal available;
-    private BigDecimal holdIncrement;
-    private BigDecimal availableIncrement;
-    private String transactionId;
-    private ChangeReason reason;
 
-    public AccountChangeLog() {
-        this.setType(LogType.ACCOUNT_CHANGE);
+    public AccountMessage() {
+        this.setType(LogType.ACCOUNT);
     }
 
     public enum ChangeReason {

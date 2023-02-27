@@ -1,4 +1,4 @@
-package com.gitbitex.marketdata;
+package com.gitbitex.marketdata.manager;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -126,11 +126,11 @@ public class OrderManager {
         orderRepository.save(order);
 
         // send order update notify
-        try {
+        /*try {
             redissonClient.getTopic("order", StringCodec.INSTANCE).publishAsync(JSON.toJSONString(order));
         } catch (Exception e) {
             logger.error("notify error: {}", e.getMessage(), e);
-        }
+        }*/
     }
 
     public Order findByOrderId(String orderId) {

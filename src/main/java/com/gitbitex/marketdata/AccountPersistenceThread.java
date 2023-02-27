@@ -1,31 +1,45 @@
 package com.gitbitex.marketdata;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.matchingengine.log.*;
+import com.gitbitex.marketdata.entity.Account;
+import com.gitbitex.marketdata.manager.AccountManager;
+import com.gitbitex.matchingengine.log.AccountMessage;
+import com.gitbitex.matchingengine.log.Log;
+import com.gitbitex.matchingengine.log.LogDispatcher;
+import com.gitbitex.matchingengine.log.LogHandler;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
+import com.gitbitex.matchingengine.log.OrderFilledMessage;
+import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderMessage;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.matchingengine.log.OrderRejectedLog;
+import com.gitbitex.matchingengine.log.TradeMessage;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-
 @Slf4j
-public class AccountantThread extends KafkaConsumerThread<String, Log>
-        implements ConsumerRebalanceListener, LogHandler {
+public class AccountPersistenceThread extends KafkaConsumerThread<String, Log>
+    implements ConsumerRebalanceListener, LogHandler {
     private final AccountManager accountManager;
     private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
     private long uncommittedRecordCount;
 
-    public AccountantThread(KafkaConsumer<String, Log> consumer,
-                            AccountManager accountManager,
-                            KafkaMessageProducer messageProducer,
-                            AppProperties appProperties) {
+    public AccountPersistenceThread(KafkaConsumer<String, Log> consumer,
+        AccountManager accountManager,
+        KafkaMessageProducer messageProducer,
+        AppProperties appProperties) {
         super(consumer, logger);
         this.accountManager = accountManager;
         this.messageProducer = messageProducer;
@@ -49,7 +63,7 @@ public class AccountantThread extends KafkaConsumerThread<String, Log>
 
     @Override
     protected void doSubscribe() {
-        consumer.subscribe(Collections.singletonList(appProperties.getOrderBookLogTopic()), this);
+        consumer.subscribe(Collections.singletonList(appProperties.getAccountMessageTopic()), this);
     }
 
     @Override
@@ -92,9 +106,26 @@ public class AccountantThread extends KafkaConsumerThread<String, Log>
     }
 
     @Override
-    public void on(AccountChangeLog log) {
+    public void on(AccountMessage log) {
         logger.info("{}", JSON.toJSONString(log));
-        accountManager.deposit(log);
+
+        Account account = new Account();
+        account.setId(log.getUserId() + "-" + log.getCurrency());
+        account.setUserId(log.getUserId());
+        account.setCurrency(log.getCurrency());
+        account.setAvailable(log.getAvailable());
+        account.setHold(log.getHold());
+        accountManager.save(account);
+    }
+
+    @Override
+    public void on(OrderMessage message) {
+
+    }
+
+    @Override
+    public void on(TradeMessage message) {
+
     }
 }
 

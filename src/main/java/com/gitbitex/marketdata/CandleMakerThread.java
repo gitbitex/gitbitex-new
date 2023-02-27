@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.matchingengine.log.AccountChangeLog;
+import com.gitbitex.matchingengine.log.AccountMessage;
 import com.gitbitex.matchingengine.log.Log;
 import com.gitbitex.matchingengine.log.LogDispatcher;
 import com.gitbitex.matchingengine.log.LogHandler;
@@ -23,9 +23,11 @@ import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.util.DateUtil;
+import com.gitbitex.matchingengine.log.OrderMessage;
 import com.gitbitex.matchingengine.log.OrderOpenLog;
 import com.gitbitex.matchingengine.log.OrderReceivedLog;
 import com.gitbitex.matchingengine.log.OrderRejectedLog;
+import com.gitbitex.matchingengine.log.TradeMessage;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -75,7 +77,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
 
     @Override
     protected void doSubscribe() {
-        consumer.subscribe(Collections.singletonList(appProperties.getOrderBookLogTopic()), this);
+        consumer.subscribe(Collections.singletonList(appProperties.getOrderBookMessageTopic()), this);
     }
 
     @Override
@@ -184,7 +186,17 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
     }
 
     @Override
-    public void on(AccountChangeLog log) {
+    public void on(AccountMessage log) {
+
+    }
+
+    @Override
+    public void on(OrderMessage message) {
+
+    }
+
+    @Override
+    public void on(TradeMessage message) {
 
     }
 }

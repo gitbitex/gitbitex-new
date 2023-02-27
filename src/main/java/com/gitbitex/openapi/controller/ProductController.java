@@ -1,7 +1,9 @@
 package com.gitbitex.openapi.controller;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.gitbitex.marketdata.entity.Candle;
@@ -13,6 +15,8 @@ import com.gitbitex.openapi.model.ProductDto;
 import com.gitbitex.openapi.model.TradeDto;
 import com.gitbitex.product.entity.Product;
 import com.gitbitex.product.repository.ProductRepository;
+import com.gitbitex.user.UserManager;
+import com.gitbitex.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
@@ -28,6 +32,26 @@ public class ProductController {
     private final ProductRepository productRepository;
     private final TradeRepository tradeRepository;
     private final CandleRepository candleRepository;
+    private final UserManager userManager;
+
+    @GetMapping("/api/admin/addProduct")
+    public void addProduct(@RequestParam String baseCurrency,@RequestParam String quoteCurrency){
+        Product product=new Product();
+        product.setProductId(baseCurrency+"-"+quoteCurrency);
+        product.setBaseCurrency(baseCurrency);
+        product.setQuoteCurrency(quoteCurrency);
+        product.setBaseScale(6);
+        product.setQuoteScale(2);
+        product.setBaseMinSize(BigDecimal.ZERO);
+        product.setBaseMaxSize(new BigDecimal("100000000"));
+        productRepository.save(product);
+    }
+
+    @GetMapping("/api/admin/addUser")
+    public void addUser(@RequestParam String email,@RequestParam String password){
+        User user   =new User();
+        userManager.createUser(email,password);
+    }
 
     @GetMapping("/api/products")
     public List<ProductDto> getProducts() {

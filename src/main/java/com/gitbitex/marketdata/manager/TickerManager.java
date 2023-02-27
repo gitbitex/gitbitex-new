@@ -1,4 +1,4 @@
-package com.gitbitex.marketdata;
+package com.gitbitex.marketdata.manager;
 
 import com.alibaba.fastjson.JSON;
 

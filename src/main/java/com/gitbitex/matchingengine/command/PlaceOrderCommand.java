@@ -19,8 +19,6 @@ public class PlaceOrderCommand extends MatchingEngineCommand {
     private BigDecimal funds;
     private OrderType orderType;
     private OrderSide orderSide;
-    private String baseCurrency;
-    private String quoteCurrency;
     private Date time;
 
     public PlaceOrderCommand() {

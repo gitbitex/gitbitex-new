@@ -23,16 +23,16 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class L2UpdateMessage {
+public class L2UpdateFeedMessage {
     private String type = "l2update";
     private String productId;
     private String time;
     private List<L2OrderBookChange> changes;
 
-    public L2UpdateMessage() {
+    public L2UpdateFeedMessage() {
     }
 
-    public L2UpdateMessage(String productId, List<L2OrderBookChange> l2OrderBookChanges) {
+    public L2UpdateFeedMessage(String productId, List<L2OrderBookChange> l2OrderBookChanges) {
         this.productId = productId;
         this.time = new Date().toInstant().toString();
         this.changes = l2OrderBookChanges;

@@ -27,10 +27,12 @@ public class L3OrderBook {
         this.sequence = orderBook.getLogSequence().get();
         this.tradeId = orderBook.getTradeId().get();
         this.time = System.currentTimeMillis();
-        this.asks = orderBook.getAsks().getOrders().stream()
+        this.asks = orderBook.getAsks().values().stream()
+            .flatMap(x->x.values().stream())
             .map(Line::new)
             .collect(Collectors.toList());
-        this.bids = orderBook.getBids().getOrders().stream()
+        this.bids = orderBook.getBids().values().stream()
+            .flatMap(x->x.values().stream())
             .map(Line::new)
             .collect(Collectors.toList());
     }
@@ -42,7 +44,7 @@ public class L3OrderBook {
         public Line(Order order) {
             this.add(order.getOrderId());
             this.add(order.getPrice().stripTrailingZeros().toPlainString());
-            this.add(order.getSize().stripTrailingZeros().toPlainString());
+            this.add(order.getRemainingSize().stripTrailingZeros().toPlainString());
         }
     }
 }
