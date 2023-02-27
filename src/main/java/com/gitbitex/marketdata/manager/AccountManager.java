@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 
 import com.alibaba.fastjson.JSON;
 
+
+
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
 import com.gitbitex.marketdata.entity.Account;
@@ -12,13 +14,20 @@ import com.gitbitex.marketdata.repository.BillRepository;
 import com.gitbitex.marketdata.repository.FillRepository;
 import com.gitbitex.marketdata.repository.OrderRepository;
 import com.gitbitex.matchingengine.log.AccountMessage;
-import com.gitbitex.product.ProductManager;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.mongodb.client.model.Filters.eq;
+
 
 @RequiredArgsConstructor
 @Slf4j
@@ -52,6 +61,8 @@ public class AccountManager {
         //validateAccount(account);
         accountRepository.save(account);
         //tryNotifyAccountUpdate(account);
+
+
     }
 
     private void checkBillId(String billId) {

@@ -12,7 +12,7 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.openapi.controller.OrderController;
 import com.gitbitex.openapi.model.PlaceOrderRequest;
-import com.gitbitex.user.entity.User;
+import com.gitbitex.marketdata.entity.User;
 import com.google.common.util.concurrent.RateLimiter;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +22,6 @@ import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
 
 @Component
 @Slf4j

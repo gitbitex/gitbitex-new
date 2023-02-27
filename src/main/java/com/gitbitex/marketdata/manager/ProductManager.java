@@ -1,9 +1,9 @@
-package com.gitbitex.product;
+package com.gitbitex.marketdata.manager;
 
 import java.util.concurrent.TimeUnit;
 
-import com.gitbitex.product.entity.Product;
-import com.gitbitex.product.repository.ProductRepository;
+import com.gitbitex.marketdata.entity.Product;
+import com.gitbitex.marketdata.repository.ProductRepository;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;

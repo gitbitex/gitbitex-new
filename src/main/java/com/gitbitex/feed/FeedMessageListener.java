@@ -168,7 +168,6 @@ public class FeedMessageListener {
     }
 
     private OrderFeedMessage orderFeedMessage(OrderMessage order) {
-        logger.info(JSON.toJSONString(order));
         OrderFeedMessage message = new OrderFeedMessage();
         message.setUserId(order.getUserId());
         message.setProductId(order.getProductId());

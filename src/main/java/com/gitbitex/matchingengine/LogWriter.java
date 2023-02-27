@@ -164,7 +164,7 @@ public class LogWriter {
     }
 
     public void add(Log log) {
-        if (true) return;
+        //if (true) return;
         //logger.info(JSON.toJSONString(log));
         if (log instanceof AccountMessage) {
             sendAccountMessage((AccountMessage) log, null);

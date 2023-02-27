@@ -1,6 +1,6 @@
-package com.gitbitex.product.repository;
+package com.gitbitex.marketdata.repository;
 
-import com.gitbitex.product.entity.Product;
+import com.gitbitex.marketdata.entity.Product;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.repository.CrudRepository;
 

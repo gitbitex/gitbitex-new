@@ -1,4 +1,4 @@
-package com.gitbitex.user;
+package com.gitbitex.marketdata.manager;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -6,8 +6,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import com.gitbitex.marketdata.manager.AccountManager;
-import com.gitbitex.user.entity.User;
-import com.gitbitex.user.repository.UserRepository;
+import com.gitbitex.marketdata.entity.User;
+import com.gitbitex.marketdata.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;

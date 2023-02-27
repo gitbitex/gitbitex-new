@@ -4,10 +4,10 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.marketdata.entity.Order;
 import com.gitbitex.enums.OrderStatus;
-import com.gitbitex.product.entity.Product;
+import com.gitbitex.marketdata.entity.Product;
 import com.gitbitex.marketdata.manager.OrderManager;
 import com.gitbitex.marketdata.repository.OrderRepository;
-import com.gitbitex.product.repository.ProductRepository;
+import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.openapi.controller.OrderController;
 import com.gitbitex.openapi.model.OrderDto;
 import com.gitbitex.openapi.model.PlaceOrderRequest;

@@ -10,7 +10,7 @@ import com.gitbitex.marketdata.entity.Account;
 import com.gitbitex.marketdata.repository.AccountRepository;
 import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.openapi.model.AccountDto;
-import com.gitbitex.user.entity.User;
+import com.gitbitex.marketdata.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;

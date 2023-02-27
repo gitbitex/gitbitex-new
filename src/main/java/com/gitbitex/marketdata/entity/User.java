@@ -1,4 +1,4 @@
-package com.gitbitex.user.entity;
+package com.gitbitex.marketdata.entity;
 
 import java.math.BigDecimal;
 import java.util.Date;

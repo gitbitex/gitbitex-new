@@ -1,4 +1,4 @@
-package com.gitbitex.user.entity;
+package com.gitbitex.marketdata.entity;
 
 import java.util.Date;
 
