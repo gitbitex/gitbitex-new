@@ -2,15 +2,14 @@ package com.gitbitex.matchingengine.log;
 
 import java.math.BigDecimal;
 
-import com.gitbitex.marketdata.entity.Order.OrderSide;
-import com.gitbitex.marketdata.entity.Order.OrderType;
+import com.gitbitex.enums.OrderSide;
+import com.gitbitex.enums.OrderType;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderDoneMessage extends Log {
-    private String productId;
+public class OrderDoneLog extends OrderLog {
     private String orderId;
     private BigDecimal remainingSize;
     private BigDecimal remainingFunds;
@@ -20,7 +19,7 @@ public class OrderDoneMessage extends Log {
     private DoneReason doneReason;
     private String userId;
 
-    public OrderDoneMessage() {
+    public OrderDoneLog() {
         this.setType(LogType.ORDER_DONE);
     }
 

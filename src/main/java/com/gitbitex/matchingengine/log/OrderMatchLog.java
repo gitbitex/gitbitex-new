@@ -2,13 +2,14 @@ package com.gitbitex.matchingengine.log;
 
 import java.math.BigDecimal;
 
-import com.gitbitex.marketdata.entity.Order.OrderSide;
+
+import com.gitbitex.enums.OrderSide;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderMatchLog extends Log {
+public class OrderMatchLog extends OrderLog {
     private String productId;
     private long sequence;
     private long tradeId;

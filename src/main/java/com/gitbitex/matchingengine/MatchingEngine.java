@@ -1,11 +1,5 @@
 package com.gitbitex.matchingengine;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
@@ -14,8 +8,15 @@ import com.gitbitex.matchingengine.snapshot.L3OrderBook;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+
 @Slf4j
 public class MatchingEngine {
+    private final ProductBook productBook = new ProductBook();
     private final AccountBook accountBook;
     @Getter
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
@@ -23,15 +24,15 @@ public class MatchingEngine {
     private final AtomicLong logSequence = new AtomicLong();
     private long commandOffset;
 
-    public MatchingEngine(EngineSnapshot snapshot, LogWriter logWriter) {
+    public MatchingEngine(MatchingEngineSnapshot snapshot, LogWriter logWriter) {
         this.logWriter = logWriter;
         if (snapshot != null) {
             this.logSequence.set(snapshot.getLogSequence());
             this.commandOffset = snapshot.getCommandOffset();
-            this.accountBook = new AccountBook(snapshot.getAccountBookSnapshot(), logWriter, logSequence);
+            this.accountBook = new AccountBook(snapshot.getAccounts(), logWriter, logSequence);
             if (snapshot.getOrderBookSnapshots() != null) {
                 snapshot.getOrderBookSnapshots().forEach(x -> {
-                    OrderBook orderBook = new OrderBook(x.getProductId(), x, logWriter, accountBook, logSequence);
+                    OrderBook orderBook = new OrderBook(x, logWriter, accountBook, productBook, logSequence);
                     this.orderBooks.put(orderBook.getProductId(), orderBook);
                 });
             }
@@ -43,32 +44,43 @@ public class MatchingEngine {
     public void executeCommand(DepositCommand command) {
         commandOffset = command.getOffset();
         accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
-            command.getTransactionId());
+                command.getTransactionId());
     }
 
     public void executeCommand(PlaceOrderCommand command) {
         commandOffset = command.getOffset();
-        String productId = command.getOrder().getProductId();
-        OrderBook orderBook = orderBooks.get(command.getOrder().getProductId());
+        OrderBook orderBook = createOrderBook(command.getProductId());
+        orderBook.placeOrder(new Order(command));
+    }
+
+    private OrderBook createOrderBook(String productId) {
+        OrderBook orderBook = orderBooks.get(productId);
         if (orderBook == null) {
-            orderBook = new OrderBook(command.getOrder().getProductId(), logWriter, accountBook, logSequence);
+            orderBook = new OrderBook(productId, logWriter, accountBook, productBook, logSequence);
             orderBooks.put(productId, orderBook);
         }
-        orderBook.executeCommand(command);
+        return orderBook;
     }
 
     public void executeCommand(CancelOrderCommand command) {
         commandOffset = command.getOffset();
-        orderBooks.get(command.getProductId()).executeCommand(command);
+        orderBooks.get(command.getProductId()).cancelOrder(command.getOrderId());
     }
 
-    public EngineSnapshot takeSnapshot() {
-        AccountBookSnapshot accountBookSnapshot = accountBook.takeSnapshot();
-        List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream().map(OrderBook::takeSnapshot)
-            .collect(Collectors.toList());
+    public MatchingEngineSnapshot takeSnapshot() {
+        List<Product> products = this.productBook.getProducts().values().stream()
+                .map(Product::copy)
+                .collect(Collectors.toList());
+        List<Account> accounts = this.accountBook.getAllAccounts().stream()
+                .map(Account::copy)
+                .collect(Collectors.toList());
+        List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream()
+                .map(OrderBook::takeSnapshot)
+                .collect(Collectors.toList());
 
-        EngineSnapshot snapshot = new EngineSnapshot();
-        snapshot.setAccountBookSnapshot(accountBookSnapshot);
+        MatchingEngineSnapshot snapshot = new MatchingEngineSnapshot();
+        snapshot.setProducts(products);
+        snapshot.setAccounts(accounts);
         snapshot.setOrderBookSnapshots(orderBookSnapshots);
         snapshot.setLogSequence(logSequence.get());
         snapshot.setCommandOffset(commandOffset);

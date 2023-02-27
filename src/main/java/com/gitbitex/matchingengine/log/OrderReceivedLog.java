@@ -1,4 +1,4 @@
-package com.gitbitex.matchingengine.command;
+package com.gitbitex.matchingengine.log;
 
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderType;
@@ -10,20 +10,19 @@ import java.util.Date;
 
 @Getter
 @Setter
-public class PlaceOrderCommand extends MatchingEngineCommand {
-    private String productId;
+public class OrderReceivedLog extends OrderLog {
     private String orderId;
     private String userId;
     private BigDecimal size;
     private BigDecimal price;
     private BigDecimal funds;
+    private OrderSide side;
     private OrderType orderType;
-    private OrderSide orderSide;
-    private String baseCurrency;
-    private String quoteCurrency;
+    private String clientOid;
     private Date time;
 
-    public PlaceOrderCommand() {
-        this.setType(CommandType.PLACE_ORDER);
+    public OrderReceivedLog() {
+        this.setType(LogType.ORDER_RECEIVED);
     }
 }
+

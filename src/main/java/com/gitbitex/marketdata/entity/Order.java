@@ -11,6 +11,9 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
+import com.gitbitex.enums.OrderSide;
+import com.gitbitex.enums.OrderStatus;
+import com.gitbitex.enums.OrderType;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -92,54 +95,13 @@ public class Order {
      */
     private boolean postOnly;
 
-    public enum OrderType {
-        /**
-         * limit price order
-         */
-        LIMIT,
-        /**
-         * market price order
-         */
-        MARKET,
-    }
 
-    public enum OrderSide {
-        /**
-         * buy
-         */
-        BUY,
-        /**
-         * sell
-         */
-        SELL;
 
-        /**
-         * opposite
-         *
-         * @return
-         */
-        public OrderSide opposite() {
-            return this == BUY ? SELL : BUY;
-        }
-    }
 
-    public enum OrderStatus {
-        NEW,
-        OPEN,
-        CANCELLED,
-        FILLED,
-        DENIED,
-        RECEIVED,
-        ACCEPTED,
-        REJECTED
-    }
 
-    public enum TimeInForcePolicy {
-        GTC,
-        GTT,
-        IOC,
-        FOK,
-    }
+
+
+
 }
 
 

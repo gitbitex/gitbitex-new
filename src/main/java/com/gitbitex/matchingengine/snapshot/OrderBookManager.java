@@ -7,7 +7,7 @@ import java.nio.file.Paths;
 
 import com.alibaba.fastjson.JSON;
 
-import com.gitbitex.matchingengine.EngineSnapshot;
+import com.gitbitex.matchingengine.MatchingEngineSnapshot;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RTopic;
@@ -27,17 +27,17 @@ public class OrderBookManager {
     }
 
     @SneakyThrows
-    public EngineSnapshot getFullOrderBookSnapshot() {
+    public MatchingEngineSnapshot getFullOrderBookSnapshot() {
         Path path = Paths.get("matching-engine-snapshot.log");
         if (!Files.exists(path)) {
             return null;
         }
         byte[] bytes = Files.readAllBytes(path);
-        return JSON.parseObject(new String(bytes), EngineSnapshot.class);
+        return JSON.parseObject(new String(bytes), MatchingEngineSnapshot.class);
     }
 
     @SneakyThrows
-    public void saveFullOrderBookSnapshot(EngineSnapshot snapshot) {
+    public void saveFullOrderBookSnapshot(MatchingEngineSnapshot snapshot) {
         Path path = Paths.get("matching-engine-snapshot.log");
         if (Files.exists(path)) {
             Files.delete(path);

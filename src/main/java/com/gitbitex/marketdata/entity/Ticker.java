@@ -3,7 +3,7 @@ package com.gitbitex.marketdata.entity;
 import java.math.BigDecimal;
 import java.util.Date;
 
-import com.gitbitex.marketdata.entity.Order.OrderSide;
+import com.gitbitex.enums.OrderSide;
 import lombok.Getter;
 import lombok.Setter;
 

@@ -6,8 +6,8 @@ import java.util.List;
 import javax.persistence.criteria.Predicate;
 
 import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.entity.Order.OrderSide;
-import com.gitbitex.marketdata.entity.Order.OrderStatus;
+import com.gitbitex.enums.OrderSide;
+import com.gitbitex.enums.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -23,7 +23,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, CrudReposit
     Order findByOrderId(String orderId);
 
     default Page<Order> findAll(String userId, String productId, OrderStatus status, OrderSide side,
-        int pageIndex, int pageSize) {
+                                int pageIndex, int pageSize) {
         Specification<Order> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 

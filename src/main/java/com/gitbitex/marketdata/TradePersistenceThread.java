@@ -3,23 +3,22 @@ package com.gitbitex.marketdata;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Trade;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.matchingengine.log.AccountChangeMessage;
+import com.gitbitex.matchingengine.log.AccountChangeLog;
 import com.gitbitex.matchingengine.log.Log;
 import com.gitbitex.matchingengine.log.LogDispatcher;
 import com.gitbitex.matchingengine.log.LogHandler;
-import com.gitbitex.matchingengine.log.OrderDoneMessage;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderFilledMessage;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderOpenMessage;
-import com.gitbitex.matchingengine.log.OrderReceivedMessage;
-import com.gitbitex.matchingengine.log.OrderRejectedMessage;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.matchingengine.log.OrderRejectedLog;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import lombok.var;
@@ -30,13 +29,13 @@ import org.apache.kafka.common.TopicPartition;
 
 @Slf4j
 public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
-    implements ConsumerRebalanceListener, LogHandler {
+        implements ConsumerRebalanceListener, LogHandler {
     private final TradeRepository tradeRepository;
     private final AppProperties appProperties;
     private long uncommittedRecordCount;
 
-    public TradePersistenceThread( TradeRepository tradeRepository,
-        KafkaConsumer<String, Log> consumer, AppProperties appProperties) {
+    public TradePersistenceThread(TradeRepository tradeRepository,
+                                  KafkaConsumer<String, Log> consumer, AppProperties appProperties) {
         super(consumer, logger);
         this.tradeRepository = tradeRepository;
         this.appProperties = appProperties;
@@ -64,41 +63,32 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
 
     @Override
     protected void doPoll() {
-        var records = consumer.poll(Duration.ofSeconds(5));
-        uncommittedRecordCount += records.count();
-
-        for (ConsumerRecord<String, Log> record : records) {
-            Log log = record.value();
-            log.setOffset(record.offset());
-            logger.info("{}", JSON.toJSONString(log));
+        consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
+            Log log = x.value();
+            log.setOffset(x.offset());
             LogDispatcher.dispatch(log, this);
-        }
-
-        if (uncommittedRecordCount > 10) {
-            consumer.commitSync();
-            uncommittedRecordCount = 0;
-        }
+        });
     }
 
     @Override
-    public void on(OrderRejectedMessage log) {
+    public void on(OrderRejectedLog log) {
 
     }
 
     @Override
-    public void on(OrderReceivedMessage log) {
+    public void on(OrderReceivedLog log) {
 
     }
 
     @Override
-    public void on(OrderOpenMessage log) {
+    public void on(OrderOpenLog log) {
 
     }
 
     @Override
     public void on(OrderMatchLog log) {
         Trade trade = tradeRepository.findByProductIdAndTradeId(log.getProductId(),
-            log.getTradeId());
+                log.getTradeId());
         if (trade == null) {
             trade = new Trade();
             trade.setTradeId(log.getTradeId());
@@ -116,7 +106,7 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
     }
 
     @Override
-    public void on(OrderDoneMessage log) {
+    public void on(OrderDoneLog log) {
 
     }
 
@@ -126,7 +116,7 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
     }
 
     @Override
-    public void on(AccountChangeMessage log) {
+    public void on(AccountChangeLog log) {
 
     }
 }

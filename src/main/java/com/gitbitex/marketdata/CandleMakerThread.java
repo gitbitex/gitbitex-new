@@ -12,24 +12,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.AppProperties;
-import com.gitbitex.matchingengine.log.AccountChangeMessage;
+import com.gitbitex.matchingengine.log.AccountChangeLog;
 import com.gitbitex.matchingengine.log.Log;
 import com.gitbitex.matchingengine.log.LogDispatcher;
 import com.gitbitex.matchingengine.log.LogHandler;
-import com.gitbitex.matchingengine.log.OrderDoneMessage;
+import com.gitbitex.matchingengine.log.OrderDoneLog;
 import com.gitbitex.matchingengine.log.OrderFilledMessage;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.common.message.OrderMessage;
-import com.gitbitex.kafka.TopicUtil;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.util.DateUtil;
-import com.gitbitex.matchingengine.log.OrderOpenMessage;
-import com.gitbitex.matchingengine.log.OrderReceivedMessage;
-import com.gitbitex.matchingengine.log.OrderRejectedMessage;
+import com.gitbitex.matchingengine.log.OrderOpenLog;
+import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.matchingengine.log.OrderRejectedLog;
 import com.gitbitex.support.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -66,8 +62,6 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
-            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-            candlesByProductId.remove(productId);
         }
         //consumer.commitSync();
     }
@@ -76,8 +70,6 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            String productId = TopicUtil.parseProductIdFromTopic(partition.topic());
-            candlesByProductId.put(productId, new HashMap<>());
         }
     }
 
@@ -158,17 +150,17 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
     }
 
     @Override
-    public void on(OrderRejectedMessage log) {
+    public void on(OrderRejectedLog log) {
 
     }
 
     @Override
-    public void on(OrderReceivedMessage log) {
+    public void on(OrderReceivedLog log) {
 
     }
 
     @Override
-    public void on(OrderOpenMessage log) {
+    public void on(OrderOpenLog log) {
 
     }
 
@@ -182,7 +174,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
     }
 
     @Override
-    public void on(OrderDoneMessage log) {
+    public void on(OrderDoneLog log) {
 
     }
 
@@ -192,7 +184,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Log> implemen
     }
 
     @Override
-    public void on(AccountChangeMessage log) {
+    public void on(AccountChangeLog log) {
 
     }
 }

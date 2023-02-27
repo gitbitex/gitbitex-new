@@ -1,30 +1,21 @@
 package com.gitbitex.feed;
 
-import javax.annotation.PostConstruct;
-
 import com.alibaba.fastjson.JSON;
-
+import com.gitbitex.feed.message.*;
 import com.gitbitex.marketdata.entity.Account;
-import com.gitbitex.common.message.OrderBookLog;
-import com.gitbitex.matchingengine.log.OrderDoneMessage;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderOpenMessage;
-import com.gitbitex.matchingengine.log.OrderReceivedMessage;
-import com.gitbitex.feed.message.AccountMessage;
-import com.gitbitex.feed.message.CandleMessage;
-import com.gitbitex.feed.message.OrderMatchMessage;
-import com.gitbitex.feed.message.OrderMessage;
-import com.gitbitex.feed.message.TickerMessage;
 import com.gitbitex.marketdata.entity.Candle;
+import com.gitbitex.marketdata.entity.Order;
 import com.gitbitex.marketdata.entity.Ticker;
+import com.gitbitex.matchingengine.log.*;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
-import com.gitbitex.marketdata.entity.Order;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
+
+import javax.annotation.PostConstruct;
 
 @Component
 @Slf4j
@@ -67,48 +58,42 @@ public class FeedMessageListener {
         });
 
         redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            OrderBookLog log = JSON.parseObject(msg, OrderBookLog.class);
-            String fullChannel = log.getProductId() + ".full";
+            Log log = JSON.parseObject(msg, Log.class);
             switch (log.getType()) {
                 case ORDER_RECEIVED:
-                    OrderReceivedMessage orderReceivedMessage = JSON.parseObject(msg, OrderReceivedMessage.class);
-                    sessionManager.sendMessageToChannel(fullChannel,
-                        (orderReceivedMessage(orderReceivedMessage)));
+                    OrderReceivedLog orderReceivedLog = JSON.parseObject(msg, OrderReceivedLog.class);
+                    sessionManager.sendMessageToChannel(orderReceivedLog.getProductId() + ".full", (orderReceivedMessage(orderReceivedLog)));
                     break;
                 case ORDER_MATCH:
                     OrderMatchLog orderMatchLog = JSON.parseObject(msg, OrderMatchLog.class);
-                    String matchChannel = log.getProductId() + ".match";
+                    String matchChannel = orderMatchLog.getProductId() + ".match";
                     sessionManager.sendMessageToChannel(matchChannel, (matchMessage(orderMatchLog)));
-                    sessionManager.sendMessageToChannel(fullChannel, (matchMessage(orderMatchLog)));
+                    sessionManager.sendMessageToChannel(orderMatchLog.getProductId() + ".full", (matchMessage(orderMatchLog)));
                     break;
                 case ORDER_OPEN:
-                    OrderOpenMessage orderOpenMessage = JSON.parseObject(msg, OrderOpenMessage.class);
-                    sessionManager.sendMessageToChannel(fullChannel, (orderOpenMessage(orderOpenMessage)));
+                    OrderOpenLog orderOpenLog = JSON.parseObject(msg, OrderOpenLog.class);
+                    sessionManager.sendMessageToChannel(orderOpenLog.getProductId() + ".full", (orderOpenMessage(orderOpenLog)));
                     break;
                 case ORDER_DONE:
-                    OrderDoneMessage orderDoneMessage = JSON.parseObject(msg, OrderDoneMessage.class);
-                    sessionManager.sendMessageToChannel(fullChannel, (orderDoneMessage(orderDoneMessage)));
+                    OrderDoneLog orderDoneLog = JSON.parseObject(msg, OrderDoneLog.class);
+                    sessionManager.sendMessageToChannel(orderDoneLog.getProductId() + ".full", (orderDoneMessage(orderDoneLog)));
                     break;
                 default:
             }
         });
     }
 
-    private com.gitbitex.feed.message.OrderReceivedMessage orderReceivedMessage(OrderReceivedMessage log) {
-        com.gitbitex.feed.message.OrderReceivedMessage message = new com.gitbitex.feed.message.OrderReceivedMessage();
+    private OrderReceivedMessage orderReceivedMessage(OrderReceivedLog log) {
+        OrderReceivedMessage message = new com.gitbitex.feed.message.OrderReceivedMessage();
         message.setProductId(log.getProductId());
         message.setTime(log.getTime().toInstant().toString());
         message.setSequence(log.getSequence());
-        message.setOrderId(log.getOrder().getOrderId());
-        message.setSize(log.getOrder().getSize().stripTrailingZeros().toPlainString());
-        message.setPrice(
-            log.getOrder().getPrice() != null ? log.getOrder().getPrice().stripTrailingZeros().toPlainString() :
-                null);
-        message.setFunds(
-            log.getOrder().getFunds() != null ? log.getOrder().getFunds().stripTrailingZeros().toPlainString() :
-                null);
-        message.setSide(log.getOrder().getSide().name().toUpperCase());
-        message.setOrderType(log.getOrder().getType().name().toUpperCase());
+        message.setOrderId(log.getOrderId());
+        message.setSize(log.getSize().stripTrailingZeros().toPlainString());
+        message.setPrice(log.getPrice() != null ? log.getPrice().stripTrailingZeros().toPlainString() : null);
+        message.setFunds(log.getFunds() != null ? log.getFunds().stripTrailingZeros().toPlainString() : null);
+        message.setSide(log.getSide().name().toUpperCase());
+        message.setOrderType(log.getType().name().toUpperCase());
         return message;
     }
 
@@ -126,7 +111,7 @@ public class FeedMessageListener {
         return message;
     }
 
-    private com.gitbitex.feed.message.OrderOpenMessage orderOpenMessage(OrderOpenMessage log) {
+    private com.gitbitex.feed.message.OrderOpenMessage orderOpenMessage(OrderOpenLog log) {
         com.gitbitex.feed.message.OrderOpenMessage message = new com.gitbitex.feed.message.OrderOpenMessage();
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());
@@ -137,7 +122,7 @@ public class FeedMessageListener {
         return message;
     }
 
-    private com.gitbitex.feed.message.OrderDoneMessage orderDoneMessage(OrderDoneMessage log) {
+    private com.gitbitex.feed.message.OrderDoneMessage orderDoneMessage(OrderDoneLog log) {
         com.gitbitex.feed.message.OrderDoneMessage message = new com.gitbitex.feed.message.OrderDoneMessage();
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());
@@ -167,6 +152,7 @@ public class FeedMessageListener {
     }
 
     private OrderMessage orderMessage(Order order) {
+        logger.info(JSON.toJSONString(order));
         OrderMessage message = new OrderMessage();
         message.setUserId(order.getUserId());
         message.setProductId(order.getProductId());
@@ -178,11 +164,11 @@ public class FeedMessageListener {
         message.setOrderType(order.getType().name().toLowerCase());
         message.setCreatedAt(order.getCreatedAt().toInstant().toString());
         message.setFillFees(
-            order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
+                order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
         message.setFilledSize(
-            order.getFilledSize() != null ? order.getFilledSize().stripTrailingZeros().toPlainString() : "0");
+                order.getFilledSize() != null ? order.getFilledSize().stripTrailingZeros().toPlainString() : "0");
         message.setExecutedValue(
-            order.getExecutedValue() != null ? order.getExecutedValue().stripTrailingZeros().toPlainString() : "0");
+                order.getExecutedValue() != null ? order.getExecutedValue().stripTrailingZeros().toPlainString() : "0");
         message.setStatus(order.getStatus().name().toLowerCase());
         return message;
     }
@@ -192,7 +178,7 @@ public class FeedMessageListener {
         message.setUserId(account.getUserId());
         message.setCurrencyCode(account.getCurrency());
         message.setAvailable(
-            account.getAvailable() != null ? account.getAvailable().stripTrailingZeros().toPlainString() : "0");
+                account.getAvailable() != null ? account.getAvailable().stripTrailingZeros().toPlainString() : "0");
         message.setHold(account.getHold() != null ? account.getHold().stripTrailingZeros().toPlainString() : "0");
         return message;
     }

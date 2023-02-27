@@ -1,36 +1,26 @@
 package com.gitbitex.marketdata;
 
+import com.gitbitex.AppProperties;
+import com.gitbitex.enums.OrderStatus;
+import com.gitbitex.kafka.KafkaMessageProducer;
+import com.gitbitex.marketdata.entity.Order;
+import com.gitbitex.matchingengine.log.*;
+import com.gitbitex.matchingengine.log.OrderDoneLog.DoneReason;
+import com.gitbitex.support.kafka.KafkaConsumerThread;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
+
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import com.gitbitex.AppProperties;
-import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.matchingengine.log.AccountChangeMessage;
-import com.gitbitex.matchingengine.log.Log;
-import com.gitbitex.matchingengine.log.LogDispatcher;
-import com.gitbitex.matchingengine.log.LogHandler;
-import com.gitbitex.matchingengine.log.OrderDoneMessage;
-import com.gitbitex.matchingengine.log.OrderDoneMessage.DoneReason;
-import com.gitbitex.matchingengine.log.OrderFilledMessage;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderOpenMessage;
-import com.gitbitex.matchingengine.log.OrderReceivedMessage;
-import com.gitbitex.matchingengine.log.OrderRejectedMessage;
-import com.gitbitex.marketdata.entity.Order.OrderStatus;
-import com.gitbitex.support.kafka.KafkaConsumerThread;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-import lombok.var;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.TopicPartition;
-
 @Slf4j
 public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
-    implements ConsumerRebalanceListener, LogHandler {
+        implements ConsumerRebalanceListener, LogHandler {
     private final List<String> productIds;
     private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
@@ -38,7 +28,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
     private long uncommittedRecordCount;
 
     public OrderPersistenceThread(List<String> productIds, KafkaConsumer<String, Log> kafkaConsumer,
-        KafkaMessageProducer messageProducer, AppProperties appProperties, OrderManager orderManager) {
+                                  KafkaMessageProducer messageProducer, AppProperties appProperties, OrderManager orderManager) {
         super(kafkaConsumer, logger);
         this.productIds = productIds;
         this.messageProducer = messageProducer;
@@ -50,7 +40,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
-            consumer.commitSync();
+            //consumer.commitSync();
         }
     }
 
@@ -68,33 +58,49 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
 
     @Override
     protected void doPoll() {
-        var records = consumer.poll(Duration.ofSeconds(5));
-        uncommittedRecordCount += records.count();
-
-        for (ConsumerRecord<String, Log> record : records) {
-            Log log = record.value();
-            log.setOffset(record.offset());
+        consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
+            Log log = x.value();
+            log.setOffset(x.offset());
             LogDispatcher.dispatch(log, this);
-        }
-
-        if (uncommittedRecordCount > 10) {
-            consumer.commitSync();
-            uncommittedRecordCount = 0;
-        }
+        });
     }
 
     @Override
-    public void on(OrderRejectedMessage log) {
-        orderManager.rejectOrder(log.getOrder());
+    public void on(OrderRejectedLog log) {
+        Order order = new Order();
+        order.setOrderId(log.getOrderId());
+        order.setProductId(log.getProductId());
+        order.setUserId(log.getUserId());
+        order.setStatus(OrderStatus.REJECTED);
+        order.setPrice(log.getPrice());
+        order.setSize(log.getSize());
+        order.setFunds(log.getFunds());
+        order.setClientOid(log.getClientOid());
+        order.setSide(log.getSide());
+        order.setType(log.getOrderType());
+        order.setTime(log.getTime());
+        orderManager.rejectOrder(order);
     }
 
     @SneakyThrows
-    public void on(OrderReceivedMessage log) {
-        orderManager.receiveOrder(log.getOrder());
+    public void on(OrderReceivedLog log) {
+        Order order = new Order();
+        order.setOrderId(log.getOrderId());
+        order.setProductId(log.getProductId());
+        order.setUserId(log.getUserId());
+        order.setStatus(OrderStatus.RECEIVED);
+        order.setPrice(log.getPrice());
+        order.setSize(log.getSize());
+        order.setFunds(log.getFunds());
+        order.setClientOid(log.getClientOid());
+        order.setSide(log.getSide());
+        order.setType(log.getOrderType());
+        order.setTime(log.getTime());
+        orderManager.receiveOrder(order);
     }
 
     @SneakyThrows
-    public void on(OrderOpenMessage log) {
+    public void on(OrderOpenLog log) {
         orderManager.openOrder(log.getOrderId());
     }
 
@@ -103,9 +109,9 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
     }
 
     @SneakyThrows
-    public void on(OrderDoneMessage log) {
+    public void on(OrderDoneLog log) {
         orderManager.closeOrder(log.getOrderId(),
-            log.getDoneReason() == DoneReason.CANCELLED ? OrderStatus.CANCELLED : OrderStatus.FILLED);
+                log.getDoneReason() == DoneReason.CANCELLED ? OrderStatus.CANCELLED : OrderStatus.FILLED);
     }
 
     @Override
@@ -113,6 +119,6 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
     }
 
     @Override
-    public void on(AccountChangeMessage log) {
+    public void on(AccountChangeLog log) {
     }
 }

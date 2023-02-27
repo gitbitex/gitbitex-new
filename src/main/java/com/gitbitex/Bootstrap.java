@@ -12,7 +12,6 @@ import com.gitbitex.marketdata.AccountManager;
 import com.gitbitex.marketdata.AccountantThread;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.CandleMakerThread;
-import com.gitbitex.marketdata.OrderBookLogPublishThread;
 import com.gitbitex.marketdata.OrderPersistenceThread;
 import com.gitbitex.marketdata.OrderManager;
 import com.gitbitex.marketdata.TickerManager;
@@ -55,18 +54,18 @@ public class Bootstrap {
 
     @PostConstruct
     public void init() {
-        startAccountant(appProperties.getAccountantThreadNum());
+        //startAccountant(appProperties.getAccountantThreadNum());
 
         List<String> productIds = productRepository.findAll().stream()
             .map(Product::getProductId)
             .collect(Collectors.toList());
 
         startMatchingEngine(productIds, 1);
-        startOrderCommandSharding(productIds, 1);
-        startCandleMaker(productIds, 1);
-        startTicker(productIds, 1);
-        startTradePersistence(productIds, 1);
-        startOrderBookLogPublish(productIds, 1);
+        //startOrderCommandSharding(productIds, 1);
+        //startCandleMaker(productIds, 1);
+        //startTicker(productIds, 1);
+        //startTradePersistence(productIds, 1);
+        //startOrderBookLogPublish(productIds, 1);
     }
 
     @PreDestroy
@@ -97,7 +96,7 @@ public class Bootstrap {
             MatchingThread matchingThread = new MatchingThread(orderBookManager,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
                     new MatchingEngineCommandDeserializer()),
-                messageProducer, appProperties);
+                messageProducer, redissonClient, appProperties);
             matchingThread.setName(groupId + "-" + matchingThread.getId());
             matchingThread.start();
             threads.add(matchingThread);
@@ -106,7 +105,7 @@ public class Bootstrap {
 
     private void startOrderCommandSharding(List<String> productIds, int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "OrderCommandSharding";
+            String groupId = "OrderPersistenceThread";
             OrderPersistenceThread orderPersistenceThread = new OrderPersistenceThread(
                 productIds,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
@@ -155,17 +154,6 @@ public class Bootstrap {
         }
     }
 
-    private void startTradePersistence(List<String> productIds, int nThreads) {
-        for (int i = 0; i < nThreads; i++) {
-            String groupId = "TradePersistence";
-            OrderBookLogPublishThread thread = new OrderBookLogPublishThread(productIds,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new StringDeserializer()),
-                redissonClient, appProperties);
-            thread.setName(groupId + "-" + thread.getId());
-            thread.start();
-            threads.add(thread);
-        }
-    }
 
     public Properties getProperties(String groupId) {
         Properties properties = new Properties();

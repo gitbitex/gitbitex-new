@@ -3,6 +3,7 @@ package com.gitbitex;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.marketdata.entity.Order;
+import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.product.entity.Product;
 import com.gitbitex.marketdata.OrderManager;
 import com.gitbitex.marketdata.repository.OrderRepository;
@@ -59,7 +60,7 @@ class ApplicationTests {
             String orderId = placeOrder(productId, "limit", "buy", "1", "1");
             Thread.sleep(20000);
             Order order = orderRepository.findByOrderId(orderId);
-            Assert.isTrue(order.getStatus() == Order.OrderStatus.OPEN);
+            Assert.isTrue(order.getStatus() == OrderStatus.OPEN);
         }
 
 

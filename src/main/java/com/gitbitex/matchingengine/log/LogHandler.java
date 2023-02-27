@@ -1,17 +1,17 @@
 package com.gitbitex.matchingengine.log;
 
 public interface LogHandler {
-    void on(OrderRejectedMessage log);
+    void on(OrderRejectedLog log);
 
-    void on(OrderReceivedMessage log);
+    void on(OrderReceivedLog log);
 
-    void on(OrderOpenMessage log);
+    void on(OrderOpenLog log);
 
     void on(OrderMatchLog log);
 
-    void on(OrderDoneMessage log);
+    void on(OrderDoneLog log);
 
     void on(OrderFilledMessage log);
 
-    void on(AccountChangeMessage log);
+    void on(AccountChangeLog log);
 }

@@ -1,14 +1,15 @@
 package com.gitbitex.matchingengine.snapshot;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.gitbitex.enums.OrderSide;
 import com.gitbitex.matchingengine.OrderBook;
-import com.gitbitex.matchingengine.PageLine;
-import com.gitbitex.marketdata.entity.Order.OrderSide;
+
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.lang.Nullable;
@@ -27,28 +28,28 @@ public class L2OrderBook {
 
     public L2OrderBook(OrderBook orderBook) {
         this.productId = orderBook.getProductId();
-        this.sequence = orderBook.getSequence().get();
+        this.sequence = orderBook.getLogSequence().get();
         this.time = System.currentTimeMillis();
-        this.asks = orderBook.getAsks().getLines().stream()
+        /*this.asks = orderBook.getAsks().getLines().stream()
             .map(Line::new)
             .collect(Collectors.toList());
         this.bids = orderBook.getBids().getLines().stream()
             .map(Line::new)
-            .collect(Collectors.toList());
+            .collect(Collectors.toList());*/
     }
 
     public L2OrderBook(OrderBook orderBook, int maxSize) {
         this.productId = orderBook.getProductId();
-        this.sequence = orderBook.getSequence().get();
+        this.sequence = orderBook.getLogSequence().get();
         this.time = System.currentTimeMillis();
-        this.asks = orderBook.getAsks().getLines().stream()
+        /*this.asks = orderBook.getAsks().getLines().stream()
             .limit(maxSize)
-            .map(Line::new)
+            .map(x->new Line(x.))
             .collect(Collectors.toList());
         this.bids = orderBook.getBids().getLines().stream()
             .limit(maxSize)
             .map(Line::new)
-            .collect(Collectors.toList());
+            .collect(Collectors.toList());*/
     }
 
     @Nullable
@@ -103,10 +104,10 @@ public class L2OrderBook {
         public Line() {
         }
 
-        public Line(PageLine line) {
-            add(line.getPrice().stripTrailingZeros().toPlainString());
-            add(line.getTotalSize().stripTrailingZeros().toPlainString());
-            add(line.getOrders().size());
+        public Line(BigDecimal price,BigDecimal totalSize, BigDecimal orderCount ) {
+            add(price);
+            add(totalSize);
+            add(orderCount);
         }
 
         public String getPrice() {
