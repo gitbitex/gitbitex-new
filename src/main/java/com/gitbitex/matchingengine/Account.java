@@ -13,8 +13,8 @@ public class Account {
     private BigDecimal available;
     private BigDecimal hold;
 
-    public Account copy(){
-        Account copy=new Account();
+    public Account copy() {
+        Account copy = new Account();
         copy.setUserId(userId);
         copy.setCurrency(currency);
         copy.setAvailable(available);

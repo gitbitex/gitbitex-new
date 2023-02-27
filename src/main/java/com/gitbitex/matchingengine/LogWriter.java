@@ -38,6 +38,7 @@ public class LogWriter {
     StripedExecutorService accountLogSender = new StripedExecutorService(100);
 
     public void add(Log log) {
+        if (true)return;
         //logger.info(JSON.toJSONString(log));
         if (log instanceof AccountMessage) {
             sendAccountMessage((AccountMessage)log, null);

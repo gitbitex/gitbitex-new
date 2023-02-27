@@ -23,6 +23,8 @@ import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -88,7 +90,7 @@ public class CoinbaseTrader {
 
     public class MyClient extends org.java_websocket.client.WebSocketClient {
         //String productId = "BTC-USDT";
-        String userId = "32829815-083d-433e-94ba-0fbfe1559552";
+        String userId = "01dc3a96-d067-4da7-b687-83c42e9308cb";
 
         public MyClient(URI serverUri) {
             super(serverUri, new Draft_6455(), null, 1000);
@@ -111,7 +113,7 @@ public class CoinbaseTrader {
                     String productId = message.getProduct_id() + "T";
                     switch (message.getType()) {
                         case "received":
-                            logger.info(JSON.toJSONString(message));
+                            //logger.info(JSON.toJSONString(message));
 
                             if (message.getPrice() != null) {
                                 PlaceOrderRequest order = new PlaceOrderRequest();

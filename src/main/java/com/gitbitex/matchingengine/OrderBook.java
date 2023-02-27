@@ -41,7 +41,7 @@ public class OrderBook {
     private final LinkedHashMap<String, Order> orderById = new LinkedHashMap<>();
 
     public OrderBook(String productId, LogWriter logWriter, AccountBook accountBook, ProductBook productBook,
-        TickerBook tickerBook) {
+                     TickerBook tickerBook) {
         this.productId = productId;
         this.logWriter = logWriter;
         this.productBook = productBook;
@@ -50,7 +50,7 @@ public class OrderBook {
     }
 
     public OrderBook(String productId, OrderBookSnapshot snapshot, LogWriter logWriter, AccountBook accountBook,
-        ProductBook productBook, TickerBook tickerBook) {
+                     ProductBook productBook, TickerBook tickerBook) {
         this(productId, logWriter, accountBook, productBook, tickerBook);
         if (snapshot != null) {
             this.tradeId.set(snapshot.getTradeId());
@@ -66,16 +66,16 @@ public class OrderBook {
         Account takerQuoteAccount = accountBook.getAccount(takerOrder.getUserId(), product.getQuoteCurrency());
 
         if (!holdOrderFunds(takerOrder, takerBaseAccount, takerQuoteAccount)) {
-            orderRejectedLog(takerOrder, RejectReason.INSUFFICIENT_FUNDS);
+            orderRejected(takerOrder, RejectReason.INSUFFICIENT_FUNDS);
             return;
         }
 
         // order received
-        orderReceivedLog(takerOrder);
+        orderReceived(takerOrder);
 
         // let's start matching
         Iterator<Entry<BigDecimal, LinkedHashMap<String, Order>>> priceItr = (takerOrder.getSide() == OrderSide.BUY
-            ? asks : bids).entrySet().iterator();
+                ? asks : bids).entrySet().iterator();
         MATCHING:
         while (priceItr.hasNext()) {
             Map.Entry<BigDecimal, LinkedHashMap<String, Order>> entry = priceItr.next();
@@ -91,18 +91,23 @@ public class OrderBook {
             while (orderItr.hasNext()) {
                 Map.Entry<String, Order> orderEntry = orderItr.next();
                 Order makerOrder = orderEntry.getValue();
-                Account makerBaseAccount = accountBook.getAccount(makerOrder.getUserId(), product.getBaseCurrency());
-                Account makerQuoteAccount = accountBook.getAccount(makerOrder.getUserId(), product.getQuoteCurrency());
 
-                if (!match(takerOrder, makerOrder, takerBaseAccount, takerQuoteAccount, makerBaseAccount,
-                    makerQuoteAccount)) {
+                // make trade
+                Trade trade = trade(takerOrder, makerOrder);
+                if (trade == null) {
                     break MATCHING;
                 }
+
+                // exchange account funds
+                Account makerBaseAccount = accountBook.getAccount(makerOrder.getUserId(), product.getBaseCurrency());
+                Account makerQuoteAccount = accountBook.getAccount(makerOrder.getUserId(), product.getQuoteCurrency());
+                accountBook.exchange(takerBaseAccount, takerQuoteAccount, makerBaseAccount, makerQuoteAccount,
+                        takerOrder.getSide(), trade.getSize(), trade.getFunds());
 
                 // if the maker order is fully filled, remove it from the order book.
                 if (makerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) == 0) {
                     orderItr.remove();
-                    orderDoneLog(makerOrder);
+                    orderDone(makerOrder);
                     unholdOrderFunds(makerOrder, makerBaseAccount, makerQuoteAccount);
                 }
             }
@@ -119,9 +124,9 @@ public class OrderBook {
         // will be cancelled
         if (takerOrder.getType() == OrderType.LIMIT && takerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
             addOrder(takerOrder);
-            orderOpenLog(takerOrder);
+            orderOpen(takerOrder);
         } else {
-            orderDoneLog(takerOrder);
+            orderDone(takerOrder);
             unholdOrderFunds(takerOrder, takerBaseAccount, takerQuoteAccount);
         }
     }
@@ -135,7 +140,7 @@ public class OrderBook {
         Product product = productBook.getProduct(productId);
 
         TreeMap<BigDecimal, LinkedHashMap<String, Order>> ordersByPrice = order.getSide() == OrderSide.BUY ? bids
-            : asks;
+                : asks;
         LinkedHashMap<String, Order> orders = ordersByPrice.get(order.getPrice());
         orders.remove(orderId);
         if (orders.isEmpty()) {
@@ -143,7 +148,7 @@ public class OrderBook {
         }
         orderById.remove(orderId);
 
-        orderDoneLog(order);
+        orderDone(order);
 
         Map<String, Account> makerAccounts = accountBook.getAccountsByUserId(order.getUserId());
         Account makerBaseAccount = makerAccounts.get(product.getBaseCurrency());
@@ -151,8 +156,7 @@ public class OrderBook {
         unholdOrderFunds(order, makerBaseAccount, makerQuoteAccount);
     }
 
-    private boolean match(Order takerOrder, Order makerOrder, Account takerBaseAccount, Account takerQuoteAccount,
-        Account makerBaseAccount, Account makerQuoteAccount) {
+    private Trade trade(Order takerOrder, Order makerOrder) {
         BigDecimal price = makerOrder.getPrice();
 
         // get taker size
@@ -166,14 +170,14 @@ public class OrderBook {
         }
 
         if (takerSize.compareTo(BigDecimal.ZERO) == 0) {
-            return false;
+            return null;
         }
 
         // take the minimum size of taker and maker as trade size
         BigDecimal tradeSize = takerSize.min(makerOrder.getRemainingSize());
         BigDecimal tradeFunds = tradeSize.multiply(price);
 
-        // adjust the size/funds
+        // fill order
         takerOrder.setRemainingSize(takerOrder.getRemainingSize().subtract(tradeSize));
         makerOrder.setRemainingSize(makerOrder.getRemainingSize().subtract(tradeSize));
         if (takerOrder.getSide() == OrderSide.BUY) {
@@ -182,26 +186,25 @@ public class OrderBook {
             makerOrder.setRemainingFunds(makerOrder.getRemainingFunds().subtract(tradeFunds));
         }
 
-        orderMatchLog(takerOrder, makerOrder, tradeSize, tradeFunds);
-
-        // exchange account funds
-        accountBook.exchange(takerBaseAccount, takerQuoteAccount, makerBaseAccount, makerQuoteAccount,
-            takerOrder.getSide(), tradeSize, tradeFunds);
-
-        return true;
+        Trade trade = new Trade();
+        trade.setSize(tradeSize);
+        trade.setFunds(tradeFunds);
+        trade.setPrice(price);
+        orderMatch(takerOrder, makerOrder, trade);
+        return trade;
     }
 
     public void addOrder(Order order) {
-        (order.getSide() == OrderSide.BUY ? bids : asks).computeIfAbsent(order.getPrice(), k -> new LinkedHashMap<>())
-            .put(order.getOrderId(), order);
+        (order.getSide() == OrderSide.BUY ? bids : asks)
+                .computeIfAbsent(order.getPrice(), k -> new LinkedHashMap<>())
+                .put(order.getOrderId(), order);
         orderById.put(order.getOrderId(), order);
     }
 
     public void addOrders(List<Order> orders) {
-        if (orders == null) {
-            return;
+        if (orders != null) {
+            orders.forEach(this::addOrder);
         }
-        orders.forEach(this::addOrder);
     }
 
     private boolean isPriceCrossed(Order takerOrder, BigDecimal makerOrderPrice) {
@@ -218,13 +221,13 @@ public class OrderBook {
     private boolean holdOrderFunds(Order takerOrder, Account takerBaseAccount, Account takerQuoteAccount) {
         if (takerOrder.getSide() == OrderSide.BUY) {
             if (takerQuoteAccount == null || takerQuoteAccount.getAvailable().compareTo(takerOrder.getRemainingFunds())
-                < 0) {
+                    < 0) {
                 return false;
             }
             accountBook.hold(takerQuoteAccount, takerOrder.getRemainingFunds());
         } else {
             if (takerBaseAccount == null || takerBaseAccount.getAvailable().compareTo(takerOrder.getRemainingSize())
-                < 0) {
+                    < 0) {
                 return false;
             }
             accountBook.hold(takerBaseAccount, takerOrder.getRemainingSize());
@@ -244,23 +247,7 @@ public class OrderBook {
         }
     }
 
-    private OrderMessage orderMessage(Order order) {
-        OrderMessage orderMessage = new OrderMessage();
-        orderMessage.setProductId(productId);
-        orderMessage.setUserId(order.getUserId());
-        orderMessage.setPrice(order.getPrice());
-        orderMessage.setFunds(order.getFunds());
-        orderMessage.setSide(order.getSide());
-        orderMessage.setSize(order.getSize());
-        orderMessage.setOrderId(order.getOrderId());
-        orderMessage.setOrderType(order.getType());
-        orderMessage.setTime(order.getTime());
-        orderMessage.setRemainingSize(order.getRemainingSize());
-        orderMessage.setRemainingFunds(order.getRemainingFunds());
-        return orderMessage;
-    }
-
-    private void orderRejectedLog(Order order, RejectReason rejectReason) {
+    private void orderRejected(Order order, RejectReason rejectReason) {
         OrderMessage orderMessage = orderMessage(order);
         orderMessage.setStatus(OrderStatus.REJECTED);
         logWriter.add(orderMessage);
@@ -280,7 +267,7 @@ public class OrderBook {
         logWriter.add(log);
     }
 
-    private void orderReceivedLog(Order order) {
+    private void orderReceived(Order order) {
         OrderMessage orderMessage = orderMessage(order);
         orderMessage.setStatus(OrderStatus.RECEIVED);
         logWriter.add(orderMessage);
@@ -299,7 +286,7 @@ public class OrderBook {
         logWriter.add(log);
     }
 
-    private void orderOpenLog(Order order) {
+    private void orderOpen(Order order) {
         OrderMessage orderMessage = orderMessage(order);
         orderMessage.setStatus(OrderStatus.OPEN);
         logWriter.add(orderMessage);
@@ -316,7 +303,7 @@ public class OrderBook {
         logWriter.add(log);
     }
 
-    private void orderMatchLog(Order takerOrder, Order makerOrder, BigDecimal size, BigDecimal funds) {
+    private void orderMatch(Order takerOrder, Order makerOrder, Trade trade) {
         long nextTradeId = tradeId.incrementAndGet();
 
         TradeMessage tradeMessage = new TradeMessage();
@@ -325,7 +312,7 @@ public class OrderBook {
         tradeMessage.setTakerOrderId(takerOrder.getOrderId());
         tradeMessage.setMakerOrderId(takerOrder.getOrderId());
         tradeMessage.setPrice(makerOrder.getPrice());
-        tradeMessage.setSize(size);
+        tradeMessage.setSize(trade.getSize());
         logWriter.add(tradeMessage);
 
         OrderMatchLog log = new OrderMatchLog();
@@ -337,8 +324,8 @@ public class OrderBook {
         log.setTakerUserId(takerOrder.getUserId());
         log.setMakerUserId(makerOrder.getUserId());
         log.setPrice(makerOrder.getPrice());
-        log.setSize(size);
-        log.setFunds(funds);
+        log.setSize(trade.getSize());
+        log.setFunds(trade.getFunds());
         log.setSide(makerOrder.getSide());
         log.setTime(takerOrder.getTime());
         logWriter.add(log);
@@ -346,13 +333,13 @@ public class OrderBook {
         tickerBook.refreshTicker(productId, log);
     }
 
-    private void orderDoneLog(Order order) {
+    private void orderDone(Order order) {
         OrderDoneLog.DoneReason doneReason = order.getRemainingSize().compareTo(BigDecimal.ZERO) > 0
-            ? OrderDoneLog.DoneReason.CANCELLED : OrderDoneLog.DoneReason.FILLED;
+                ? OrderDoneLog.DoneReason.CANCELLED : OrderDoneLog.DoneReason.FILLED;
 
         OrderMessage orderMessage = orderMessage(order);
         orderMessage.setStatus(
-            order.getRemainingSize().compareTo(BigDecimal.ZERO) > 0 ? OrderStatus.CANCELLED : OrderStatus.FILLED);
+                order.getRemainingSize().compareTo(BigDecimal.ZERO) > 0 ? OrderStatus.CANCELLED : OrderStatus.FILLED);
         logWriter.add(orderMessage);
 
         OrderDoneLog log = new OrderDoneLog();
@@ -371,5 +358,21 @@ public class OrderBook {
         log.setOrderType(order.getType());
         log.setTime(new Date());
         logWriter.add(log);
+    }
+
+    private OrderMessage orderMessage(Order order) {
+        OrderMessage orderMessage = new OrderMessage();
+        orderMessage.setProductId(productId);
+        orderMessage.setUserId(order.getUserId());
+        orderMessage.setPrice(order.getPrice());
+        orderMessage.setFunds(order.getFunds());
+        orderMessage.setSide(order.getSide());
+        orderMessage.setSize(order.getSize());
+        orderMessage.setOrderId(order.getOrderId());
+        orderMessage.setOrderType(order.getType());
+        orderMessage.setTime(order.getTime());
+        orderMessage.setRemainingSize(order.getRemainingSize());
+        orderMessage.setRemainingFunds(order.getRemainingFunds());
+        return orderMessage;
     }
 }

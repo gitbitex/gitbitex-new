@@ -37,40 +37,7 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
         super(messageKafkaConsumer, logger);
         this.orderBookManager = orderBookManager;
         this.appProperties = appProperties;
-        this.logWriter = new LogWriter(messageProducer,redissonClient,appProperties);
-
-        executorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                long i=0;
-                long t1=System.currentTimeMillis();
-                long t2;
-                while (true){
-                    MatchingEngineCommand command= null;
-                    try {
-                        command = commands.take();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    //System.out.println("remaining "+commands.size());
-                    if (command==null){
-                        continue;
-                    }
-                    try {
-                        CommandDispatcher.dispatch(command, MatchingThread.this);
-                    }catch (Exception e){
-                        e.printStackTrace();
-                    }
-                    i++;
-                    //if (i==100769) {
-                        t2 = System.currentTimeMillis();
-                    System.out.println("i="+i+ " time="+ (t2-t1));
-                    //}
-
-                    //System.out.println(i);
-                }
-            }
-        });
+        this.logWriter = new LogWriter(messageProducer, redissonClient, appProperties);
     }
 
     @Override
@@ -96,34 +63,30 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
     protected void doSubscribe() {
         consumer.subscribe(Collections.singletonList(appProperties.getMatchingEngineCommandTopic()), this);
     }
-    long i=0;
+
+    long i = 0;
     long t1;
     long t2;
 
-    BlockingQueue<MatchingEngineCommand> commands=new LinkedBlockingQueue<>();
-    ExecutorService executorService= Executors.newFixedThreadPool(1);
+    BlockingQueue<MatchingEngineCommand> commands = new LinkedBlockingQueue<>();
+    ExecutorService executorService = Executors.newFixedThreadPool(1);
 
-    List<MatchingEngineCommand> commandList=new ArrayList<>();
+    List<MatchingEngineCommand> commandList = new ArrayList<>();
 
     @Override
     protected void doPoll() {
 
-        if (i==0) t1=System.currentTimeMillis();
+        if (i == 0) t1 = System.currentTimeMillis();
 
         consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
             MatchingEngineCommand command = x.value();
             command.setOffset(x.offset());
-            logger.info("{}", JSON.toJSONString(command));
+            //logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
             //commands.offer(command);
             //commandList.add(command);
             i++;
-            System.out.println(i);
+            //System.out.println(i);
         });
 
         /*if (i>100000){
@@ -140,8 +103,8 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
 
 
         //if (i==21410) {
-            t2 = System.currentTimeMillis();
-            //System.out.println("i="+i+ " time="+ (t2-t1));
+        t2 = System.currentTimeMillis();
+        System.out.println("i=" + i + " time=" + (t2 - t1));
         //}
 
         //System.out.println(i);
@@ -151,9 +114,9 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
         //orderBookManager.saveFullOrderBookSnapshot(snapshot);
 
         //matchingEngine.getOrderBooks().keySet().forEach(x -> {
-            //L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);
-            //logger.info(JSON.toJSONString(l2OrderBook, true));
-            //orderBookManager.saveL2BatchOrderBook(l2OrderBook);
+        //L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);
+        //logger.info(JSON.toJSONString(l2OrderBook, true));
+        //orderBookManager.saveL2BatchOrderBook(l2OrderBook);
         //});
 
     }
