@@ -1,6 +1,7 @@
 package com.gitbitex.marketdata.manager;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import com.alibaba.fastjson.JSON;
@@ -11,12 +12,22 @@ import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.marketdata.repository.FillRepository;
 import com.gitbitex.marketdata.repository.OrderRepository;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.codecs.configuration.CodecProvider;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.PojoCodecProvider;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 @Service
 @Slf4j
@@ -97,7 +108,7 @@ public class OrderManager {
         }
         if (order.getStatus() != OrderStatus.RECEIVED) {
             logger.warn("[{}] Cannot open an order in a non-RECEIVED status,current status: {}", order.getOrderId(),
-                order.getStatus());
+                    order.getStatus());
             return;
         }
 
@@ -114,7 +125,7 @@ public class OrderManager {
         }
         if (order.getStatus() != OrderStatus.RECEIVED && order.getStatus() != OrderStatus.OPEN) {
             logger.warn("[{}] Cannot close an order in a non-RECEIVED or non-OPEN status,current status: {}",
-                order.getOrderId(), order.getStatus());
+                    order.getOrderId(), order.getStatus());
             return;
         }
 
@@ -135,6 +146,18 @@ public class OrderManager {
 
     public Order findByOrderId(String orderId) {
         return orderRepository.findByOrderId(orderId);
+    }
+
+    private final MongoClient mongoClient;
+
+    CodecProvider pojoCodecProvider = PojoCodecProvider.builder().automatic(true).build();
+    CodecRegistry pojoCodecRegistry = fromRegistries(getDefaultCodecRegistry(), fromProviders(pojoCodecProvider));
+
+    public void saveAll(List<Order> orders) {
+
+        MongoCollection<Order> orderMongoCollection = mongoClient.getDatabase("ex").withCodecRegistry(pojoCodecRegistry)
+                .getCollection("orders", Order.class);
+        orderMongoCollection.insertMany(orders);
     }
 
 }

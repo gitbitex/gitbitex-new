@@ -1,10 +1,8 @@
 package com.gitbitex.marketdata;
 
 import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import com.alibaba.fastjson.JSON;
 
@@ -30,6 +28,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.bson.codecs.configuration.CodecProvider;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.PojoCodecProvider;
+
+import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 @Slf4j
 public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
@@ -48,7 +53,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
-            consumer.commitSync();
+            //consumer.commitSync();
         }
     }
 
@@ -64,13 +69,52 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
         consumer.subscribe(Collections.singletonList(appProperties.getOrderMessageTopic()), this);
     }
 
+    long total;
+
     @Override
     protected void doPoll() {
+        List<OrderMessage> orderMessages =new ArrayList<>();
         consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
             Log log = x.value();
             log.setOffset(x.offset());
-            LogDispatcher.dispatch(log, this);
+            //LogDispatcher.dispatch(log, this);
+
+            if (log instanceof OrderMessage){
+                //logger.info("aaa");
+                orderMessages.add((OrderMessage) log);
+                total++;
+            }
         });
+        //System.out.println(total);
+        //if (true)return;
+
+
+        if (orderMessages.isEmpty()){
+            return;
+        }
+        //571012
+        logger.info("orders size: {}",orderMessages.size());
+
+
+        List<Order> orders= orderMessages.stream().map(log->{
+            Order order=new Order();
+            order.setOrderId(log.getOrderId());
+            order.setProductId(log.getProductId());
+            order.setUserId(log.getUserId());
+            order.setStatus(log.getStatus());
+            order.setPrice(log.getPrice());
+            order.setSize(log.getSize());
+            order.setFunds(log.getFunds());
+            order.setClientOid(log.getClientOid());
+            order.setSide(log.getSide());
+            order.setType(log.getOrderType());
+            order.setTime(log.getTime());
+            order.setCreatedAt(new Date());
+            return order;
+        }).collect(Collectors.toList());
+        long t1=System.currentTimeMillis();
+        orderManager.saveAll(orders);
+        System.out.println(System.currentTimeMillis()-t1);
     }
 
     @Override

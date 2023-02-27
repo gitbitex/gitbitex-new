@@ -51,10 +51,10 @@ public class Bootstrap {
 
     @PostConstruct
     public void init() {
-        startMatchingEngine(1);
+        //startMatchingEngine(1);
         startOrderPersistenceThread(1);
-        startTradePersistenceThread(1);
-        startAccountPersistenceThread(appProperties.getAccountantThreadNum());
+        //startTradePersistenceThread(1);
+        //startAccountPersistenceThread(appProperties.getAccountantThreadNum());
     }
 
     @PreDestroy
@@ -137,6 +137,7 @@ public class Bootstrap {
         properties.put("enable.auto.commit", "false");
         properties.put("session.timeout.ms", "30000");
         properties.put("auto.offset.reset", "earliest");
+        properties.put("max.poll.records",10000);
         return properties;
     }
 }
