@@ -13,7 +13,7 @@ import org.springframework.beans.BeanUtils;
 
 @Getter
 @Setter
-public class Order implements Serializable {
+public class Order implements Cloneable {
     private String userId;
     private String orderId;
     private OrderType type;
@@ -63,5 +63,16 @@ public class Order implements Serializable {
         Order copy = new Order();
         BeanUtils.copyProperties(this, copy);
         return copy;
+    }
+
+    @Override
+    public Order clone() {
+        try {
+            Order clone = (Order) super.clone();
+            // TODO: copy mutable state here, so the clone can't change the internals of the original
+            return clone;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
     }
 }

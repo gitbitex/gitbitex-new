@@ -9,6 +9,7 @@ import java.util.Map;
 import com.gitbitex.marketdata.util.DateUtil;
 import com.gitbitex.matchingengine.log.OrderMatchLog;
 import com.gitbitex.matchingengine.log.TickerMessage;
+import com.gitbitex.stripexecutor.StripedExecutorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 
@@ -16,6 +17,7 @@ import org.springframework.beans.BeanUtils;
 public class TickerBook {
     private final LogWriter logWriter;
     private final Map<String, Ticker> tickerByProductId = new HashMap<>();
+    private final StripedExecutorService refreshExecutor = new StripedExecutorService(Runtime.getRuntime().availableProcessors());
 
     public void refreshTicker(String productId, OrderMatchLog log) {
         Ticker ticker = tickerByProductId.get(log.getProductId());
@@ -25,9 +27,9 @@ public class TickerBook {
         }
 
         long time24h = DateUtil.round(ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
-            ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
+                ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
         long time30d = DateUtil.round(ZonedDateTime.ofInstant(log.getTime().toInstant(), ZoneId.systemDefault()),
-            ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
+                ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
 
         if (ticker.getTime24h() == null || ticker.getTime24h() != time24h) {
             ticker.setTime24h(time24h);
@@ -65,9 +67,9 @@ public class TickerBook {
     }
 
     private void sendTickerMessage(Ticker ticker) {
-        TickerMessage tickerMessage = new TickerMessage();
-        BeanUtils.copyProperties(ticker, tickerMessage);
-        logWriter.add(tickerMessage);
+        //TickerMessage tickerMessage = new TickerMessage();
+        //BeanUtils.copyProperties(ticker, tickerMessage);
+        //logWriter.add(tickerMessage);
     }
 
 }

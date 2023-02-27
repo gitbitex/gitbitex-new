@@ -66,12 +66,12 @@ public class OrderBook {
         Account takerQuoteAccount = accountBook.getAccount(takerOrder.getUserId(), product.getQuoteCurrency());
 
         if (!holdOrderFunds(takerOrder, takerBaseAccount, takerQuoteAccount)) {
-            orderRejected(takerOrder, RejectReason.INSUFFICIENT_FUNDS);
+            logWriter.orderRejected(productId, takerOrder, RejectReason.INSUFFICIENT_FUNDS);
             return;
         }
 
         // order received
-        orderReceived(takerOrder);
+        logWriter.orderReceived(productId, takerOrder.clone());
 
         // let's start matching
         Iterator<Entry<BigDecimal, LinkedHashMap<String, Order>>> priceItr = (takerOrder.getSide() == OrderSide.BUY
@@ -107,7 +107,7 @@ public class OrderBook {
                 // if the maker order is fully filled, remove it from the order book.
                 if (makerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) == 0) {
                     orderItr.remove();
-                    orderDone(makerOrder);
+                    logWriter.orderDone(productId, makerOrder.clone());
                     unholdOrderFunds(makerOrder, makerBaseAccount, makerQuoteAccount);
                 }
             }
@@ -124,9 +124,9 @@ public class OrderBook {
         // will be cancelled
         if (takerOrder.getType() == OrderType.LIMIT && takerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
             addOrder(takerOrder);
-            orderOpen(takerOrder);
+            logWriter.orderOpen(productId, takerOrder.clone());
         } else {
-            orderDone(takerOrder);
+            logWriter.orderDone(productId, takerOrder.clone());
             unholdOrderFunds(takerOrder, takerBaseAccount, takerQuoteAccount);
         }
     }
@@ -148,7 +148,7 @@ public class OrderBook {
         }
         orderById.remove(orderId);
 
-        orderDone(order);
+        logWriter.orderDone(productId, order.clone());
 
         Map<String, Account> makerAccounts = accountBook.getAccountsByUserId(order.getUserId());
         Account makerBaseAccount = makerAccounts.get(product.getBaseCurrency());
@@ -187,10 +187,11 @@ public class OrderBook {
         }
 
         Trade trade = new Trade();
+        trade.setTradeId(tradeId.incrementAndGet());
         trade.setSize(tradeSize);
         trade.setFunds(tradeFunds);
         trade.setPrice(price);
-        orderMatch(takerOrder, makerOrder, trade);
+        logWriter.orderMatch(productId, takerOrder, makerOrder, trade);
         return trade;
     }
 
@@ -245,134 +246,5 @@ public class OrderBook {
                 accountBook.unhold(baseAccount, makerOrder.getRemainingSize());
             }
         }
-    }
-
-    private void orderRejected(Order order, RejectReason rejectReason) {
-        OrderMessage orderMessage = orderMessage(order);
-        orderMessage.setStatus(OrderStatus.REJECTED);
-        logWriter.add(orderMessage);
-
-        OrderRejectedLog log = new OrderRejectedLog();
-        log.setSequence(logSequence.incrementAndGet());
-        log.setProductId(productId);
-        log.setUserId(order.getUserId());
-        log.setPrice(order.getPrice());
-        log.setFunds(order.getRemainingFunds());
-        log.setSide(order.getSide());
-        log.setSize(order.getRemainingSize());
-        log.setOrderId(order.getOrderId());
-        log.setOrderType(order.getType());
-        log.setTime(new Date());
-        log.setRejectReason(rejectReason);
-        logWriter.add(log);
-    }
-
-    private void orderReceived(Order order) {
-        OrderMessage orderMessage = orderMessage(order);
-        orderMessage.setStatus(OrderStatus.RECEIVED);
-        logWriter.add(orderMessage);
-
-        OrderReceivedLog log = new OrderReceivedLog();
-        log.setSequence(logSequence.incrementAndGet());
-        log.setProductId(productId);
-        log.setUserId(order.getUserId());
-        log.setPrice(order.getPrice());
-        log.setFunds(order.getRemainingFunds());
-        log.setSide(order.getSide());
-        log.setSize(order.getRemainingSize());
-        log.setOrderId(order.getOrderId());
-        log.setOrderType(order.getType());
-        log.setTime(new Date());
-        logWriter.add(log);
-    }
-
-    private void orderOpen(Order order) {
-        OrderMessage orderMessage = orderMessage(order);
-        orderMessage.setStatus(OrderStatus.OPEN);
-        logWriter.add(orderMessage);
-
-        OrderOpenLog log = new OrderOpenLog();
-        log.setSequence(logSequence.incrementAndGet());
-        log.setProductId(productId);
-        log.setRemainingSize(order.getRemainingSize());
-        log.setPrice(order.getPrice());
-        log.setSide(order.getSide());
-        log.setOrderId(order.getOrderId());
-        log.setUserId(order.getUserId());
-        log.setTime(new Date());
-        logWriter.add(log);
-    }
-
-    private void orderMatch(Order takerOrder, Order makerOrder, Trade trade) {
-        long nextTradeId = tradeId.incrementAndGet();
-
-        TradeMessage tradeMessage = new TradeMessage();
-        tradeMessage.setProductId(productId);
-        tradeMessage.setTradeId(nextTradeId);
-        tradeMessage.setTakerOrderId(takerOrder.getOrderId());
-        tradeMessage.setMakerOrderId(takerOrder.getOrderId());
-        tradeMessage.setPrice(makerOrder.getPrice());
-        tradeMessage.setSize(trade.getSize());
-        logWriter.add(tradeMessage);
-
-        OrderMatchLog log = new OrderMatchLog();
-        log.setSequence(logSequence.incrementAndGet());
-        log.setTradeId(nextTradeId);
-        log.setProductId(productId);
-        log.setTakerOrderId(takerOrder.getOrderId());
-        log.setMakerOrderId(makerOrder.getOrderId());
-        log.setTakerUserId(takerOrder.getUserId());
-        log.setMakerUserId(makerOrder.getUserId());
-        log.setPrice(makerOrder.getPrice());
-        log.setSize(trade.getSize());
-        log.setFunds(trade.getFunds());
-        log.setSide(makerOrder.getSide());
-        log.setTime(takerOrder.getTime());
-        logWriter.add(log);
-
-        tickerBook.refreshTicker(productId, log);
-    }
-
-    private void orderDone(Order order) {
-        OrderDoneLog.DoneReason doneReason = order.getRemainingSize().compareTo(BigDecimal.ZERO) > 0
-                ? OrderDoneLog.DoneReason.CANCELLED : OrderDoneLog.DoneReason.FILLED;
-
-        OrderMessage orderMessage = orderMessage(order);
-        orderMessage.setStatus(
-                order.getRemainingSize().compareTo(BigDecimal.ZERO) > 0 ? OrderStatus.CANCELLED : OrderStatus.FILLED);
-        logWriter.add(orderMessage);
-
-        OrderDoneLog log = new OrderDoneLog();
-        log.setSequence(logSequence.incrementAndGet());
-        log.setProductId(productId);
-        if (order.getType() != OrderType.MARKET) {
-            log.setRemainingSize(order.getRemainingSize());
-            log.setPrice(order.getPrice());
-        }
-        log.setRemainingFunds(order.getRemainingFunds());
-        log.setRemainingSize(order.getRemainingSize());
-        log.setSide(order.getSide());
-        log.setOrderId(order.getOrderId());
-        log.setUserId(order.getUserId());
-        log.setDoneReason(doneReason);
-        log.setOrderType(order.getType());
-        log.setTime(new Date());
-        logWriter.add(log);
-    }
-
-    private OrderMessage orderMessage(Order order) {
-        OrderMessage orderMessage = new OrderMessage();
-        orderMessage.setProductId(productId);
-        orderMessage.setUserId(order.getUserId());
-        orderMessage.setPrice(order.getPrice());
-        orderMessage.setFunds(order.getFunds());
-        orderMessage.setSide(order.getSide());
-        orderMessage.setSize(order.getSize());
-        orderMessage.setOrderId(order.getOrderId());
-        orderMessage.setOrderType(order.getType());
-        orderMessage.setTime(order.getTime());
-        orderMessage.setRemainingSize(order.getRemainingSize());
-        orderMessage.setRemainingFunds(order.getRemainingFunds());
-        return orderMessage;
     }
 }
