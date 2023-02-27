@@ -1,6 +1,7 @@
 package com.gitbitex.marketdata.manager;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,20 +13,25 @@ import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.marketdata.repository.FillRepository;
 import com.gitbitex.marketdata.repository.OrderRepository;
+import com.mongodb.bulk.BulkWriteUpsert;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
+import org.bson.conversions.Bson;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
+import static com.mongodb.client.model.Filters.gt;
+import static com.mongodb.client.model.Filters.or;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
@@ -157,7 +163,22 @@ public class OrderManager {
 
         MongoCollection<Order> orderMongoCollection = mongoClient.getDatabase("ex").withCodecRegistry(pojoCodecRegistry)
                 .getCollection("orders", Order.class);
-        orderMongoCollection.insertMany(orders);
+        Bson query = gt("num_mflix_comments", 50);
+        Bson updates = Updates.combine(
+                Updates.addToSet("genres", "Frequently Discussed"),
+                Updates.currentTimestamp("lastUpdated"));
+
+
+        List<WriteModel<Order> > writeModels=new ArrayList<>();
+        for (Order order : orders) {
+            Bson filter = Filters.eq("_id", order.getOrderId());
+
+
+            WriteModel<Order> orderWriteModel = new ReplaceOneModel<Order>(filter, order, new ReplaceOptions().upsert(true));
+            writeModels.add(orderWriteModel);
+
+        }
+        orderMongoCollection.bulkWrite(writeModels);
     }
 
 }

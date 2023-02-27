@@ -98,6 +98,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Log>
 
         List<Order> orders= orderMessages.stream().map(log->{
             Order order=new Order();
+            order.setId(log.getOrderId());
             order.setOrderId(log.getOrderId());
             order.setProductId(log.getProductId());
             order.setUserId(log.getUserId());

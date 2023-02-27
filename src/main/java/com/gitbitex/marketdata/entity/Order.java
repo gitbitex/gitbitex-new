@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Setter
 @Document
 public class Order {
+    private String id;
     @Id
     private String orderId;
 
