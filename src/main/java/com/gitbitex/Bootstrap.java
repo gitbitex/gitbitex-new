@@ -73,8 +73,7 @@ public class Bootstrap {
             String groupId = "Account";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
                     new AccountMessageDeserializer());
-            AccountPersistenceThread accountPersistenceThread = new AccountPersistenceThread(consumer, accountManager,
-                    messageProducer, appProperties);
+            AccountPersistenceThread accountPersistenceThread = new AccountPersistenceThread(consumer, accountManager, appProperties);
             accountPersistenceThread.setName(groupId + "-" + accountPersistenceThread.getId());
             accountPersistenceThread.start();
             threads.add(accountPersistenceThread);
@@ -99,7 +98,7 @@ public class Bootstrap {
             String groupId = "Order";
             OrderPersistenceThread orderPersistenceThread = new OrderPersistenceThread(
                     new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderMessageDeserializer()),
-                    appProperties, orderManager);
+                    orderManager, appProperties);
             orderPersistenceThread.setName(groupId + "-" + orderPersistenceThread.getId());
             orderPersistenceThread.start();
             threads.add(orderPersistenceThread);
@@ -121,9 +120,9 @@ public class Bootstrap {
     private void startTradePersistenceThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Trade";
-            TradePersistenceThread tradePersistenceThread = new TradePersistenceThread(tradeRepository,
+            TradePersistenceThread tradePersistenceThread = new TradePersistenceThread(
                     new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new TradeMessageDeserializer()),
-                    appProperties);
+                    tradeRepository, appProperties);
             tradePersistenceThread.setName(groupId + "-" + tradePersistenceThread.getId());
             tradePersistenceThread.start();
             threads.add(tradePersistenceThread);

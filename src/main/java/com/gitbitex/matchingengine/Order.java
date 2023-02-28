@@ -6,7 +6,6 @@ import com.gitbitex.enums.OrderType;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.beans.BeanUtils;
 import org.springframework.lang.Nullable;
 
 import java.math.BigDecimal;

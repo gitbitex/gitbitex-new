@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class OrderDoneLog extends OrderLog {
+public class OrderDoneMessage extends OrderLog {
     private String orderId;
     private BigDecimal remainingSize;
     private BigDecimal remainingFunds;
@@ -19,7 +19,7 @@ public class OrderDoneLog extends OrderLog {
     private DoneReason doneReason;
     private String userId;
 
-    public OrderDoneLog() {
+    public OrderDoneMessage() {
         this.setType(LogType.ORDER_DONE);
     }
 

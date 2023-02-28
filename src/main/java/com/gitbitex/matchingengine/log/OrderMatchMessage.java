@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class OrderMatchLog extends OrderLog {
+public class OrderMatchMessage extends OrderLog {
     private String productId;
     private long sequence;
     private long tradeId;
@@ -21,7 +21,7 @@ public class OrderMatchLog extends OrderLog {
     private BigDecimal size;
     private BigDecimal funds;
 
-    public OrderMatchLog() {
+    public OrderMatchMessage() {
         this.setType(LogType.ORDER_MATCH);
     }
 

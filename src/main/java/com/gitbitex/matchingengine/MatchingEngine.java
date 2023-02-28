@@ -27,7 +27,7 @@ public class MatchingEngine {
         if (snapshot != null) {
             this.logSequence.set(snapshot.getLogSequence());
             this.commandOffset = snapshot.getCommandOffset();
-            this.accountBook = new AccountBook(snapshot.getAccounts(), logWriter, logSequence);
+            this.accountBook = new AccountBook(snapshot.getAccounts(), logWriter);
             if (snapshot.getOrderBookSnapshots() != null) {
                 snapshot.getOrderBookSnapshots().forEach(x -> {
                     OrderBook orderBook = new OrderBook(x.getProductId(), x, logWriter, accountBook, productBook);
@@ -35,7 +35,7 @@ public class MatchingEngine {
                 });
             }
         } else {
-            this.accountBook = new AccountBook(null, logWriter, logSequence);
+            this.accountBook = new AccountBook(null, logWriter);
         }
     }
 

@@ -63,11 +63,11 @@ public class FeedMessageListener {
                             (orderReceivedMessage(orderReceivedLog)));
                     break;
                 case ORDER_MATCH:
-                    OrderMatchLog orderMatchLog = JSON.parseObject(msg, OrderMatchLog.class);
-                    String matchChannel = orderMatchLog.getProductId() + ".match";
-                    sessionManager.sendMessageToChannel(matchChannel, (matchMessage(orderMatchLog)));
-                    sessionManager.sendMessageToChannel(orderMatchLog.getProductId() + ".full",
-                            (matchMessage(orderMatchLog)));
+                    OrderMatchMessage orderMatchMessage = JSON.parseObject(msg, OrderMatchMessage.class);
+                    String matchChannel = orderMatchMessage.getProductId() + ".match";
+                    sessionManager.sendMessageToChannel(matchChannel, (matchMessage(orderMatchMessage)));
+                    sessionManager.sendMessageToChannel(orderMatchMessage.getProductId() + ".full",
+                            (matchMessage(orderMatchMessage)));
                     break;
                 case ORDER_OPEN:
                     OrderOpenLog orderOpenLog = JSON.parseObject(msg, OrderOpenLog.class);
@@ -75,9 +75,9 @@ public class FeedMessageListener {
                             (orderOpenMessage(orderOpenLog)));
                     break;
                 case ORDER_DONE:
-                    OrderDoneLog orderDoneLog = JSON.parseObject(msg, OrderDoneLog.class);
-                    sessionManager.sendMessageToChannel(orderDoneLog.getProductId() + ".full",
-                            (orderDoneMessage(orderDoneLog)));
+                    OrderDoneMessage orderDoneMessage = JSON.parseObject(msg, OrderDoneMessage.class);
+                    sessionManager.sendMessageToChannel(orderDoneMessage.getProductId() + ".full",
+                            (orderDoneMessage(orderDoneMessage)));
                     break;
                 default:
             }
@@ -98,7 +98,7 @@ public class FeedMessageListener {
         return message;
     }
 
-    private OrderMatchFeedMessage matchMessage(OrderMatchLog log) {
+    private OrderMatchFeedMessage matchMessage(OrderMatchMessage log) {
         OrderMatchFeedMessage message = new OrderMatchFeedMessage();
         message.setTradeId(log.getTradeId());
         message.setSequence(log.getSequence());
@@ -123,7 +123,7 @@ public class FeedMessageListener {
         return message;
     }
 
-    private OrderDoneFeedMessage orderDoneMessage(OrderDoneLog log) {
+    private OrderDoneFeedMessage orderDoneMessage(OrderDoneMessage log) {
         OrderDoneFeedMessage message = new OrderDoneFeedMessage();
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());

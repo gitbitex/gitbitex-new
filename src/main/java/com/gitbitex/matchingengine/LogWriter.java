@@ -4,8 +4,8 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.enums.OrderType;
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.matchingengine.log.OrderDoneLog;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
+import com.gitbitex.matchingengine.log.OrderDoneMessage;
+import com.gitbitex.matchingengine.log.OrderMatchMessage;
 import com.gitbitex.matchingengine.log.OrderOpenLog;
 import com.gitbitex.matchingengine.log.OrderReceivedLog;
 import com.gitbitex.stripexecutor.StripedExecutorService;
@@ -108,7 +108,7 @@ public class LogWriter {
             producer.send(new ProducerRecord<>(appProperties.getTradeMessageTopic(), productId, data));
             tradeTopic.publishAsync(data);
 
-            OrderMatchLog log = new OrderMatchLog();
+            OrderMatchMessage log = new OrderMatchMessage();
             log.setSequence(sequence);
             log.setTradeId(trade.getTradeId());
             log.setProductId(productId);
@@ -131,7 +131,7 @@ public class LogWriter {
         orderUpdated(productId, order);
 
         mainExecutor.execute(() -> {
-            OrderDoneLog log = new OrderDoneLog();
+            OrderDoneMessage log = new OrderDoneMessage();
             log.setSequence(sequence);
             log.setProductId(productId);
             if (order.getType() != OrderType.MARKET) {
