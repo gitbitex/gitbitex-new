@@ -19,5 +19,4 @@ public class Trade {
     private OrderSide side;
     private String takerOrderId;
     private String makerOrderId;
-
 }

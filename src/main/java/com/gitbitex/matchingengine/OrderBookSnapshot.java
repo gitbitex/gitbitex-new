@@ -21,13 +21,12 @@ public class OrderBookSnapshot {
     public OrderBookSnapshot(OrderBook orderBook) {
         List<Order> askOrders = orderBook.getAsks().values().stream()
                 .flatMap(x -> x.values().stream())
-                .map(Order::copy)
+                .map(Order::clone)
                 .collect(Collectors.toList());
         List<Order> bidOrders = orderBook.getBids().values().stream()
                 .flatMap(x -> x.values().stream())
-                .map(Order::copy)
+                .map(Order::clone)
                 .collect(Collectors.toList());
-
         this.setProductId(productId);
         this.setTradeId(orderBook.getTradeId().get());
         this.setLogSequence(orderBook.getLogSequence().get());

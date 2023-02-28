@@ -75,7 +75,6 @@ public class MatchingEngine {
         List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream()
                 .map(OrderBookSnapshot::new)
                 .collect(Collectors.toList());
-
         MatchingEngineSnapshot snapshot = new MatchingEngineSnapshot();
         snapshot.setProducts(products);
         snapshot.setAccounts(accounts);

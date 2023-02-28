@@ -63,14 +63,7 @@ public class Order implements Cloneable {
         }
         this.remainingSize = this.size;
         this.remainingFunds = this.funds;
-
         this.time = command.getTime();
-    }
-
-    public Order copy() {
-        Order copy = new Order();
-        BeanUtils.copyProperties(this, copy);
-        return copy;
     }
 
     @Override

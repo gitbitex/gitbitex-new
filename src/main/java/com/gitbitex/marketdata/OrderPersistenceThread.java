@@ -15,15 +15,13 @@ import java.time.Duration;
 import java.util.*;
 
 @Slf4j
-public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderMessage>
-        implements ConsumerRebalanceListener {
+public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderMessage> implements ConsumerRebalanceListener {
     private final AppProperties appProperties;
     private final OrderManager orderManager;
-    long total;
     private long uncommittedRecordCount;
 
-    public OrderPersistenceThread(KafkaConsumer<String, OrderMessage> kafkaConsumer, AppProperties appProperties,
-                                  OrderManager orderManager) {
+    public OrderPersistenceThread(KafkaConsumer<String, OrderMessage> kafkaConsumer, OrderManager orderManager,
+                                  AppProperties appProperties) {
         super(kafkaConsumer, logger);
         this.appProperties = appProperties;
         this.orderManager = orderManager;
@@ -68,23 +66,23 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderMes
         logger.info("orders size: {} time: {}", orders.size(), t2 - t1);
     }
 
-    private Order order(OrderMessage log) {
+    private Order order(OrderMessage message) {
         Order order = new Order();
-        order.setId(log.getOrderId());
-        order.setOrderId(log.getOrderId());
-        order.setProductId(log.getProductId());
-        order.setUserId(log.getUserId());
-        order.setStatus(log.getStatus());
-        order.setPrice(log.getPrice());
-        order.setSize(log.getSize());
-        order.setFunds(log.getFunds());
-        order.setClientOid(log.getClientOid());
-        order.setSide(log.getSide());
-        order.setType(log.getType());
-        order.setTime(log.getTime());
+        order.setId(message.getOrderId());
+        order.setOrderId(message.getOrderId());
+        order.setProductId(message.getProductId());
+        order.setUserId(message.getUserId());
+        order.setStatus(message.getStatus());
+        order.setPrice(message.getPrice());
+        order.setSize(message.getSize());
+        order.setFunds(message.getFunds());
+        order.setClientOid(message.getClientOid());
+        order.setSide(message.getSide());
+        order.setType(message.getType());
+        order.setTime(message.getTime());
         order.setCreatedAt(new Date());
-        order.setFilledSize(log.getSize().subtract(log.getRemainingSize()));
-        order.setExecutedValue(log.getFunds().subtract(log.getRemainingFunds()));
+        order.setFilledSize(message.getSize().subtract(message.getRemainingSize()));
+        order.setExecutedValue(message.getFunds().subtract(message.getRemainingFunds()));
         return order;
     }
 }

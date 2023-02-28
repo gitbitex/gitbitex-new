@@ -23,8 +23,8 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, TradeMes
     private final TradeRepository tradeRepository;
     private final AppProperties appProperties;
 
-    public TradePersistenceThread(TradeRepository tradeRepository,
-                                  KafkaConsumer<String, TradeMessage> consumer, AppProperties appProperties) {
+    public TradePersistenceThread(KafkaConsumer<String, TradeMessage> consumer, TradeRepository tradeRepository,
+                                  AppProperties appProperties) {
         super(consumer, logger);
         this.tradeRepository = tradeRepository;
         this.appProperties = appProperties;
@@ -69,17 +69,17 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, TradeMes
         logger.info("trades size: {} time: {}", trades.size(), t2 - t1);
     }
 
-    private Trade order(TradeMessage log) {
+    private Trade order(TradeMessage message) {
         Trade trade = new Trade();
-        trade.setId(log.getProductId() + "-" + log.getTradeId());
-        trade.setTradeId(log.getTradeId());
-        trade.setTime(log.getTime());
-        trade.setSize(log.getSize());
-        trade.setPrice(log.getPrice());
-        trade.setProductId(log.getProductId());
-        trade.setMakerOrderId(log.getMakerOrderId());
-        trade.setTakerOrderId(log.getTakerOrderId());
-        trade.setSide(log.getSide());
+        trade.setId(message.getProductId() + "-" + message.getTradeId());
+        trade.setTradeId(message.getTradeId());
+        trade.setTime(message.getTime());
+        trade.setSize(message.getSize());
+        trade.setPrice(message.getPrice());
+        trade.setProductId(message.getProductId());
+        trade.setMakerOrderId(message.getMakerOrderId());
+        trade.setTakerOrderId(message.getTakerOrderId());
+        trade.setSide(message.getSide());
         return trade;
     }
 

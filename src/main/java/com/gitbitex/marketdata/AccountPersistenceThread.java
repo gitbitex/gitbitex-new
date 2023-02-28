@@ -1,7 +1,6 @@
 package com.gitbitex.marketdata;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Account;
 import com.gitbitex.marketdata.manager.AccountManager;
 import com.gitbitex.matchingengine.log.AccountMessage;
@@ -19,20 +18,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-public class AccountPersistenceThread extends KafkaConsumerThread<String, AccountMessage>
-        implements ConsumerRebalanceListener {
+public class AccountPersistenceThread extends KafkaConsumerThread<String, AccountMessage> implements ConsumerRebalanceListener {
     private final AccountManager accountManager;
-    private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
     private long uncommittedRecordCount;
 
-    public AccountPersistenceThread(KafkaConsumer<String, AccountMessage> consumer,
-                                    AccountManager accountManager,
-                                    KafkaMessageProducer messageProducer,
-                                    AppProperties appProperties) {
+    public AccountPersistenceThread(KafkaConsumer<String, AccountMessage> consumer, AccountManager accountManager, AppProperties appProperties) {
         super(consumer, logger);
         this.accountManager = accountManager;
-        this.messageProducer = messageProducer;
         this.appProperties = appProperties;
     }
 
@@ -63,25 +56,25 @@ public class AccountPersistenceThread extends KafkaConsumerThread<String, Accoun
             return;
         }
 
-        Map<String, Account> orders = new HashMap<>();
+        Map<String, Account> accounts = new HashMap<>();
         records.forEach(x -> {
             Account account = account(x.value());
-            orders.put(account.getId(), account);
+            accounts.put(account.getId(), account);
         });
 
         long t1 = System.currentTimeMillis();
-        accountManager.saveAll(orders.values());
+        accountManager.saveAll(accounts.values());
         long t2 = System.currentTimeMillis();
-        logger.info("account size: {} time: {}", orders.size(), t2 - t1);
+        logger.info("account size: {} time: {}", accounts.size(), t2 - t1);
     }
 
-    private Account account(AccountMessage log) {
+    private Account account(AccountMessage message) {
         Account account = new Account();
-        account.setId(log.getUserId() + "-" + log.getCurrency());
-        account.setUserId(log.getUserId());
-        account.setCurrency(log.getCurrency());
-        account.setAvailable(log.getAvailable());
-        account.setHold(log.getHold());
+        account.setId(message.getUserId() + "-" + message.getCurrency());
+        account.setUserId(message.getUserId());
+        account.setCurrency(message.getCurrency());
+        account.setAvailable(message.getAvailable());
+        account.setHold(message.getHold());
         return account;
     }
 
