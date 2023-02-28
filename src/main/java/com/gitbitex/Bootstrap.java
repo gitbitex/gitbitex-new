@@ -55,9 +55,10 @@ public class Bootstrap {
     @PostConstruct
     public void init() {
         startMatchingEngine(1);
-        startOrderPersistenceThread(1);
+        //startOrderPersistenceThread(1);
         //startTradePersistenceThread(1);
-        startAccountPersistenceThread(appProperties.getAccountantThreadNum());
+        //startAccountPersistenceThread(appProperties.getAccountantThreadNum());
+        startCandleMaker(1);
     }
 
     @PreDestroy
@@ -107,16 +108,15 @@ public class Bootstrap {
         }
     }
 
-    private void startCandleMaker(List<String> productIds, int nThreads) {
+    private void startCandleMaker( int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "CandlerMaker1";
-            CandleMakerThread candleMakerThread = new CandleMakerThread(productIds, candleRepository,
+            String groupId = "CandlerMaker11";
+            CandleMakerThread candleMakerThread = new CandleMakerThread( candleRepository,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                    new LogDeserializer()), appProperties);
+                    new TradeMessageDeserializer()), appProperties);
             candleMakerThread.setName(groupId + "-" + candleMakerThread.getId());
             candleMakerThread.start();
             threads.add(candleMakerThread);
-
         }
     }
 
@@ -139,7 +139,7 @@ public class Bootstrap {
         properties.put("enable.auto.commit", "false");
         properties.put("session.timeout.ms", "30000");
         properties.put("auto.offset.reset", "earliest");
-        properties.put("max.poll.records", 10000);
+        properties.put("max.poll.records", 1000);
         return properties;
     }
 }

@@ -31,11 +31,11 @@ public class LogWriter {
     private final RTopic orderTopic;
     private final RTopic tradeTopic;
     private final RTopic orderBookTopic;
-    BlockingQueue<Runnable> accountQueue = new LinkedBlockingQueue<>(1000000);
+
     BlockingQueue<Runnable> orderQueue = new LinkedBlockingQueue<>(10000000);
     //ThreadPoolExecutor accountLogSender=new ThreadPoolExecutor(1,1,0,TimeUnit.SECONDS,accountQueue);
     ThreadPoolExecutor mainExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, orderQueue);
-    StripedExecutorService kafkaExecutor = new StripedExecutorService(100);
+    StripedExecutorService kafkaExecutor = new StripedExecutorService(2);
 
     public LogWriter(KafkaMessageProducer producer, RedissonClient redissonClient, AppProperties appProperties) {
         this.producer = producer;

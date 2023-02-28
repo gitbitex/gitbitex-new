@@ -194,7 +194,7 @@ public class OrderBook {
         trade.setFunds(tradeFunds);
         trade.setPrice(price);
         trade.setSide(makerOrder.getSide());
-        trade.setTime(new Date());
+        trade.setTime(takerOrder.getTime());
         return trade;
     }
 

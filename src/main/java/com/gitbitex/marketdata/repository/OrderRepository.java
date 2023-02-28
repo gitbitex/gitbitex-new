@@ -50,7 +50,6 @@ public class OrderRepository {
             .skip(pageIndex - 1)
             .limit(pageSize)
             .into(new ArrayList<>());
-
         return new PagedList<>(orders, count);
     }
 

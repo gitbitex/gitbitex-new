@@ -68,8 +68,14 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
         consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
             MatchingEngineCommand command = x.value();
             command.setOffset(x.offset());
-            logger.info("{}", JSON.toJSONString(command));
+            //logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
+
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         });
 
         //System.out.println(i);
