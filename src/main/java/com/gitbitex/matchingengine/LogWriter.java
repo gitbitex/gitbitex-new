@@ -43,7 +43,7 @@ public class LogWriter {
         this.accountTopic = redissonClient.getTopic("account", StringCodec.INSTANCE);
         this.orderTopic = redissonClient.getTopic("order", StringCodec.INSTANCE);
         this.tradeTopic = redissonClient.getTopic("trade", StringCodec.INSTANCE);
-        this.orderBookTopic = redissonClient.getTopic("orderBook", StringCodec.INSTANCE);
+        this.orderBookTopic = redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE);
     }
 
     public void accountUpdated(Account account) {

@@ -1,5 +1,6 @@
 package com.gitbitex.matchingengine;
 
+import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.matchingengine.command.*;
@@ -61,7 +62,7 @@ public class MatchingThread extends KafkaConsumerThread<String, MatchingEngineCo
         consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
             MatchingEngineCommand command = x.value();
             command.setOffset(x.offset());
-            //logger.info("{}", JSON.toJSONString(command));
+            logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
 
             try {
