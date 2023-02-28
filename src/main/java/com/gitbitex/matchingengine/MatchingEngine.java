@@ -1,17 +1,17 @@
 package com.gitbitex.matchingengine;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.L3OrderBook;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class MatchingEngine {
@@ -42,7 +42,7 @@ public class MatchingEngine {
     public void executeCommand(DepositCommand command) {
         commandOffset = command.getOffset();
         accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
-            command.getTransactionId());
+                command.getTransactionId());
     }
 
     public void executeCommand(PlaceOrderCommand command) {
@@ -67,14 +67,14 @@ public class MatchingEngine {
 
     public MatchingEngineSnapshot takeSnapshot() {
         List<Product> products = this.productBook.getProducts().stream()
-            .map(Product::clone)
-            .collect(Collectors.toList());
+                .map(Product::clone)
+                .collect(Collectors.toList());
         List<Account> accounts = this.accountBook.getAllAccounts().stream()
-            .map(Account::clone)
-            .collect(Collectors.toList());
+                .map(Account::clone)
+                .collect(Collectors.toList());
         List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream()
-            .map(OrderBookSnapshot::new)
-            .collect(Collectors.toList());
+                .map(OrderBookSnapshot::new)
+                .collect(Collectors.toList());
 
         MatchingEngineSnapshot snapshot = new MatchingEngineSnapshot();
         snapshot.setProducts(products);

@@ -1,8 +1,5 @@
 package com.gitbitex.matchingengine;
 
-import java.math.BigDecimal;
-import java.util.Date;
-
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
@@ -11,6 +8,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.BeanUtils;
 import org.springframework.lang.Nullable;
+
+import java.math.BigDecimal;
+import java.util.Date;
 
 @Getter
 @Setter
@@ -33,7 +33,8 @@ public class Order implements Cloneable {
     private OrderStatus status;
     private String clientOid;
 
-    public Order() {}
+    public Order() {
+    }
 
     public Order(PlaceOrderCommand command) {
         if (command.getUserId() == null) {
@@ -75,7 +76,7 @@ public class Order implements Cloneable {
     @Override
     public Order clone() {
         try {
-            return (Order)super.clone();
+            return (Order) super.clone();
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }

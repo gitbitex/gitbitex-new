@@ -1,12 +1,12 @@
 package com.gitbitex.marketdata.repository;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.gitbitex.marketdata.entity.Product;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class ProductRepository {

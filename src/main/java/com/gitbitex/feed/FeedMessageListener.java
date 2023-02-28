@@ -1,26 +1,9 @@
 package com.gitbitex.feed;
 
-import javax.annotation.PostConstruct;
-
 import com.alibaba.fastjson.JSON;
-
-import com.gitbitex.feed.message.AccountFeedMessage;
-import com.gitbitex.feed.message.CandleFeedMessage;
-import com.gitbitex.feed.message.OrderDoneFeedMessage;
-import com.gitbitex.feed.message.OrderFeedMessage;
-import com.gitbitex.feed.message.OrderMatchFeedMessage;
-import com.gitbitex.feed.message.OrderOpenFeedMessage;
-import com.gitbitex.feed.message.OrderReceivedFeedMessage;
-import com.gitbitex.feed.message.TickerFeedMessage;
+import com.gitbitex.feed.message.*;
 import com.gitbitex.marketdata.entity.Candle;
-import com.gitbitex.matchingengine.log.AccountMessage;
-import com.gitbitex.matchingengine.log.Log;
-import com.gitbitex.matchingengine.log.OrderDoneLog;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderMessage;
-import com.gitbitex.matchingengine.log.OrderOpenLog;
-import com.gitbitex.matchingengine.log.OrderReceivedLog;
-import com.gitbitex.matchingengine.log.TickerMessage;
+import com.gitbitex.matchingengine.log.*;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
+
+import javax.annotation.PostConstruct;
 
 @Component
 @Slf4j
@@ -75,24 +60,24 @@ public class FeedMessageListener {
                 case ORDER_RECEIVED:
                     OrderReceivedLog orderReceivedLog = JSON.parseObject(msg, OrderReceivedLog.class);
                     sessionManager.sendMessageToChannel(orderReceivedLog.getProductId() + ".full",
-                        (orderReceivedMessage(orderReceivedLog)));
+                            (orderReceivedMessage(orderReceivedLog)));
                     break;
                 case ORDER_MATCH:
                     OrderMatchLog orderMatchLog = JSON.parseObject(msg, OrderMatchLog.class);
                     String matchChannel = orderMatchLog.getProductId() + ".match";
                     sessionManager.sendMessageToChannel(matchChannel, (matchMessage(orderMatchLog)));
                     sessionManager.sendMessageToChannel(orderMatchLog.getProductId() + ".full",
-                        (matchMessage(orderMatchLog)));
+                            (matchMessage(orderMatchLog)));
                     break;
                 case ORDER_OPEN:
                     OrderOpenLog orderOpenLog = JSON.parseObject(msg, OrderOpenLog.class);
                     sessionManager.sendMessageToChannel(orderOpenLog.getProductId() + ".full",
-                        (orderOpenMessage(orderOpenLog)));
+                            (orderOpenMessage(orderOpenLog)));
                     break;
                 case ORDER_DONE:
                     OrderDoneLog orderDoneLog = JSON.parseObject(msg, OrderDoneLog.class);
                     sessionManager.sendMessageToChannel(orderDoneLog.getProductId() + ".full",
-                        (orderDoneMessage(orderDoneLog)));
+                            (orderDoneMessage(orderDoneLog)));
                     break;
                 default:
             }
@@ -179,11 +164,11 @@ public class FeedMessageListener {
         message.setOrderType(order.getType().name().toLowerCase());
         message.setCreatedAt(order.getTime().toInstant().toString());
         message.setFillFees(
-            order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
+                order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
         message.setFilledSize(
-            order.getFilledSize() != null ? order.getFilledSize().stripTrailingZeros().toPlainString() : "0");
+                order.getFilledSize() != null ? order.getFilledSize().stripTrailingZeros().toPlainString() : "0");
         message.setExecutedValue(
-            order.getExecutedValue() != null ? order.getExecutedValue().stripTrailingZeros().toPlainString() : "0");
+                order.getExecutedValue() != null ? order.getExecutedValue().stripTrailingZeros().toPlainString() : "0");
         message.setStatus(order.getStatus().name().toLowerCase());
         return message;
     }

@@ -13,7 +13,7 @@ public class Product implements Cloneable {
     @Override
     public Product clone() {
         try {
-            return (Product)super.clone();
+            return (Product) super.clone();
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }

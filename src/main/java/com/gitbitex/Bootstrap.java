@@ -1,12 +1,5 @@
 package com.gitbitex;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.AccountPersistenceThread;
 import com.gitbitex.marketdata.CandleMakerThread;
@@ -22,7 +15,6 @@ import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.MatchingThread;
 import com.gitbitex.matchingengine.command.MatchingEngineCommandDeserializer;
 import com.gitbitex.matchingengine.log.AccountMessageDeserializer;
-import com.gitbitex.matchingengine.log.LogDeserializer;
 import com.gitbitex.matchingengine.log.OrderMessageDeserializer;
 import com.gitbitex.matchingengine.log.TradeMessageDeserializer;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
@@ -34,6 +26,12 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 
 @Component
 @RequiredArgsConstructor
@@ -65,7 +63,7 @@ public class Bootstrap {
     public void destroy() {
         for (Thread thread : threads) {
             if (thread instanceof KafkaConsumerThread) {
-                ((KafkaConsumerThread<?, ?>)thread).shutdown();
+                ((KafkaConsumerThread<?, ?>) thread).shutdown();
             }
         }
     }
@@ -74,9 +72,9 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Account";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                new AccountMessageDeserializer());
+                    new AccountMessageDeserializer());
             AccountPersistenceThread accountPersistenceThread = new AccountPersistenceThread(consumer, accountManager,
-                messageProducer, appProperties);
+                    messageProducer, appProperties);
             accountPersistenceThread.setName(groupId + "-" + accountPersistenceThread.getId());
             accountPersistenceThread.start();
             threads.add(accountPersistenceThread);
@@ -87,9 +85,9 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Matching";
             MatchingThread matchingThread = new MatchingThread(orderBookManager,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                    new MatchingEngineCommandDeserializer()),
-                messageProducer, redissonClient, appProperties);
+                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                            new MatchingEngineCommandDeserializer()),
+                    messageProducer, redissonClient, appProperties);
             matchingThread.setName(groupId + "-" + matchingThread.getId());
             matchingThread.start();
             threads.add(matchingThread);
@@ -100,20 +98,20 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Order";
             OrderPersistenceThread orderPersistenceThread = new OrderPersistenceThread(
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderMessageDeserializer()),
-                appProperties, orderManager);
+                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderMessageDeserializer()),
+                    appProperties, orderManager);
             orderPersistenceThread.setName(groupId + "-" + orderPersistenceThread.getId());
             orderPersistenceThread.start();
             threads.add(orderPersistenceThread);
         }
     }
 
-    private void startCandleMaker( int nThreads) {
+    private void startCandleMaker(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "CandlerMaker11";
-            CandleMakerThread candleMakerThread = new CandleMakerThread( candleRepository,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                    new TradeMessageDeserializer()), appProperties);
+            CandleMakerThread candleMakerThread = new CandleMakerThread(candleRepository,
+                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                            new TradeMessageDeserializer()), appProperties);
             candleMakerThread.setName(groupId + "-" + candleMakerThread.getId());
             candleMakerThread.start();
             threads.add(candleMakerThread);
@@ -124,8 +122,8 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Trade";
             TradePersistenceThread tradePersistenceThread = new TradePersistenceThread(tradeRepository,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new TradeMessageDeserializer()),
-                appProperties);
+                    new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new TradeMessageDeserializer()),
+                    appProperties);
             tradePersistenceThread.setName(groupId + "-" + tradePersistenceThread.getId());
             tradePersistenceThread.start();
             threads.add(tradePersistenceThread);

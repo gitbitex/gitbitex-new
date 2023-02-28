@@ -1,11 +1,5 @@
 package com.gitbitex.marketdata;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Account;
@@ -18,18 +12,24 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 @Slf4j
 public class AccountPersistenceThread extends KafkaConsumerThread<String, AccountMessage>
-    implements ConsumerRebalanceListener {
+        implements ConsumerRebalanceListener {
     private final AccountManager accountManager;
     private final KafkaMessageProducer messageProducer;
     private final AppProperties appProperties;
     private long uncommittedRecordCount;
 
     public AccountPersistenceThread(KafkaConsumer<String, AccountMessage> consumer,
-        AccountManager accountManager,
-        KafkaMessageProducer messageProducer,
-        AppProperties appProperties) {
+                                    AccountManager accountManager,
+                                    KafkaMessageProducer messageProducer,
+                                    AppProperties appProperties) {
         super(consumer, logger);
         this.accountManager = accountManager;
         this.messageProducer = messageProducer;

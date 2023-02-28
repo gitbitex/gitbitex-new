@@ -1,28 +1,19 @@
 package com.gitbitex.marketdata;
 
-import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoField;
-import java.util.*;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Candle;
-import com.gitbitex.marketdata.entity.Order;
 import com.gitbitex.marketdata.repository.CandleRepository;
-import com.gitbitex.marketdata.util.DateUtil;
-import com.gitbitex.matchingengine.Trade;
-import com.gitbitex.matchingengine.log.OrderMessage;
 import com.gitbitex.matchingengine.log.TradeMessage;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import lombok.var;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+
+import java.time.Duration;
+import java.util.*;
 
 /**
  * My job is to produce candles
@@ -33,6 +24,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
     private final Map<String, Map<Integer, Candle>> candlesByProductId = new HashMap<>();
     private final CandleRepository candleRepository;
     private final AppProperties appProperties;
+    long tradeId = 0;
     private long uncommittedRecordCount;
 
     public CandleMakerThread(CandleRepository candleRepository, KafkaConsumer<String, TradeMessage> consumer,
@@ -62,8 +54,6 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
         consumer.subscribe(Collections.singletonList(appProperties.getTradeMessageTopic()), this);
     }
 
-    long tradeId = 0;
-
     @Override
     @SneakyThrows
     protected void doPoll() {
@@ -74,7 +64,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
 
         Map<String, TradeMessage> tradeMessageMap = new HashMap<>();
 
-        Map<String, Candle> candleCache =new HashMap<>();
+        Map<String, Candle> candleCache = new HashMap<>();
         List<Candle> candles = new ArrayList<>();
         records.forEach(x -> {
             for (int minute : MINUTES) {

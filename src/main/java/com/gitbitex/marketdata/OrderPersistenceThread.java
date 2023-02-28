@@ -1,12 +1,5 @@
 package com.gitbitex.marketdata;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Order;
 import com.gitbitex.marketdata.manager.OrderManager;
@@ -18,16 +11,19 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
+import java.time.Duration;
+import java.util.*;
+
 @Slf4j
 public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderMessage>
-    implements ConsumerRebalanceListener {
+        implements ConsumerRebalanceListener {
     private final AppProperties appProperties;
     private final OrderManager orderManager;
     long total;
     private long uncommittedRecordCount;
 
     public OrderPersistenceThread(KafkaConsumer<String, OrderMessage> kafkaConsumer, AppProperties appProperties,
-        OrderManager orderManager) {
+                                  OrderManager orderManager) {
         super(kafkaConsumer, logger);
         this.appProperties = appProperties;
         this.orderManager = orderManager;

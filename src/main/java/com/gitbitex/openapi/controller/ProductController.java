@@ -1,10 +1,5 @@
 package com.gitbitex.openapi.controller;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Product;
 import com.gitbitex.marketdata.entity.Trade;
@@ -23,6 +18,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController()
 @RequiredArgsConstructor
@@ -66,7 +66,7 @@ public class ProductController {
 
     @GetMapping("/api/products/{productId}/candles")
     public List<List<Object>> getProductCandles(@PathVariable String productId, @RequestParam int granularity,
-        @RequestParam(defaultValue = "1000") int limit) {
+                                                @RequestParam(defaultValue = "1000") int limit) {
         PagedList<Candle> candlePage = candleRepository.findAll(productId, granularity / 60, 1, limit);
 
         //[

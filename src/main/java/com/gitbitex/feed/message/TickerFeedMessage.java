@@ -22,7 +22,8 @@ public class TickerFeedMessage {
     private String volume24h;
     private String volume30d;
 
-    public TickerFeedMessage() {}
+    public TickerFeedMessage() {
+    }
 
     public TickerFeedMessage(Ticker ticker) {
         this.setProductId(ticker.getProductId());

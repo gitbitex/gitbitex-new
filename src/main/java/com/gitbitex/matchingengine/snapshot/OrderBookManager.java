@@ -1,12 +1,6 @@
 package com.gitbitex.matchingengine.snapshot;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.matchingengine.MatchingEngineSnapshot;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +8,11 @@ import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Component
 @Slf4j
@@ -43,12 +42,12 @@ public class OrderBookManager {
             Files.delete(path);
         }
         Files.write(path,
-            JSON.toJSONString(snapshot, true).getBytes(StandardCharsets.UTF_8));
+                JSON.toJSONString(snapshot, true).getBytes(StandardCharsets.UTF_8));
     }
 
     public void saveL3OrderBook(L3OrderBook l3OrderBook) {
         redissonClient.getBucket(keyForL3(l3OrderBook.getProductId()), StringCodec.INSTANCE).set(
-            JSON.toJSONString(l3OrderBook));
+                JSON.toJSONString(l3OrderBook));
     }
 
     public L3OrderBook getL3OrderBook(String productId) {
@@ -61,7 +60,7 @@ public class OrderBookManager {
 
     public void saveL2OrderBook(L2OrderBook l2OrderBook) {
         redissonClient.getBucket(keyForL2(l2OrderBook.getProductId()), StringCodec.INSTANCE).setAsync(
-            JSON.toJSONString(l2OrderBook));
+                JSON.toJSONString(l2OrderBook));
     }
 
     public L2OrderBook getL2OrderBook(String productId) {
@@ -74,10 +73,10 @@ public class OrderBookManager {
 
     public void saveL2BatchOrderBook(L2OrderBook l2OrderBook) {
         redissonClient.getBucket(keyForL2Batch(l2OrderBook.getProductId()), StringCodec.INSTANCE)
-            .setAsync(JSON.toJSONString(l2OrderBook))
-            .onComplete((unused, throwable) -> {
-                l2BatchNotifyTopic.publishAsync(l2OrderBook.getProductId());
-            });
+                .setAsync(JSON.toJSONString(l2OrderBook))
+                .onComplete((unused, throwable) -> {
+                    l2BatchNotifyTopic.publishAsync(l2OrderBook.getProductId());
+                });
     }
 
     public L2OrderBook getL2BatchOrderBook(String productId) {
@@ -98,7 +97,7 @@ public class OrderBookManager {
 
     public void saveL1OrderBook(L2OrderBook orderBook) {
         redissonClient.getBucket(keyForL1(orderBook.getProductId()), StringCodec.INSTANCE).set(
-            JSON.toJSONString(orderBook));
+                JSON.toJSONString(orderBook));
     }
 
     private String keyForL1(String productId) {

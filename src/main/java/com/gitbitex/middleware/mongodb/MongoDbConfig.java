@@ -30,7 +30,7 @@ public class MongoDbConfig {
     @Bean
     public MongoDatabase database(MongoClient mongoClient) {
         CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
-            fromProviders(PojoCodecProvider.builder().automatic(true).build()));
+                fromProviders(PojoCodecProvider.builder().automatic(true).build()));
 
         return mongoClient.getDatabase("ex").withCodecRegistry(pojoCodecRegistry);
     }

@@ -1,9 +1,5 @@
 package com.gitbitex.marketdata.repository;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.marketdata.entity.Order;
@@ -16,6 +12,10 @@ import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
 import org.bson.conversions.Bson;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 @Component
 public class OrderRepository {
@@ -30,7 +30,7 @@ public class OrderRepository {
     }
 
     public PagedList<Order> findAll(String userId, String productId, OrderStatus status, OrderSide side, int pageIndex,
-        int pageSize) {
+                                    int pageSize) {
         Bson filter = Filters.empty();
         if (userId != null) {
             filter = Filters.and(Filters.eq("userId", userId));
@@ -47,9 +47,9 @@ public class OrderRepository {
 
         long count = this.mongoCollection.countDocuments(filter);
         List<Order> orders = this.mongoCollection.find(filter)
-            .skip(pageIndex - 1)
-            .limit(pageSize)
-            .into(new ArrayList<>());
+                .skip(pageIndex - 1)
+                .limit(pageSize)
+                .into(new ArrayList<>());
         return new PagedList<>(orders, count);
     }
 

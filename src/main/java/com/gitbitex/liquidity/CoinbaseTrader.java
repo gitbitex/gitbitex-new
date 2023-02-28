@@ -1,14 +1,6 @@
 package com.gitbitex.liquidity;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.openapi.controller.OrderController;
@@ -22,6 +14,13 @@ import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Component;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @Slf4j
@@ -50,7 +49,7 @@ public class CoinbaseTrader {
                             logger.info("connecting...: {}", client.getURI());
                             client.connectBlocking();
                         } else if (client.getReadyState().equals(ReadyState.CLOSING) || client.getReadyState().equals(
-                            ReadyState.CLOSED)) {
+                                ReadyState.CLOSED)) {
                             logger.info("reconnecting...: {}", client.getURI());
                             client.reconnectBlocking();
                         }

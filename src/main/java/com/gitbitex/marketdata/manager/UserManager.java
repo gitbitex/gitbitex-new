@@ -1,16 +1,16 @@
 package com.gitbitex.marketdata.manager;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 import org.springframework.util.DigestUtils;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @RequiredArgsConstructor
@@ -40,7 +40,7 @@ public class UserManager {
         String accessToken = user.getUserId() + ":" + sessionId + ":" + generateAccessTokenSecret(user);
 
         redissonClient.getBucket(redisKeyForAccessToken(accessToken))
-            .set(new Date().toString(), 14, TimeUnit.DAYS);
+                .set(new Date().toString(), 14, TimeUnit.DAYS);
 
         return accessToken;
     }

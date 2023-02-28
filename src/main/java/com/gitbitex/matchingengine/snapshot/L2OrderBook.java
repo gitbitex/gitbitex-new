@@ -1,16 +1,16 @@
 package com.gitbitex.matchingengine.snapshot;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.matchingengine.OrderBook;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.lang.Nullable;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -83,7 +83,7 @@ public class L2OrderBook {
                 changes.add(change);
             } else if (!newLine.getSize().equals(oldLine.getSize())) {
                 L2OrderBookChange change = new L2OrderBookChange(side.name().toLowerCase(), oldPrice,
-                    newLine.getSize());
+                        newLine.getSize());
                 changes.add(change);
             }
         }));
@@ -91,7 +91,7 @@ public class L2OrderBook {
             Line oldLine = oldLineByPrice.get(newPrice);
             if (oldLine == null) {
                 L2OrderBookChange change = new L2OrderBookChange(side.name().toLowerCase(), newPrice,
-                    newLine.getSize());
+                        newLine.getSize());
                 changes.add(change);
             }
         });
