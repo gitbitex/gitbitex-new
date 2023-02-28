@@ -10,7 +10,7 @@ import java.util.Date;
 
 @Getter
 @Setter
-public class OrderReceivedLog extends OrderLog {
+public class OrderReceivedMessage extends OrderLog {
     private String orderId;
     private String userId;
     private BigDecimal size;
@@ -21,7 +21,7 @@ public class OrderReceivedLog extends OrderLog {
     private String clientOid;
     private Date time;
 
-    public OrderReceivedLog() {
+    public OrderReceivedMessage() {
         this.setType(LogType.ORDER_RECEIVED);
     }
 }

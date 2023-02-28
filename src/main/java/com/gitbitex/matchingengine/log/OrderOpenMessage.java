@@ -8,14 +8,14 @@ import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class OrderOpenLog extends OrderLog {
+public class OrderOpenMessage extends OrderLog {
     private String orderId;
     private BigDecimal remainingSize;
     private BigDecimal price;
     private OrderSide side;
     private String userId;
 
-    public OrderOpenLog() {
+    public OrderOpenMessage() {
         this.setType(LogType.ORDER_OPEN);
     }
 

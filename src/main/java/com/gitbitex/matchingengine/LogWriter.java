@@ -6,8 +6,8 @@ import com.gitbitex.enums.OrderType;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.matchingengine.log.OrderDoneMessage;
 import com.gitbitex.matchingengine.log.OrderMatchMessage;
-import com.gitbitex.matchingengine.log.OrderOpenLog;
-import com.gitbitex.matchingengine.log.OrderReceivedLog;
+import com.gitbitex.matchingengine.log.OrderOpenMessage;
+import com.gitbitex.matchingengine.log.OrderReceivedMessage;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -67,7 +67,7 @@ public class LogWriter {
         orderUpdated(productId, order);
 
         mainExecutor.execute(() -> {
-            OrderReceivedLog log = new OrderReceivedLog();
+            OrderReceivedMessage log = new OrderReceivedMessage();
             log.setSequence(sequence);
             log.setProductId(productId);
             log.setUserId(order.getUserId());
@@ -86,7 +86,7 @@ public class LogWriter {
         orderUpdated(productId, order);
 
         mainExecutor.execute(() -> {
-            OrderOpenLog log = new OrderOpenLog();
+            OrderOpenMessage log = new OrderOpenMessage();
             log.setSequence(sequence);
             log.setProductId(productId);
             log.setRemainingSize(order.getRemainingSize());
