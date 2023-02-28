@@ -1,33 +1,24 @@
 package com.gitbitex.marketdata.repository;
 
+import java.util.Collection;
+
 import com.gitbitex.marketdata.entity.Candle;
-import com.gitbitex.marketdata.entity.Order;
-import org.springframework.data.domain.Example;
-import org.springframework.data.domain.ExampleMatcher;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.repository.CrudRepository;
+import com.gitbitex.openapi.model.PagedList;
+import org.springframework.stereotype.Component;
 
-public interface CandleRepository extends MongoRepository<Candle, Long>, CrudRepository<Candle, Long> {
+@Component
+public class CandleRepository {
 
-    Candle findTopByProductIdAndGranularityOrderByTimeDesc(String productId, int granularity);
+    public Candle findById(String id){
+        return null;
+    }
 
-    default Page<Candle> findAll(String productId, Integer granularity, int pageIndex, int pageSize) {
-        Candle user = new Candle();
-        if (granularity!=null) {
-            user.setGranularity(granularity);
-        }
-        if (productId!=null){
-            user.setProductId(productId);
-        }
+    public Candle findTopByProductIdAndGranularityOrderByTimeDesc(String productId, int granularity) {
+        return null;
+    }
 
-
-        ExampleMatcher matcher = ExampleMatcher.matching().withIgnorePaths("age", "createTime");
-        Example<Candle> example = Example.of(user, matcher);
-
-        PageRequest pageable = PageRequest.of(pageIndex - 1, pageSize);
-        return this.findAll(example, pageable);
+    public PagedList<Candle> findAll(String productId, Integer granularity, int pageIndex, int pageSize) {
+        return null;
 
 
 
@@ -49,5 +40,6 @@ public interface CandleRepository extends MongoRepository<Candle, Long>, CrudRep
         return this.findAll(specification, pager);*/
     }
 
+    public void saveAll(Collection<Candle> candles) {}
 }
 

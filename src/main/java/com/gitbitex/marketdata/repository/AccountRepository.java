@@ -1,10 +1,38 @@
 package com.gitbitex.marketdata.repository;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 import com.gitbitex.marketdata.entity.Account;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.repository.CrudRepository;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.ReplaceOptions;
+import com.mongodb.client.model.WriteModel;
+import org.bson.conversions.Bson;
+import org.springframework.stereotype.Component;
 
-public interface AccountRepository extends MongoRepository<Account, Long>, CrudRepository<Account, Long> {
+@Component
+public class AccountRepository {
+    private final MongoCollection<Account> mongoCollection;
 
-    Account findAccountByUserIdAndCurrency(String userId, String currency);
+    public AccountRepository(MongoDatabase database) {
+        this.mongoCollection = database.getCollection(Account.class.getSimpleName(), Account.class);
+    }
+
+    public List<Account> findAccountsByUserId(String userId) {
+        return mongoCollection.find(Filters.eq("userId", userId)).into(new ArrayList<>());
+    }
+
+    public void saveAll(Collection<Account> accounts) {
+        List<WriteModel<Account>> writeModels = new ArrayList<>();
+        for (Account item : accounts) {
+            Bson filter = Filters.eq("_id", item.getId());
+            WriteModel<Account> writeModel = new ReplaceOneModel<>(filter, item, new ReplaceOptions().upsert(true));
+            writeModels.add(writeModel);
+        }
+        mongoCollection.bulkWrite(writeModels);
+    }
 }

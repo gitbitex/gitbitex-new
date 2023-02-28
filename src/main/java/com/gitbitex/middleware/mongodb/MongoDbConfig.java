@@ -1,26 +1,17 @@
-package com.gitbitex.support.mongodb;
+package com.gitbitex.middleware.mongodb;
 
-import com.gitbitex.support.redis.RedisProperties;
+import com.gitbitex.middleware.redis.RedisProperties;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import lombok.RequiredArgsConstructor;
-import org.bson.Document;
-import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
-import org.redisson.Redisson;
-import org.redisson.api.RedissonClient;
-import org.redisson.config.Config;
-import org.redisson.config.SingleServerConfig;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
-import static com.mongodb.client.model.Filters.eq;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
@@ -29,12 +20,19 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 @EnableConfigurationProperties(RedisProperties.class)
 public class MongoDbConfig {
 
-
     @Bean(destroyMethod = "close")
     public MongoClient mongoClient(RedisProperties redisProperties) {
 
         String uri = "mongodb://root:root@localhost/ex?authSource=admin";
-        return  MongoClients.create(uri) ;
+        return MongoClients.create(uri);
+    }
+
+    @Bean
+    public MongoDatabase database(MongoClient mongoClient) {
+        CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
+            fromProviders(PojoCodecProvider.builder().automatic(true).build()));
+
+        return mongoClient.getDatabase("ex").withCodecRegistry(pojoCodecRegistry);
     }
 }
 

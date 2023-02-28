@@ -30,7 +30,7 @@ public class TickerMessage extends Log {
     private BigDecimal low30d;
     private BigDecimal volume30d;
 
-    public TickerMessage(){
+    public TickerMessage() {
         this.setType(LogType.TICKER);
     }
 }

@@ -1,4 +1,4 @@
-package com.gitbitex.support.kafka;
+package com.gitbitex.middleware.kafka;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 

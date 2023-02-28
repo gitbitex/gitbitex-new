@@ -11,15 +11,12 @@ import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.L3OrderBook;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MatchingEngine {
     private final ProductBook productBook = new ProductBook();
-    private final TickerBook tickerBook;
     private final AccountBook accountBook;
-    @Getter
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
     private final LogWriter logWriter;
     private final AtomicLong logSequence = new AtomicLong();
@@ -27,15 +24,13 @@ public class MatchingEngine {
 
     public MatchingEngine(MatchingEngineSnapshot snapshot, LogWriter logWriter) {
         this.logWriter = logWriter;
-        this.tickerBook = new TickerBook(logWriter);
         if (snapshot != null) {
             this.logSequence.set(snapshot.getLogSequence());
             this.commandOffset = snapshot.getCommandOffset();
             this.accountBook = new AccountBook(snapshot.getAccounts(), logWriter, logSequence);
             if (snapshot.getOrderBookSnapshots() != null) {
                 snapshot.getOrderBookSnapshots().forEach(x -> {
-                    OrderBook orderBook = new OrderBook(x.getProductId(), x, logWriter, accountBook, productBook,
-                        tickerBook);
+                    OrderBook orderBook = new OrderBook(x.getProductId(), x, logWriter, accountBook, productBook);
                     this.orderBooks.put(orderBook.getProductId(), orderBook);
                 });
             }
@@ -59,7 +54,7 @@ public class MatchingEngine {
     private OrderBook createOrderBook(String productId) {
         OrderBook orderBook = orderBooks.get(productId);
         if (orderBook == null) {
-            orderBook = new OrderBook(productId, null, logWriter, accountBook, productBook, tickerBook);
+            orderBook = new OrderBook(productId, null, logWriter, accountBook, productBook);
             orderBooks.put(productId, orderBook);
         }
         return orderBook;
@@ -71,11 +66,11 @@ public class MatchingEngine {
     }
 
     public MatchingEngineSnapshot takeSnapshot() {
-        List<Product> products = this.productBook.getProducts().values().stream()
-            .map(Product::copy)
+        List<Product> products = this.productBook.getProducts().stream()
+            .map(Product::clone)
             .collect(Collectors.toList());
         List<Account> accounts = this.accountBook.getAllAccounts().stream()
-            .map(Account::copy)
+            .map(Account::clone)
             .collect(Collectors.toList());
         List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream()
             .map(OrderBookSnapshot::new)

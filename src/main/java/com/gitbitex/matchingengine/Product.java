@@ -2,18 +2,20 @@ package com.gitbitex.matchingengine;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.beans.BeanUtils;
 
 @Getter
 @Setter
-public class Product {
+public class Product implements Cloneable {
     private String productId;
     private String baseCurrency;
     private String quoteCurrency;
 
-    public Product copy(){
-        Product copy=new Product();
-        BeanUtils.copyProperties(this,copy);
-        return copy;
+    @Override
+    public Product clone() {
+        try {
+            return (Product)super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
     }
 }

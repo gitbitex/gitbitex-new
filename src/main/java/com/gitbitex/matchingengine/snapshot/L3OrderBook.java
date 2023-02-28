@@ -28,11 +28,11 @@ public class L3OrderBook {
         this.tradeId = orderBook.getTradeId().get();
         this.time = System.currentTimeMillis();
         this.asks = orderBook.getAsks().values().stream()
-            .flatMap(x->x.values().stream())
+            .flatMap(x -> x.values().stream())
             .map(Line::new)
             .collect(Collectors.toList());
         this.bids = orderBook.getBids().values().stream()
-            .flatMap(x->x.values().stream())
+            .flatMap(x -> x.values().stream())
             .map(Line::new)
             .collect(Collectors.toList());
     }

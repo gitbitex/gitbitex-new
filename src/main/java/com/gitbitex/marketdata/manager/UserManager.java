@@ -5,13 +5,11 @@ import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import com.gitbitex.marketdata.manager.AccountManager;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 
 @Component
@@ -21,7 +19,6 @@ public class UserManager {
     private final RedissonClient redissonClient;
     private final AccountManager accountManager;
 
-    @Transactional(rollbackFor = Exception.class)
     public User createUser(String email, String password) {
         // check if the email address is already registered
         User user = userRepository.findByEmail(email);

@@ -1,10 +1,26 @@
 package com.gitbitex.marketdata.repository;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.gitbitex.marketdata.entity.Product;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.repository.CrudRepository;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import org.springframework.stereotype.Component;
 
-public interface ProductRepository extends MongoRepository<Product, Long>, CrudRepository<Product, Long> {
+@Component
+public class ProductRepository {
+    private final MongoCollection<Product> mongoCollection;
 
-    Product findByProductId(String productId);
+    public ProductRepository(MongoDatabase database) {
+        this.mongoCollection = database.getCollection(Product.class.getSimpleName(), Product.class);
+    }
+
+    public List<Product> findAll() {
+        return this.mongoCollection.find().into(new ArrayList<>());
+    }
+
+    public void save(Product product) {
+        this.mongoCollection.insertOne(product);
+    }
 }

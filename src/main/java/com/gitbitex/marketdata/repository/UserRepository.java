@@ -1,14 +1,21 @@
 package com.gitbitex.marketdata.repository;
 
 import com.gitbitex.marketdata.entity.User;
- import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Component;
 
-public interface UserRepository extends MongoRepository<User, Long>, CrudRepository<User, Long>
-    {
+@Component
+public class UserRepository {
 
-    User findByEmail(String email);
+    public User findByEmail(String email) {
+        return null;
+    }
 
-    User findByUserId(String userId);
+    public User findByUserId(String userId) {
+        return null;
+    }
+
+    public void save(User user) {
+
+    }
 
 }

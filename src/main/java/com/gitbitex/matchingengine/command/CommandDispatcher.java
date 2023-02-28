@@ -9,7 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CommandDispatcher {
 
-    public static void dispatch(MatchingEngineCommand orderMessage,MatchingEngineCommandHandler handler) {
+    public static void dispatch(MatchingEngineCommand orderMessage, MatchingEngineCommandHandler handler) {
         if (orderMessage instanceof PlaceOrderCommand) {
             handler.on((PlaceOrderCommand)orderMessage);
         } else if (orderMessage instanceof CancelOrderCommand) {

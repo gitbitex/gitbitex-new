@@ -3,13 +3,24 @@ package com.gitbitex.marketdata.repository;
 import java.util.List;
 
 import com.gitbitex.marketdata.entity.App;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Component;
 
-public interface AppRepository extends MongoRepository<App, Long>, CrudRepository<App, Long>{
+@Component
+public class AppRepository {
 
-    List<App> findByUserId(String userId);
+    public List<App> findByUserId(String userId) {
+        return null;
+    }
 
-    App findByAppId(String appId);
+    public App findByAppId(String appId) {
+        return null;
+    }
 
+    public void save(App app) {
+
+    }
+
+    public void deleteById(String id) {
+
+    }
 }

@@ -15,14 +15,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
-import com.gitbitex.matchingengine.log.OrderDoneLog;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderMessage;
-import com.gitbitex.matchingengine.log.OrderOpenLog;
-import com.gitbitex.matchingengine.log.OrderReceivedLog;
-import com.gitbitex.matchingengine.log.OrderRejectedLog;
-import com.gitbitex.matchingengine.log.OrderRejectedLog.RejectReason;
-import com.gitbitex.matchingengine.log.TradeMessage;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,23 +27,20 @@ public class OrderBook {
     private final LogWriter logWriter;
     private final ProductBook productBook;
     private final AccountBook accountBook;
-    private final TickerBook tickerBook;
     private final TreeMap<BigDecimal, LinkedHashMap<String, Order>> asks = new TreeMap<>(Comparator.naturalOrder());
     private final TreeMap<BigDecimal, LinkedHashMap<String, Order>> bids = new TreeMap<>(Comparator.reverseOrder());
     private final LinkedHashMap<String, Order> orderById = new LinkedHashMap<>();
 
-    public OrderBook(String productId, LogWriter logWriter, AccountBook accountBook, ProductBook productBook,
-                     TickerBook tickerBook) {
+    public OrderBook(String productId, LogWriter logWriter, AccountBook accountBook, ProductBook productBook) {
         this.productId = productId;
         this.logWriter = logWriter;
         this.productBook = productBook;
         this.accountBook = accountBook;
-        this.tickerBook = tickerBook;
     }
 
     public OrderBook(String productId, OrderBookSnapshot snapshot, LogWriter logWriter, AccountBook accountBook,
-                     ProductBook productBook, TickerBook tickerBook) {
-        this(productId, logWriter, accountBook, productBook, tickerBook);
+        ProductBook productBook) {
+        this(productId, logWriter, accountBook, productBook);
         if (snapshot != null) {
             this.tradeId.set(snapshot.getTradeId());
             this.logSequence.set(snapshot.getLogSequence());
@@ -66,16 +55,18 @@ public class OrderBook {
         Account takerQuoteAccount = accountBook.getAccount(takerOrder.getUserId(), product.getQuoteCurrency());
 
         if (!holdOrderFunds(takerOrder, takerBaseAccount, takerQuoteAccount)) {
-            logWriter.orderRejected(productId, takerOrder, RejectReason.INSUFFICIENT_FUNDS);
+            takerOrder.setStatus(OrderStatus.REJECTED);
+            logWriter.orderUpdated(productId, takerOrder);
             return;
         }
 
         // order received
-        logWriter.orderReceived(productId, takerOrder.clone());
+        takerOrder.setStatus(OrderStatus.RECEIVED);
+        logWriter.orderReceived(productId, takerOrder.clone(), logSequence.incrementAndGet());
 
         // let's start matching
         Iterator<Entry<BigDecimal, LinkedHashMap<String, Order>>> priceItr = (takerOrder.getSide() == OrderSide.BUY
-                ? asks : bids).entrySet().iterator();
+            ? asks : bids).entrySet().iterator();
         MATCHING:
         while (priceItr.hasNext()) {
             Map.Entry<BigDecimal, LinkedHashMap<String, Order>> entry = priceItr.next();
@@ -98,16 +89,20 @@ public class OrderBook {
                     break MATCHING;
                 }
 
+                logWriter.orderMatch(productId, takerOrder, makerOrder, trade, logSequence.incrementAndGet());
+
                 // exchange account funds
                 Account makerBaseAccount = accountBook.getAccount(makerOrder.getUserId(), product.getBaseCurrency());
                 Account makerQuoteAccount = accountBook.getAccount(makerOrder.getUserId(), product.getQuoteCurrency());
                 accountBook.exchange(takerBaseAccount, takerQuoteAccount, makerBaseAccount, makerQuoteAccount,
-                        takerOrder.getSide(), trade.getSize(), trade.getFunds());
+                    takerOrder.getSide(), trade.getSize(), trade.getFunds());
 
                 // if the maker order is fully filled, remove it from the order book.
                 if (makerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) == 0) {
                     orderItr.remove();
-                    logWriter.orderDone(productId, makerOrder.clone());
+                    orderById.remove(makerOrder.getOrderId());
+                    makerOrder.setStatus(OrderStatus.FILLED);
+                    logWriter.orderDone(productId, makerOrder.clone(), logSequence.incrementAndGet());
                     unholdOrderFunds(makerOrder, makerBaseAccount, makerQuoteAccount);
                 }
             }
@@ -124,9 +119,11 @@ public class OrderBook {
         // will be cancelled
         if (takerOrder.getType() == OrderType.LIMIT && takerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
             addOrder(takerOrder);
-            logWriter.orderOpen(productId, takerOrder.clone());
+            takerOrder.setStatus(OrderStatus.OPEN);
+            logWriter.orderOpen(productId, takerOrder.clone(), logSequence.incrementAndGet());
         } else {
-            logWriter.orderDone(productId, takerOrder.clone());
+            takerOrder.setStatus(OrderStatus.CANCELLED);
+            logWriter.orderDone(productId, takerOrder.clone(), logSequence.incrementAndGet());
             unholdOrderFunds(takerOrder, takerBaseAccount, takerQuoteAccount);
         }
     }
@@ -137,10 +134,10 @@ public class OrderBook {
             return;
         }
 
-        Product product = productBook.getProduct(productId);
-
-        TreeMap<BigDecimal, LinkedHashMap<String, Order>> ordersByPrice = order.getSide() == OrderSide.BUY ? bids
-                : asks;
+        // remove order from order book
+        TreeMap<BigDecimal, LinkedHashMap<String, Order>> ordersByPrice = order.getSide() == OrderSide.BUY
+            ? bids
+            : asks;
         LinkedHashMap<String, Order> orders = ordersByPrice.get(order.getPrice());
         orders.remove(orderId);
         if (orders.isEmpty()) {
@@ -148,8 +145,12 @@ public class OrderBook {
         }
         orderById.remove(orderId);
 
-        logWriter.orderDone(productId, order.clone());
+        // notify order status changed
+        order.setStatus(OrderStatus.CANCELLED);
+        logWriter.orderDone(productId, order.clone(), logSequence.incrementAndGet());
 
+        // unhold funds
+        Product product = productBook.getProduct(productId);
         Map<String, Account> makerAccounts = accountBook.getAccountsByUserId(order.getUserId());
         Account makerBaseAccount = makerAccounts.get(product.getBaseCurrency());
         Account makerQuoteAccount = makerAccounts.get(product.getQuoteCurrency());
@@ -188,17 +189,19 @@ public class OrderBook {
 
         Trade trade = new Trade();
         trade.setTradeId(tradeId.incrementAndGet());
+        trade.setProductId(productId);
         trade.setSize(tradeSize);
         trade.setFunds(tradeFunds);
         trade.setPrice(price);
-        logWriter.orderMatch(productId, takerOrder, makerOrder, trade);
+        trade.setSide(makerOrder.getSide());
+        trade.setTime(new Date());
         return trade;
     }
 
     public void addOrder(Order order) {
         (order.getSide() == OrderSide.BUY ? bids : asks)
-                .computeIfAbsent(order.getPrice(), k -> new LinkedHashMap<>())
-                .put(order.getOrderId(), order);
+            .computeIfAbsent(order.getPrice(), k -> new LinkedHashMap<>())
+            .put(order.getOrderId(), order);
         orderById.put(order.getOrderId(), order);
     }
 
@@ -222,13 +225,13 @@ public class OrderBook {
     private boolean holdOrderFunds(Order takerOrder, Account takerBaseAccount, Account takerQuoteAccount) {
         if (takerOrder.getSide() == OrderSide.BUY) {
             if (takerQuoteAccount == null || takerQuoteAccount.getAvailable().compareTo(takerOrder.getRemainingFunds())
-                    < 0) {
+                < 0) {
                 return false;
             }
             accountBook.hold(takerQuoteAccount, takerOrder.getRemainingFunds());
         } else {
             if (takerBaseAccount == null || takerBaseAccount.getAvailable().compareTo(takerOrder.getRemainingSize())
-                    < 0) {
+                < 0) {
                 return false;
             }
             accountBook.hold(takerBaseAccount, takerOrder.getRemainingSize());

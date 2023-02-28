@@ -10,9 +10,9 @@ import java.util.concurrent.TimeUnit;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
+import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.openapi.controller.OrderController;
 import com.gitbitex.openapi.model.PlaceOrderRequest;
-import com.gitbitex.marketdata.entity.User;
 import com.google.common.util.concurrent.RateLimiter;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

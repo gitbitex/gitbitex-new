@@ -1,15 +1,16 @@
 package com.gitbitex.matchingengine;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
 
 import com.gitbitex.enums.OrderSide;
+import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.BeanUtils;
+import org.springframework.lang.Nullable;
 
 @Getter
 @Setter
@@ -25,6 +26,12 @@ public class Order implements Cloneable {
     private BigDecimal funds;
     private boolean postOnly;
     private Date time;
+
+    @Nullable
+    private String productId;
+    @Nullable
+    private OrderStatus status;
+    private String clientOid;
 
     public Order() {}
 
@@ -68,9 +75,7 @@ public class Order implements Cloneable {
     @Override
     public Order clone() {
         try {
-            Order clone = (Order) super.clone();
-            // TODO: copy mutable state here, so the clone can't change the internals of the original
-            return clone;
+            return (Order)super.clone();
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }

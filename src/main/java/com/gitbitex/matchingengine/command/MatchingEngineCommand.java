@@ -1,6 +1,5 @@
 package com.gitbitex.matchingengine.command;
 
-
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,7 +8,8 @@ import lombok.Setter;
 public class MatchingEngineCommand {
     private long offset;
     private CommandType type;
-    public enum CommandType{
+
+    public enum CommandType {
         PLACE_ORDER,
         CANCEL_ORDER,
         DEPOSIT,

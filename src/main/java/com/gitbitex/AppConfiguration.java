@@ -3,7 +3,7 @@ package com.gitbitex;
 import java.util.Properties;
 
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.support.kafka.KafkaProperties;
+import com.gitbitex.middleware.kafka.KafkaProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -27,8 +27,8 @@ public class AppConfiguration {
         properties.put("compression.type", "zstd");
         properties.put("max.in.flight.requests.per.connection", 1);
         properties.put("retries", 2147483647);
-        properties.put("linger.ms",100);
-        properties.put("batch.size",16384*2);
+        properties.put("linger.ms", 100);
+        properties.put("batch.size", 16384 * 2);
         return new KafkaMessageProducer(properties, appProperties);
     }
 

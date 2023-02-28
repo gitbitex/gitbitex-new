@@ -1,24 +1,24 @@
 package com.gitbitex.matchingengine;
 
+import java.math.BigDecimal;
+
 import lombok.Getter;
 import lombok.Setter;
 
-import java.math.BigDecimal;
-
 @Getter
 @Setter
-public class Account {
+public class Account implements Cloneable {
     private String userId;
     private String currency;
     private BigDecimal available;
     private BigDecimal hold;
 
-    public Account copy() {
-        Account copy = new Account();
-        copy.setUserId(userId);
-        copy.setCurrency(currency);
-        copy.setAvailable(available);
-        copy.setHold(hold);
-        return copy;
+    @Override
+    public Account clone() {
+        try {
+            return (Account)super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
     }
 }

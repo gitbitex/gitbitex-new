@@ -11,8 +11,6 @@ import java.util.stream.Collectors;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.enums.OrderSide;
-import com.gitbitex.matchingengine.log.AccountMessage;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.Nullable;
@@ -20,14 +18,11 @@ import org.springframework.lang.Nullable;
 @Slf4j
 @RequiredArgsConstructor
 public class AccountBook {
-    @Getter
     private final Map<String, Map<String, Account>> accounts = new HashMap<>();
     private final LogWriter logWriter;
-    private final AtomicLong sequence;
 
     public AccountBook(List<Account> accounts, LogWriter logWriter, AtomicLong sequence) {
         this.logWriter = logWriter;
-        this.sequence = sequence;
         if (accounts != null) {
             this.addAll(accounts);
         }
@@ -66,7 +61,7 @@ public class AccountBook {
             account = createAccount(userId, currency);
         }
         account.setAvailable(account.getAvailable().add(amount));
-        sendAccountMessage(account);
+        logWriter.accountUpdated(account.clone());
     }
 
     public void hold(Account account, BigDecimal amount) {
@@ -78,7 +73,7 @@ public class AccountBook {
         }
         account.setAvailable(account.getAvailable().subtract(amount));
         account.setHold(account.getHold().add(amount));
-        sendAccountMessage(account);
+        logWriter.accountUpdated(account.clone());
     }
 
     public void unhold(Account account, BigDecimal amount) {
@@ -90,7 +85,7 @@ public class AccountBook {
         }
         account.setAvailable(account.getAvailable().add(amount));
         account.setHold(account.getHold().subtract(amount));
-        sendAccountMessage(account);
+        logWriter.accountUpdated(account.clone());
     }
 
     public void exchange(Account takerBaseAccount, Account takerQuoteAccount, Account makerBaseAccount,
@@ -125,10 +120,10 @@ public class AccountBook {
         validateAccount(makerBaseAccount);
         validateAccount(makerQuoteAccount);
 
-        sendAccountMessage(takerBaseAccount);
-        sendAccountMessage(takerQuoteAccount);
-        sendAccountMessage(makerBaseAccount);
-        sendAccountMessage(makerQuoteAccount);
+        logWriter.accountUpdated(takerBaseAccount.clone());
+        logWriter.accountUpdated(takerQuoteAccount.clone());
+        logWriter.accountUpdated(makerBaseAccount.clone());
+        logWriter.accountUpdated(makerQuoteAccount.clone());
     }
 
     private void validateAccount(Account account) {
@@ -145,16 +140,6 @@ public class AccountBook {
         account.setHold(BigDecimal.ZERO);
         this.accounts.computeIfAbsent(account.getUserId(), x -> new HashMap<>()).put(account.getCurrency(), account);
         return account;
-    }
-
-    private void sendAccountMessage(Account account) {
-        AccountMessage accountMessage = new AccountMessage();
-        accountMessage.setSequence(sequence.incrementAndGet());
-        accountMessage.setUserId(account.getUserId());
-        accountMessage.setCurrency(account.getCurrency());
-        accountMessage.setHold(account.getHold());
-        accountMessage.setAvailable(account.getAvailable());
-        logWriter.add(accountMessage);
     }
 
 }

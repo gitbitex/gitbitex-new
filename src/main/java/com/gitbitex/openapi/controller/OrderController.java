@@ -14,17 +14,16 @@ import com.gitbitex.enums.OrderType;
 import com.gitbitex.enums.TimeInForcePolicy;
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Order;
+import com.gitbitex.marketdata.entity.Product;
+import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.repository.OrderRepository;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import com.gitbitex.openapi.model.OrderDto;
 import com.gitbitex.openapi.model.PagedList;
 import com.gitbitex.openapi.model.PlaceOrderRequest;
-import com.gitbitex.marketdata.entity.Product;
-import com.gitbitex.marketdata.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -107,10 +106,10 @@ public class OrderController {
 
         OrderSide orderSide = side != null ? OrderSide.valueOf(side.toUpperCase()) : null;
 
-        Page<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, OrderStatus.OPEN,
+        PagedList<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, OrderStatus.OPEN,
             orderSide, 1, 20000);
 
-        for (Order order : orderPage.getContent()) {
+        for (Order order : orderPage.getItems()) {
             //matchingEngineService.handleCancelOrderRequest(order);
         }
     }
@@ -127,11 +126,12 @@ public class OrderController {
 
         OrderStatus orderStatus = status != null ? OrderStatus.valueOf(status.toUpperCase()) : null;
 
-        Page<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, orderStatus, null, page,
+        PagedList<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, orderStatus, null,
+            page,
             pageSize);
         return new PagedList<>(
-            orderPage.getContent().stream().map(this::orderDto).collect(Collectors.toList()),
-            orderPage.getTotalElements());
+            orderPage.getItems().stream().map(this::orderDto).collect(Collectors.toList()),
+            orderPage.getCount());
     }
 
     private OrderDto orderDto(Order order) {

@@ -3,14 +3,16 @@ package com.gitbitex.openapi.controller;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Account;
-import com.gitbitex.marketdata.repository.AccountRepository;
+import com.gitbitex.marketdata.entity.User;
+import com.gitbitex.marketdata.manager.AccountManager;
 import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.openapi.model.AccountDto;
-import com.gitbitex.marketdata.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,8 +26,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class AccountController {
-    private final AccountRepository accountRepository;
     private final KafkaMessageProducer producer;
+    private final AccountManager accountManager;
 
     @GetMapping("/accounts")
     public List<AccountDto> getAccounts(@RequestParam(name = "currency") List<String> currencies,
@@ -34,20 +36,23 @@ public class AccountController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        List<AccountDto> accounts = new ArrayList<>();
+        List<Account> accounts = accountManager.getAccounts(currentUser.getUserId());
+        Map<String, Account> accountSet = accounts.stream().collect(Collectors.toMap(Account::getCurrency, x -> x));
+
+        List<AccountDto> accountDtoList = new ArrayList<>();
         for (String currency : currencies) {
-            Account account = accountRepository.findAccountByUserIdAndCurrency(currentUser.getUserId(), currency);
+            Account account = accountSet.get(currency);
             if (account != null) {
-                accounts.add(accountDto(account));
+                accountDtoList.add(accountDto(account));
             } else {
                 AccountDto accountDto = new AccountDto();
                 accountDto.setCurrency(currency);
                 accountDto.setAvailable("0");
                 accountDto.setHold("0");
-                accounts.add(accountDto);
+                accountDtoList.add(accountDto);
             }
         }
-        return accounts;
+        return accountDtoList;
     }
 
     @GetMapping("/admin/deposit")

@@ -1,4 +1,4 @@
-package com.gitbitex.support.redis;
+package com.gitbitex.middleware.redis;
 
 import lombok.RequiredArgsConstructor;
 import org.redisson.Redisson;

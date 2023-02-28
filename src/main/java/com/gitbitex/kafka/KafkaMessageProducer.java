@@ -7,10 +7,6 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.command.MatchingEngineCommand;
-import com.gitbitex.matchingengine.log.AccountMessage;
-import com.gitbitex.matchingengine.log.OrderLog;
-import com.gitbitex.matchingengine.log.OrderMessage;
-import com.gitbitex.matchingengine.log.TradeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;

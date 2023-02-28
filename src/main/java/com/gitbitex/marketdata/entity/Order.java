@@ -8,15 +8,12 @@ import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 @Getter
 @Setter
-@Document
 public class Order {
     private String id;
-    @Id
+
     private String orderId;
 
     private Date createdAt;

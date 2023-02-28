@@ -14,17 +14,20 @@ import com.gitbitex.marketdata.OrderPersistenceThread;
 import com.gitbitex.marketdata.TradePersistenceThread;
 import com.gitbitex.marketdata.manager.AccountManager;
 import com.gitbitex.marketdata.manager.OrderManager;
+import com.gitbitex.marketdata.manager.ProductManager;
 import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
+import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.MatchingThread;
 import com.gitbitex.matchingengine.command.MatchingEngineCommandDeserializer;
+import com.gitbitex.matchingengine.log.AccountMessageDeserializer;
 import com.gitbitex.matchingengine.log.LogDeserializer;
+import com.gitbitex.matchingengine.log.OrderMessageDeserializer;
+import com.gitbitex.matchingengine.log.TradeMessageDeserializer;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
-import com.gitbitex.marketdata.manager.ProductManager;
-import com.gitbitex.marketdata.repository.ProductRepository;
-import com.gitbitex.support.kafka.KafkaConsumerThread;
-import com.gitbitex.support.kafka.KafkaProperties;
+import com.gitbitex.middleware.kafka.KafkaConsumerThread;
+import com.gitbitex.middleware.kafka.KafkaProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.var;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -51,10 +54,10 @@ public class Bootstrap {
 
     @PostConstruct
     public void init() {
-        //startMatchingEngine(1);
+        startMatchingEngine(1);
         startOrderPersistenceThread(1);
         //startTradePersistenceThread(1);
-        //startAccountPersistenceThread(appProperties.getAccountantThreadNum());
+        startAccountPersistenceThread(appProperties.getAccountantThreadNum());
     }
 
     @PreDestroy
@@ -70,10 +73,9 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Account";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
-                new LogDeserializer());
+                new AccountMessageDeserializer());
             AccountPersistenceThread accountPersistenceThread = new AccountPersistenceThread(consumer, accountManager,
-                messageProducer,
-                appProperties);
+                messageProducer, appProperties);
             accountPersistenceThread.setName(groupId + "-" + accountPersistenceThread.getId());
             accountPersistenceThread.start();
             threads.add(accountPersistenceThread);
@@ -97,7 +99,7 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Order";
             OrderPersistenceThread orderPersistenceThread = new OrderPersistenceThread(
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new LogDeserializer()),
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new OrderMessageDeserializer()),
                 appProperties, orderManager);
             orderPersistenceThread.setName(groupId + "-" + orderPersistenceThread.getId());
             orderPersistenceThread.start();
@@ -122,7 +124,7 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Trade";
             TradePersistenceThread tradePersistenceThread = new TradePersistenceThread(tradeRepository,
-                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new LogDeserializer()),
+                new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new TradeMessageDeserializer()),
                 appProperties);
             tradePersistenceThread.setName(groupId + "-" + tradePersistenceThread.getId());
             tradePersistenceThread.start();
@@ -137,7 +139,7 @@ public class Bootstrap {
         properties.put("enable.auto.commit", "false");
         properties.put("session.timeout.ms", "30000");
         properties.put("auto.offset.reset", "earliest");
-        properties.put("max.poll.records",10000);
+        properties.put("max.poll.records", 10000);
         return properties;
     }
 }

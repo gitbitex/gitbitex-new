@@ -18,7 +18,7 @@
 
 package com.gitbitex.stripexecutor;
 
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
 
 /**
  * All of the Callables in the same "Stripe" will be executed consecutively.

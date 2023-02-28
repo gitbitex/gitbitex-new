@@ -25,11 +25,6 @@ public class LogDispatcher {
 
         } else if (orderMessage instanceof AccountMessage) {
             handler.on((AccountMessage)orderMessage);
-        } else if (orderMessage instanceof OrderMessage) {
-            handler.on((OrderMessage)orderMessage);
-        } else if (orderMessage instanceof TradeMessage) {
-            handler.on((TradeMessage)orderMessage);
-
         } else {
             logger.warn("Unhandled command: {} {}", orderMessage.getClass().getName(), JSON.toJSONString(orderMessage));
         }

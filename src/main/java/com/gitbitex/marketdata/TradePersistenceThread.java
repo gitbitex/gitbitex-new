@@ -3,40 +3,28 @@ package com.gitbitex.marketdata;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
-
-import com.alibaba.fastjson.JSON;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Trade;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.matchingengine.log.AccountMessage;
-import com.gitbitex.matchingengine.log.Log;
-import com.gitbitex.matchingengine.log.LogDispatcher;
-import com.gitbitex.matchingengine.log.LogHandler;
-import com.gitbitex.matchingengine.log.OrderDoneLog;
-import com.gitbitex.matchingengine.log.OrderFilledMessage;
-import com.gitbitex.matchingengine.log.OrderMatchLog;
-import com.gitbitex.matchingengine.log.OrderMessage;
-import com.gitbitex.matchingengine.log.OrderOpenLog;
-import com.gitbitex.matchingengine.log.OrderReceivedLog;
-import com.gitbitex.matchingengine.log.OrderRejectedLog;
 import com.gitbitex.matchingengine.log.TradeMessage;
-import com.gitbitex.support.kafka.KafkaConsumerThread;
+import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
 @Slf4j
-public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
-    implements ConsumerRebalanceListener, LogHandler {
+public class TradePersistenceThread extends KafkaConsumerThread<String, TradeMessage>
+    implements ConsumerRebalanceListener {
     private final TradeRepository tradeRepository;
     private final AppProperties appProperties;
-    private long uncommittedRecordCount;
 
     public TradePersistenceThread(TradeRepository tradeRepository,
-        KafkaConsumer<String, Log> consumer, AppProperties appProperties) {
+        KafkaConsumer<String, TradeMessage> consumer, AppProperties appProperties) {
         super(consumer, logger);
         this.tradeRepository = tradeRepository;
         this.appProperties = appProperties;
@@ -64,59 +52,25 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
 
     @Override
     protected void doPoll() {
-        consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
-            Log log = x.value();
-            log.setOffset(x.offset());
-            LogDispatcher.dispatch(log, this);
-        });
-    }
-
-    @Override
-    public void on(OrderRejectedLog log) {
-
-    }
-
-    @Override
-    public void on(OrderReceivedLog log) {
-
-    }
-
-    @Override
-    public void on(OrderOpenLog log) {
-
-    }
-
-    @Override
-    public void on(OrderMatchLog log) {
-    }
-
-    @Override
-    public void on(OrderDoneLog log) {
-
-    }
-
-    @Override
-    public void on(OrderFilledMessage log) {
-
-    }
-
-    @Override
-    public void on(AccountMessage log) {
-
-    }
-
-    @Override
-    public void on(OrderMessage message) {
-
-    }
-
-    @Override
-    public void on(TradeMessage log) {
-        logger.info(JSON.toJSONString(log));
-        Trade trade = tradeRepository.findByProductIdAndTradeId(log.getProductId(), log.getTradeId());
-        if (trade == null) {
-            trade = new Trade();
+        ConsumerRecords<String, TradeMessage> records = consumer.poll(Duration.ofSeconds(5));
+        if (records.isEmpty()) {
+            return;
         }
+
+        Map<String, Trade> trades = new HashMap<>();
+        records.forEach(x -> {
+            Trade trade = order(x.value());
+            trades.put(trade.getId(), trade);
+        });
+
+        long t1 = System.currentTimeMillis();
+        tradeRepository.saveAll(trades.values());
+        long t2 = System.currentTimeMillis();
+        logger.info("trades size: {} time: {}", trades.size(), t2 - t1);
+    }
+
+    private Trade order(TradeMessage log) {
+        Trade trade = new Trade();
         trade.setId(log.getProductId() + "-" + log.getTradeId());
         trade.setTradeId(log.getTradeId());
         trade.setTime(log.getTime());
@@ -126,8 +80,7 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, Log>
         trade.setMakerOrderId(log.getMakerOrderId());
         trade.setTakerOrderId(log.getTakerOrderId());
         trade.setSide(log.getSide());
-        trade.setSequence(log.getSequence());
-        trade.setOrderBookLogOffset(log.getOffset());
-        tradeRepository.save(trade);
+        return trade;
     }
+
 }

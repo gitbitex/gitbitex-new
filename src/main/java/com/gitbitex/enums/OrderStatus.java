@@ -8,5 +8,5 @@ public enum OrderStatus {
     DENIED,
     RECEIVED,
     ACCEPTED,
-    REJECTED
+    REJECTED,
 }

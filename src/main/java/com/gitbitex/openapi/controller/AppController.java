@@ -4,11 +4,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import com.gitbitex.openapi.model.AppDto;
-import com.gitbitex.openapi.model.CreateAppRequest;
 import com.gitbitex.marketdata.entity.App;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.repository.AppRepository;
+import com.gitbitex.openapi.model.AppDto;
+import com.gitbitex.openapi.model.CreateAppRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;

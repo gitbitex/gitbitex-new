@@ -15,7 +15,7 @@ public class MatchingEngineCommandDeserializer implements Deserializer<MatchingE
 
         try {
             MatchingEngineCommand command = JSON.parseObject(jsonString, MatchingEngineCommand.class);
-            if (command  .getType() == null) {
+            if (command.getType() == null) {
                 logger.warn("Unknown command: {}", jsonString);
                 return command;
             }

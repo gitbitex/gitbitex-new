@@ -5,11 +5,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.matchingengine.OrderBook;
-
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.lang.Nullable;
@@ -104,7 +102,7 @@ public class L2OrderBook {
         public Line() {
         }
 
-        public Line(BigDecimal price,BigDecimal totalSize, BigDecimal orderCount ) {
+        public Line(BigDecimal price, BigDecimal totalSize, BigDecimal orderCount) {
             add(price);
             add(totalSize);
             add(orderCount);

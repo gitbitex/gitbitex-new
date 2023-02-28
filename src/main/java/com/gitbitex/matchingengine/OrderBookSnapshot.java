@@ -15,9 +15,9 @@ public class OrderBookSnapshot {
     private List<Order> asks;
     private List<Order> bids;
 
-    public OrderBookSnapshot(){}
+    public OrderBookSnapshot() {}
 
-    public OrderBookSnapshot(OrderBook orderBook){
+    public OrderBookSnapshot(OrderBook orderBook) {
         List<Order> askOrders = orderBook.getAsks().values().stream()
             .flatMap(x -> x.values().stream())
             .map(Order::copy)

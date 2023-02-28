@@ -9,7 +9,6 @@ import lombok.Setter;
 @Setter
 public class PlaceOrderRequest {
 
-
     private String clientOid;
 
     @NotBlank
