@@ -132,7 +132,7 @@ public class FeedMessageListener {
             message.setPrice(log.getPrice().stripTrailingZeros().toPlainString());
         }
         message.setSide(log.getSide().name().toLowerCase());
-        message.setReason(log.getDoneReason().name().toUpperCase());
+        //message.setReason(log.getDoneReason().name().toUpperCase());
         if (log.getRemainingSize() != null) {
             message.setRemainingSize(log.getRemainingSize().stripTrailingZeros().toPlainString());
         }

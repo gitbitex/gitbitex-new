@@ -14,4 +14,5 @@ public class MatchingEngineSnapshot {
     private List<Product> products;
     private List<Account> accounts;
     private List<OrderBookSnapshot> orderBookSnapshots;
+    private long     time;
 }

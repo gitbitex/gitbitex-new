@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -18,6 +19,7 @@ public class L2OrderBook {
     private String productId;
     private long sequence;
     private long time;
+    private long commandOffset;
     private List<Line> asks = new ArrayList<>();
     private List<Line> bids = new ArrayList<>();
 
@@ -40,14 +42,15 @@ public class L2OrderBook {
         this.productId = orderBook.getProductId();
         this.sequence = orderBook.getLogSequence().get();
         this.time = System.currentTimeMillis();
-        /*this.asks = orderBook.getAsks().getLines().stream()
+
+        this.asks = orderBook.getAsks().entrySet().stream()
             .limit(maxSize)
-            .map(x->new Line(x.))
+            .map(x->new Line(x.getKey(),x.getValue().getRemainingSize(),x.getValue().size()))
             .collect(Collectors.toList());
-        this.bids = orderBook.getBids().getLines().stream()
+        this.bids = orderBook.getBids().entrySet().stream()
             .limit(maxSize)
-            .map(Line::new)
-            .collect(Collectors.toList());*/
+            .map(x->new Line(x.getKey(),x.getValue().getRemainingSize(),x.getValue().size()))
+            .collect(Collectors.toList());
     }
 
     @Nullable
@@ -102,7 +105,7 @@ public class L2OrderBook {
         public Line() {
         }
 
-        public Line(BigDecimal price, BigDecimal totalSize, BigDecimal orderCount) {
+        public Line(BigDecimal price, BigDecimal totalSize, int orderCount) {
             add(price);
             add(totalSize);
             add(orderCount);

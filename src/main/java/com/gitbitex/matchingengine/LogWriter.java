@@ -1,6 +1,17 @@
 package com.gitbitex.matchingengine;
 
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.TreeMap;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.AppProperties;
 import com.gitbitex.enums.OrderType;
 import com.gitbitex.kafka.KafkaMessageProducer;
@@ -14,14 +25,10 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
-
-import java.util.Date;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import org.springframework.stereotype.Component;
 
 @Slf4j
+@Component
 public class LogWriter {
     private final KafkaMessageProducer producer;
     private final RedissonClient redissonClient;
@@ -35,6 +42,7 @@ public class LogWriter {
     //ThreadPoolExecutor accountLogSender=new ThreadPoolExecutor(1,1,0,TimeUnit.SECONDS,accountQueue);
     ThreadPoolExecutor mainExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, orderQueue);
     StripedExecutorService kafkaExecutor = new StripedExecutorService(2);
+    TreeMap<Long, AtomicLong> refCounterByCommandOffset = new TreeMap<>(Comparator.reverseOrder());
 
     public LogWriter(KafkaMessageProducer producer, RedissonClient redissonClient, AppProperties appProperties) {
         this.producer = producer;
@@ -46,107 +54,149 @@ public class LogWriter {
         this.orderBookTopic = redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE);
     }
 
-    public void accountUpdated(Account account) {
+    public void flush(Long commandOffset, List<Object> dirtyObjects) {
+        setRefCount(commandOffset, dirtyObjects.size());
+
+        for (Object dirtyObject : dirtyObjects) {
+            if (dirtyObject instanceof Order) {
+                flush(commandOffset, ((Order)dirtyObject).clone());
+            } else if (dirtyObject instanceof Account) {
+                flush(commandOffset, ((Account)dirtyObject).clone());
+            } else if (dirtyObject instanceof Trade) {
+                flush(commandOffset, (Trade)dirtyObject);
+            }
+        }
+    }
+
+    public void flush(Long commandOffset, Account account) {
         kafkaExecutor.execute(account.getUserId(), () -> {
             String data = JSON.toJSONString(account);
-            producer.send(new ProducerRecord<>(appProperties.getAccountMessageTopic(), account.getUserId(), data));
-            accountTopic.publishAsync(data);
+            producer.send(new ProducerRecord<>(appProperties.getAccountMessageTopic(), account.getUserId(), data),
+                (recordMetadata, e) -> {
+                    if (e != null) {
+                        throw new RuntimeException(e);
+                    }
+                    decrRefCount(commandOffset);
+                });
         });
     }
 
-    public void orderUpdated(String productId, Order order) {
-        kafkaExecutor.execute(order.getOrderId(), () -> {
-            order.setProductId(productId);
+    public void flush(Long commandOffset, Order order) {
+        kafkaExecutor.execute(order.getUserId(), () -> {
             String data = JSON.toJSONString(order);
-            producer.send(new ProducerRecord<>(appProperties.getOrderMessageTopic(), productId, data));
-            orderTopic.publishAsync(data);
+            producer.send(new ProducerRecord<>(appProperties.getOrderMessageTopic(), order.getUserId(), data),
+                (recordMetadata, e) -> {
+                    if (e != null) {
+                        throw new RuntimeException(e);
+                    }
+                    decrRefCount(commandOffset);
+                });
         });
     }
 
-    public void orderReceived(String productId, Order order, long sequence) {
-        orderUpdated(productId, order);
+    public void flush(Long commandOffset, Trade trade) {
+        kafkaExecutor.execute(trade.getProductId(), () -> {
+            String data = JSON.toJSONString(trade);
+            producer.send(new ProducerRecord<>(appProperties.getOrderMessageTopic(), trade.getProductId(), data),
+                (recordMetadata, e) -> {
+                    if (e != null) {
+                        throw new RuntimeException(e);
+                    }
+                    decrRefCount(commandOffset);
+                });
+        });
+    }
 
+    private void setRefCount(Long commandOffset, int count) {
+        refCounterByCommandOffset.put(commandOffset, new AtomicLong(count));
+    }
+
+    private void decrRefCount(Long commandOffset) {
+        if (refCounterByCommandOffset.get(commandOffset).decrementAndGet() == 0) {
+            createSafePoint(commandOffset);
+        }else{
+            //logger.info("not safe");
+        }
+    }
+
+    private void createSafePoint(Long commandOffset) {
+        logger.info("creating safe point at command offset: {}", commandOffset);
+
+    }
+
+    public void onOrderReceived(Order order, long sequence) {
         mainExecutor.execute(() -> {
-            OrderReceivedMessage log = new OrderReceivedMessage();
-            log.setSequence(sequence);
-            log.setProductId(productId);
-            log.setUserId(order.getUserId());
-            log.setPrice(order.getPrice());
-            log.setFunds(order.getRemainingFunds());
-            log.setSide(order.getSide());
-            log.setSize(order.getRemainingSize());
-            log.setOrderId(order.getOrderId());
-            log.setOrderType(order.getType());
-            log.setTime(new Date());
-            orderBookTopic.publishAsync(JSON.toJSONString(log));
+            OrderReceivedMessage message = new OrderReceivedMessage();
+            message.setSequence(sequence);
+            message.setProductId(order.getProductId());
+            message.setUserId(order.getUserId());
+            message.setPrice(order.getPrice());
+            message.setFunds(order.getRemainingFunds());
+            message.setSide(order.getSide());
+            message.setSize(order.getRemainingSize());
+            message.setOrderId(order.getOrderId());
+            message.setOrderType(order.getType());
+            message.setTime(new Date());
+            orderBookTopic.publishAsync(JSON.toJSONString(message));
         });
     }
 
-    public void orderOpen(String productId, Order order, long sequence) {
-        orderUpdated(productId, order);
-
+    public void onOrderOpen(Order order, long sequence) {
         mainExecutor.execute(() -> {
-            OrderOpenMessage log = new OrderOpenMessage();
-            log.setSequence(sequence);
-            log.setProductId(productId);
-            log.setRemainingSize(order.getRemainingSize());
-            log.setPrice(order.getPrice());
-            log.setSide(order.getSide());
-            log.setOrderId(order.getOrderId());
-            log.setUserId(order.getUserId());
-            log.setTime(new Date());
-            orderBookTopic.publishAsync(JSON.toJSONString(log));
+            OrderOpenMessage message = new OrderOpenMessage();
+            message.setSequence(sequence);
+            message.setProductId(order.getProductId());
+            message.setRemainingSize(order.getRemainingSize());
+            message.setPrice(order.getPrice());
+            message.setSide(order.getSide());
+            message.setOrderId(order.getOrderId());
+            message.setUserId(order.getUserId());
+            message.setTime(new Date());
+            orderBookTopic.publishAsync(JSON.toJSONString(message));
         });
     }
 
-    public void orderMatch(String productId, Order takerOrder, Order makerOrder, Trade trade, long sequence) {
-        orderUpdated(productId, takerOrder);
-        orderUpdated(productId, makerOrder);
-
+    public void onOrderMatch(Order takerOrder, Order makerOrder, Trade trade, long sequence) {
         mainExecutor.execute(() -> {
             String data = JSON.toJSONString(trade);
-            producer.send(new ProducerRecord<>(appProperties.getTradeMessageTopic(), productId, data));
+            producer.send(new ProducerRecord<>(appProperties.getTradeMessageTopic(), trade.getProductId(), data));
             tradeTopic.publishAsync(data);
 
-            OrderMatchMessage log = new OrderMatchMessage();
-            log.setSequence(sequence);
-            log.setTradeId(trade.getTradeId());
-            log.setProductId(productId);
-            log.setTakerOrderId(takerOrder.getOrderId());
-            log.setMakerOrderId(makerOrder.getOrderId());
-            log.setTakerUserId(takerOrder.getUserId());
-            log.setMakerUserId(makerOrder.getUserId());
-            log.setPrice(makerOrder.getPrice());
-            log.setSize(trade.getSize());
-            log.setFunds(trade.getFunds());
-            log.setSide(makerOrder.getSide());
-            log.setTime(takerOrder.getTime());
-            orderBookTopic.publishAsync(JSON.toJSONString(log));
+            OrderMatchMessage message = new OrderMatchMessage();
+            message.setSequence(sequence);
+            message.setTradeId(trade.getTradeId());
+            message.setProductId(trade.getProductId());
+            message.setTakerOrderId(takerOrder.getOrderId());
+            message.setMakerOrderId(makerOrder.getOrderId());
+            message.setTakerUserId(takerOrder.getUserId());
+            message.setMakerUserId(makerOrder.getUserId());
+            message.setPrice(makerOrder.getPrice());
+            message.setSize(trade.getSize());
+            message.setFunds(trade.getFunds());
+            message.setSide(makerOrder.getSide());
+            message.setTime(takerOrder.getTime());
+            orderBookTopic.publishAsync(JSON.toJSONString(message));
         });
-
-        //tickerBook.refreshTicker(productId, log);
     }
 
-    public void orderDone(String productId, Order order, long sequence) {
-        orderUpdated(productId, order);
-
+    public void onOrderDone(Order order, long sequence) {
         mainExecutor.execute(() -> {
-            OrderDoneMessage log = new OrderDoneMessage();
-            log.setSequence(sequence);
-            log.setProductId(productId);
+            OrderDoneMessage message = new OrderDoneMessage();
+            message.setSequence(sequence);
+            message.setProductId(order.getProductId());
             if (order.getType() != OrderType.MARKET) {
-                log.setRemainingSize(order.getRemainingSize());
-                log.setPrice(order.getPrice());
+                message.setRemainingSize(order.getRemainingSize());
+                message.setPrice(order.getPrice());
             }
-            log.setRemainingFunds(order.getRemainingFunds());
-            log.setRemainingSize(order.getRemainingSize());
-            log.setSide(order.getSide());
-            log.setOrderId(order.getOrderId());
-            log.setUserId(order.getUserId());
+            message.setRemainingFunds(order.getRemainingFunds());
+            message.setRemainingSize(order.getRemainingSize());
+            message.setSide(order.getSide());
+            message.setOrderId(order.getOrderId());
+            message.setUserId(order.getUserId());
             //log.setDoneReason(doneReason);
-            log.setOrderType(order.getType());
-            log.setTime(new Date());
-            orderBookTopic.publishAsync(JSON.toJSONString(log));
+            message.setOrderType(order.getType());
+            message.setTime(new Date());
+            orderBookTopic.publishAsync(JSON.toJSONString(message));
         });
     }
 

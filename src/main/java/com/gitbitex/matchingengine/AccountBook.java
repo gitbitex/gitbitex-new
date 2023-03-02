@@ -7,7 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.Nullable;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,15 +31,15 @@ public class AccountBook {
     public void addAll(List<Account> accounts) {
         for (Account account : accounts) {
             this.accounts.computeIfAbsent(account.getUserId(), x -> new HashMap<>())
-                    .put(account.getCurrency(), account);
+                .put(account.getCurrency(), account);
         }
     }
 
     public List<Account> getAllAccounts() {
         return accounts.values().stream()
-                .map(Map::values)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
+            .map(Map::values)
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList());
     }
 
     public Map<String, Account> getAccountsByUserId(String userId) {
@@ -53,13 +55,16 @@ public class AccountBook {
         return null;
     }
 
-    public void deposit(String userId, String currency, BigDecimal amount, String transactionId) {
+    public void deposit(String userId, String currency, BigDecimal amount, String transactionId,Long commandOffset) {
         Account account = getAccount(userId, currency);
         if (account == null) {
             account = createAccount(userId, currency);
         }
         account.setAvailable(account.getAvailable().add(amount));
-        logWriter.accountUpdated(account.clone());
+
+        if (logWriter!=null) {
+            logWriter.flush(commandOffset, Collections.singletonList(account.clone()));
+        }
     }
 
     public void hold(Account account, BigDecimal amount) {
@@ -71,7 +76,6 @@ public class AccountBook {
         }
         account.setAvailable(account.getAvailable().subtract(amount));
         account.setHold(account.getHold().add(amount));
-        logWriter.accountUpdated(account.clone());
     }
 
     public void unhold(Account account, BigDecimal amount) {
@@ -83,11 +87,10 @@ public class AccountBook {
         }
         account.setAvailable(account.getAvailable().add(amount));
         account.setHold(account.getHold().subtract(amount));
-        logWriter.accountUpdated(account.clone());
     }
 
     public void exchange(Account takerBaseAccount, Account takerQuoteAccount, Account makerBaseAccount,
-                         Account makerQuoteAccount, OrderSide takerSide, BigDecimal size, BigDecimal funds) {
+        Account makerQuoteAccount,  OrderSide takerSide, BigDecimal size, BigDecimal funds) {
         if (takerBaseAccount == null) {
             takerBaseAccount = createAccount(takerQuoteAccount.getUserId(), makerBaseAccount.getCurrency());
         }
@@ -117,11 +120,6 @@ public class AccountBook {
         validateAccount(takerQuoteAccount);
         validateAccount(makerBaseAccount);
         validateAccount(makerQuoteAccount);
-
-        logWriter.accountUpdated(takerBaseAccount.clone());
-        logWriter.accountUpdated(takerQuoteAccount.clone());
-        logWriter.accountUpdated(makerBaseAccount.clone());
-        logWriter.accountUpdated(makerQuoteAccount.clone());
     }
 
     private void validateAccount(Account account) {
@@ -130,7 +128,7 @@ public class AccountBook {
         }
     }
 
-    private Account createAccount(String userId, String currency) {
+    public Account createAccount(String userId, String currency) {
         Account account = new Account();
         account.setUserId(userId);
         account.setCurrency(currency);

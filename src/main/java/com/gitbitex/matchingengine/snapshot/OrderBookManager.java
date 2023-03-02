@@ -4,8 +4,10 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.matchingengine.MatchingEngineSnapshot;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RBucket;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.LongCodec;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
 
@@ -19,10 +21,20 @@ import java.nio.file.Paths;
 public class OrderBookManager {
     private final RedissonClient redissonClient;
     private final RTopic l2BatchNotifyTopic;
+    private final RBucket<Long> safePointBucket;
 
     public OrderBookManager(RedissonClient redissonClient) {
         this.redissonClient = redissonClient;
         this.l2BatchNotifyTopic = redissonClient.getTopic("l2_batch", StringCodec.INSTANCE);
+        safePointBucket = redissonClient.getBucket("safePoint.commandOffset", LongCodec.INSTANCE);
+    }
+
+    public void putCommandOffset(Long commandOffset) {
+        safePointBucket.set(commandOffset);
+    }
+
+    public Long getCommandOffset() {
+        return safePointBucket.get();
     }
 
     @SneakyThrows
