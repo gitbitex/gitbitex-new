@@ -2,8 +2,8 @@ package com.gitbitex.matchingengine;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,6 +15,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
+import com.gitbitex.matchingengine.LogWriter.DirtyObjectList;
+import com.gitbitex.matchingengine.log.OrderReceivedMessage;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -53,7 +55,7 @@ public class OrderBook {
         Product product = productBook.getProduct(productId);
         Account takerBaseAccount = accountBook.getAccount(takerOrder.getUserId(), product.getBaseCurrency());
         Account takerQuoteAccount = accountBook.getAccount(takerOrder.getUserId(), product.getQuoteCurrency());
-        List<Object> dirtyObjects = new ArrayList<>();
+        DirtyObjectList<Object> dirtyObjects = new DirtyObjectList<>();
 
         dirtyObjects.add(takerOrder);
 
@@ -66,7 +68,8 @@ public class OrderBook {
         // order received
         takerOrder.setStatus(OrderStatus.RECEIVED);
         if (logWriter != null) {
-            logWriter.onOrderReceived(takerOrder.clone(), logSequence.incrementAndGet());
+            dirtyObjects.add(orderReceivedMessage(takerOrder));
+            //logWriter.onOrderReceived(takerOrder.clone(), logSequence.incrementAndGet());
         }
 
         // start matching
@@ -230,8 +233,16 @@ public class OrderBook {
             trade.getSize(), trade.getFunds());
     }
 
-    private void flush(Long commandOffset, List<Object> dirtyObjects) {
+    private void flush(Long commandOffset, DirtyObjectList<Object> dirtyObjects) {
         if (logWriter != null) {
+            for (int i = 0; i < dirtyObjects.size(); i++) {
+                Object obj = dirtyObjects.get(i);
+                if (obj instanceof Order) {
+                    dirtyObjects.set(i, ((Order)obj).clone());
+                } else if (obj instanceof Account) {
+                    dirtyObjects.set(i, ((Account)obj).clone());
+                }
+            }
             logWriter.flush(commandOffset, dirtyObjects);
         }
     }
@@ -287,5 +298,20 @@ public class OrderBook {
                 accountBook.unhold(baseAccount, makerOrder.getRemainingSize());
             }
         }
+    }
+
+    public OrderReceivedMessage orderReceivedMessage(Order order) {
+        OrderReceivedMessage message = new OrderReceivedMessage();
+        message.setSequence(logSequence.incrementAndGet());
+        message.setProductId(order.getProductId());
+        message.setUserId(order.getUserId());
+        message.setPrice(order.getPrice());
+        message.setFunds(order.getRemainingFunds());
+        message.setSide(order.getSide());
+        message.setSize(order.getRemainingSize());
+        message.setOrderId(order.getOrderId());
+        message.setOrderType(order.getType());
+        message.setTime(new Date());
+        return message;
     }
 }

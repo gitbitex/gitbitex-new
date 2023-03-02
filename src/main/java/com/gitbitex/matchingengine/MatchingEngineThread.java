@@ -69,7 +69,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
             MatchingEngineCommand command = x.value();
             command.setOffset(x.offset());
             offset = x.offset();
-            logger.info("{}", JSON.toJSONString(command));
+            //logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
             try {
                 Thread.sleep(10);

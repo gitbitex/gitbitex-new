@@ -3,6 +3,7 @@ package com.gitbitex.matchingengine;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -71,9 +72,9 @@ public class MatchingEngine {
         List<Product> products = this.productBook.getProducts().stream()
             .map(Product::clone)
             .collect(Collectors.toList());
-        List<Account> accounts = this.accountBook.getAllAccounts().stream()
+        Set<Account> accounts = this.accountBook.getAllAccounts().stream()
             .map(Account::clone)
-            .collect(Collectors.toList());
+            .collect(Collectors.toSet());
         List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream()
             .map(OrderBookSnapshot::new)
             .collect(Collectors.toList());

@@ -2,6 +2,7 @@ package com.gitbitex.matchingengine;
 
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.enums.OrderSide;
+import com.gitbitex.matchingengine.LogWriter.DirtyObjectList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.Nullable;
@@ -13,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -21,14 +23,14 @@ public class AccountBook {
     private final Map<String, Map<String, Account>> accounts = new HashMap<>();
     private final LogWriter logWriter;
 
-    public AccountBook(List<Account> accounts, LogWriter logWriter) {
+    public AccountBook(Set<Account> accounts, LogWriter logWriter) {
         this.logWriter = logWriter;
         if (accounts != null) {
             this.addAll(accounts);
         }
     }
 
-    public void addAll(List<Account> accounts) {
+    public void addAll(Set<Account> accounts) {
         for (Account account : accounts) {
             this.accounts.computeIfAbsent(account.getUserId(), x -> new HashMap<>())
                 .put(account.getCurrency(), account);
@@ -63,7 +65,7 @@ public class AccountBook {
         account.setAvailable(account.getAvailable().add(amount));
 
         if (logWriter!=null) {
-            logWriter.flush(commandOffset, Collections.singletonList(account.clone()));
+            logWriter.flush(commandOffset, DirtyObjectList.singletonList(account.clone()));
         }
     }
 

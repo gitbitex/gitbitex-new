@@ -10,6 +10,7 @@ import org.springframework.lang.Nullable;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -72,5 +73,27 @@ public class Order implements Cloneable {
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }
+    }
+
+    @Override
+    public boolean equals(Object obj){
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (!(obj instanceof Account)) {
+            return false;
+        }
+        Order other = (Order) obj;
+        return Objects.equals(this.orderId, other.orderId);
+    }
+
+    @Override
+    public int hashCode(){
+        int result = 17;
+        result = 31 * result + (orderId == null ? 0 : orderId.hashCode());
+        return result;
     }
 }
