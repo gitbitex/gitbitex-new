@@ -2,15 +2,12 @@ package com.gitbitex.matchingengine;
 
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.enums.OrderSide;
-import com.gitbitex.matchingengine.LogWriter.DirtyObjectList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.Nullable;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +18,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AccountBook {
     private final Map<String, Map<String, Account>> accounts = new HashMap<>();
-    private final LogWriter logWriter;
+    private final DirtyObjectHandler dirtyObjectHandler;
 
 
 
@@ -64,8 +61,8 @@ public class AccountBook {
         }
         account.setAvailable(account.getAvailable().add(amount));
 
-        if (logWriter!=null) {
-            logWriter.flush(commandOffset, DirtyObjectList.singletonList(account.clone()));
+        if (dirtyObjectHandler !=null) {
+            dirtyObjectHandler.flush(commandOffset, DirtyObjectList.singletonList(account.clone()));
         }
     }
 

@@ -21,13 +21,13 @@ public class MatchingEngine {
     private final AccountBook accountBook;
     @Getter
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
-    private final LogWriter logWriter;
+    private final DirtyObjectHandler dirtyObjectHandler;
     private final AtomicLong logSequence = new AtomicLong();
     private Long commandOffset;
 
-    public MatchingEngine(MatchingEngineStateStore matchingEngineStateStore, LogWriter logWriter) {
-        this.logWriter = logWriter;
-        this.accountBook=new AccountBook(logWriter);
+    public MatchingEngine(MatchingEngineStateStore matchingEngineStateStore, DirtyObjectHandler dirtyObjectHandler) {
+        this.dirtyObjectHandler = dirtyObjectHandler;
+        this.accountBook=new AccountBook(dirtyObjectHandler);
 
         this.commandOffset = matchingEngineStateStore.getCommandOffset();
         if (this.commandOffset == null) {
@@ -36,7 +36,7 @@ public class MatchingEngine {
 
             matchingEngineStateStore.forEachAccount(accountBook::add);
             matchingEngineStateStore.forEachOrder(order -> orderBooks
-                .computeIfAbsent(order.getProductId(), k -> new OrderBook(order.getProductId(), null,
+                .computeIfAbsent(order.getProductId(), k -> new OrderBook(order.getProductId(),
                     tradeIds.get(order.getProductId()), sequences.get(order.getProductId()), accountBook, productBook))
                 .addOrder(order));
         }
@@ -49,15 +49,16 @@ public class MatchingEngine {
     }
 
     public void executeCommand(PlaceOrderCommand command) {
-        commandOffset = command.getOffset();
+        //commandOffset = command.getOffset();
         OrderBook orderBook = createOrderBook(command.getProductId());
-        orderBook.placeOrder(new Order(command), commandOffset);
+        DirtyObjectList<Object> dirtyObjects= orderBook.placeOrder(new Order(command));
+        flush(commandOffset,dirtyObjects);
     }
 
     private OrderBook createOrderBook(String productId) {
         OrderBook orderBook = orderBooks.get(productId);
         if (orderBook == null) {
-            orderBook = new OrderBook(productId, logWriter, null, null, accountBook, productBook);
+            orderBook = new OrderBook(productId, null, null, accountBook, productBook);
             orderBooks.put(productId, orderBook);
         }
         return orderBook;
@@ -102,5 +103,19 @@ public class MatchingEngine {
             return null;
         }
         return new L3OrderBook(orderBook);
+    }
+
+    private void flush(Long commandOffset, DirtyObjectList<Object> dirtyObjects) {
+        if (dirtyObjectHandler != null) {
+            for (int i = 0; i < dirtyObjects.size(); i++) {
+                Object obj = dirtyObjects.get(i);
+                if (obj instanceof Order) {
+                    dirtyObjects.set(i, ((Order)obj).clone());
+                } else if (obj instanceof Account) {
+                    dirtyObjects.set(i, ((Account)obj).clone());
+                }
+            }
+            dirtyObjectHandler.flush(commandOffset, dirtyObjects);
+        }
     }
 }

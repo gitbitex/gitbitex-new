@@ -25,12 +25,15 @@ public class L2OrderBook {
     private List<Line> asks = new ArrayList<>();
     private List<Line> bids = new ArrayList<>();
 
-    public L2OrderBook() {
+    public L2OrderBook(){}
+
+    public L2OrderBook(String productId) {
+        this.productId=productId;
     }
 
     public L2OrderBook(SimpleOrderBook orderBook) {
-        //this.productId = orderBook.getProductId();
-        //this.sequence = orderBook.getLogSequence().get();
+        this.productId = orderBook.getProductId();
+        this.sequence = orderBook.getSequence();
         this.time = System.currentTimeMillis();
         this.asks = orderBook.getAsks().entrySet().stream()
             .limit(50)

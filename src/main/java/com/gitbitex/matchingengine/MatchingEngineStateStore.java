@@ -29,6 +29,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class MatchingEngineStateStore {
+    static {
+        RocksDB.loadLibrary();
+    }
     private OptimisticTransactionDB db;
     private List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
 

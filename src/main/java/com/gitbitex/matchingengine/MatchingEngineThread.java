@@ -4,8 +4,6 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 
-import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.CommandDispatcher;
@@ -23,18 +21,18 @@ import org.apache.kafka.common.TopicPartition;
 public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEngineCommand>
     implements MatchingEngineCommandHandler, ConsumerRebalanceListener {
     private final AppProperties appProperties;
-    private final LogWriter logWriter;
+    private final DirtyObjectHandler dirtyObjectHandler;
     protected MatchingEngine matchingEngine;
     protected long lastSnapshotOffset;
     protected long lastSnapshotTime;
     protected long offset;
     private final MatchingEngineStateStore matchingEngineStateStore;
 
-    public MatchingEngineThread(KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, MatchingEngineStateStore matchingEngineStateStore, LogWriter logWriter,
+    public MatchingEngineThread(KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, MatchingEngineStateStore matchingEngineStateStore, DirtyObjectHandler dirtyObjectHandler,
         AppProperties appProperties) {
         super(messageKafkaConsumer, logger);
         this.appProperties = appProperties;
-        this.logWriter = logWriter;
+        this.dirtyObjectHandler = dirtyObjectHandler;
         this.matchingEngineStateStore=matchingEngineStateStore;
     }
 
@@ -50,7 +48,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
             MatchingEngineSnapshot snapshot = null;// = orderBookManager.getFullOrderBookSnapshot();
-            this.matchingEngine = new MatchingEngine(matchingEngineStateStore, logWriter);
+            this.matchingEngine = new MatchingEngine(matchingEngineStateStore, dirtyObjectHandler);
             if (snapshot != null) {
                 offset = snapshot.getCommandOffset();
                 lastSnapshotOffset = snapshot.getCommandOffset();
@@ -74,7 +72,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
             //logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
             try {
-                Thread.sleep(10);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
