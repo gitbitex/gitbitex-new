@@ -18,9 +18,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AccountBook {
     private final Map<String, Map<String, Account>> accounts = new HashMap<>();
-    private final DirtyObjectHandler dirtyObjectHandler;
-
-
 
     public void addAll(Set<Account> accounts) {
         for (Account account : accounts) {
@@ -60,10 +57,6 @@ public class AccountBook {
             account = createAccount(userId, currency);
         }
         account.setAvailable(account.getAvailable().add(amount));
-
-        if (dirtyObjectHandler !=null) {
-            dirtyObjectHandler.flush(commandOffset, DirtyObjectList.singletonList(account.clone()));
-        }
     }
 
     public void hold(Account account, BigDecimal amount) {

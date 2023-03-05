@@ -94,7 +94,7 @@ public class Bootstrap {
             String groupId = "Matchin1g";
             KafkaConsumer<String, MatchingEngineCommand> consumer= new KafkaConsumer<>(getProperties(groupId),
                 new StringDeserializer(), new MatchingEngineCommandDeserializer());
-            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, matchingEngineStateStore, dirtyObjectHandler, appProperties);
+            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, matchingEngineStateStore, dirtyObjectHandler,messageProducer,redissonClient, appProperties);
             matchingEngineThread.setName(groupId + "-" + matchingEngineThread.getId());
             matchingEngineThread.start();
             threads.add(matchingEngineThread);

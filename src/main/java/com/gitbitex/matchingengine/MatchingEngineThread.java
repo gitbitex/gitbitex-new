@@ -6,6 +6,7 @@ import java.util.Collections;
 
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
+import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.CommandDispatcher;
 import com.gitbitex.matchingengine.command.DepositCommand;
@@ -17,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.redisson.api.RedissonClient;
 
 @Slf4j
 public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEngineCommand>
@@ -28,13 +30,18 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
     protected long lastSnapshotTime;
     protected long offset;
     private final MatchingEngineStateStore matchingEngineStateStore;
+    KafkaMessageProducer producer;
+    RedissonClient redissonClient;
 
     public MatchingEngineThread(KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, MatchingEngineStateStore matchingEngineStateStore, DirtyObjectHandler dirtyObjectHandler,
+                                KafkaMessageProducer producer, RedissonClient redissonClient,
         AppProperties appProperties) {
         super(messageKafkaConsumer, logger);
         this.appProperties = appProperties;
         this.dirtyObjectHandler = dirtyObjectHandler;
         this.matchingEngineStateStore=matchingEngineStateStore;
+        this.producer=producer;
+        this.redissonClient=redissonClient;
     }
 
     @Override
@@ -49,7 +56,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
             MatchingEngineSnapshot snapshot = null;// = orderBookManager.getFullOrderBookSnapshot();
-            this.matchingEngine = new MatchingEngine(matchingEngineStateStore, dirtyObjectHandler);
+            this.matchingEngine = new MatchingEngine(matchingEngineStateStore,producer,redissonClient,appProperties);
             if (snapshot != null) {
                 offset = snapshot.getCommandOffset();
                 lastSnapshotOffset = snapshot.getCommandOffset();
@@ -72,11 +79,11 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
             offset = x.offset();
             //logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
-            try {
+            /*try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
-            }
+            }*/
         });
 
         //matchingEngine.getOrderBooks().keySet().forEach(x -> {

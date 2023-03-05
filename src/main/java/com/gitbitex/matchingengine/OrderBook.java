@@ -217,15 +217,6 @@ public class OrderBook {
         orderById.put(order.getOrderId(), order);
     }
 
-    public void removeOrder(Order order) {
-    }
-
-    public void addOrders(List<Order> orders) {
-        if (orders != null) {
-            orders.forEach(this::addOrder);
-        }
-    }
-
     private boolean isPriceCrossed(Order takerOrder, BigDecimal makerOrderPrice) {
         if (takerOrder.getType() == OrderType.MARKET) {
             return true;
