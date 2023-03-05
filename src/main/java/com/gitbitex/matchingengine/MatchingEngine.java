@@ -75,8 +75,9 @@ public class MatchingEngine {
     }
 
     public void executeCommand(DepositCommand command) {
-        accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
+        DirtyObjectList<Object> dirtyObjects = accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
                 command.getTransactionId(), command.getOffset());
+        flush(command.getOffset(), dirtyObjects);
     }
 
     public void executeCommand(PlaceOrderCommand command) {

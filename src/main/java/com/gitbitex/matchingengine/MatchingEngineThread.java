@@ -71,6 +71,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
         consumer.subscribe(Collections.singletonList(appProperties.getMatchingEngineCommandTopic()), this);
     }
 
+    int i;
     @Override
     protected void doPoll() {
         consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
@@ -79,12 +80,14 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
             offset = x.offset();
             //logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
+            i++;
             /*try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }*/
         });
+        System.out.println(i);
 
         //matchingEngine.getOrderBooks().keySet().forEach(x -> {
         //L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);
