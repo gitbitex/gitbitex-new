@@ -22,4 +22,8 @@ public class ProductBook {
     public Collection<Product> getProducts() {
         return this.products.values();
     }
+
+    public void addProduct(Product product){
+
+    }
 }

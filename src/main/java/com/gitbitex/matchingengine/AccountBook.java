@@ -23,18 +23,18 @@ public class AccountBook {
     private final Map<String, Map<String, Account>> accounts = new HashMap<>();
     private final LogWriter logWriter;
 
-    public AccountBook(Set<Account> accounts, LogWriter logWriter) {
-        this.logWriter = logWriter;
-        if (accounts != null) {
-            this.addAll(accounts);
-        }
-    }
+
 
     public void addAll(Set<Account> accounts) {
         for (Account account : accounts) {
             this.accounts.computeIfAbsent(account.getUserId(), x -> new HashMap<>())
                 .put(account.getCurrency(), account);
         }
+    }
+
+    public void add(Account account){
+        this.accounts.computeIfAbsent(account.getUserId(), x -> new HashMap<>())
+            .put(account.getCurrency(), account);
     }
 
     public List<Account> getAllAccounts() {

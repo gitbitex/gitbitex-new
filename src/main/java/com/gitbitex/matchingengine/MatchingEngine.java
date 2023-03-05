@@ -23,22 +23,22 @@ public class MatchingEngine {
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
     private final LogWriter logWriter;
     private final AtomicLong logSequence = new AtomicLong();
-    private long commandOffset;
+    private Long commandOffset;
 
-    public MatchingEngine(MatchingEngineSnapshot snapshot, LogWriter logWriter) {
+    public MatchingEngine(MatchingEngineStateStore matchingEngineStateStore, LogWriter logWriter) {
         this.logWriter = logWriter;
-        if (snapshot != null) {
-            this.logSequence.set(snapshot.getLogSequence());
-            this.commandOffset = snapshot.getCommandOffset();
-            this.accountBook = new AccountBook(snapshot.getAccounts(), logWriter);
-            if (snapshot.getOrderBookSnapshots() != null) {
-                snapshot.getOrderBookSnapshots().forEach(x -> {
-                    OrderBook orderBook = new OrderBook(x.getProductId(), x, logWriter, accountBook, productBook);
-                    this.orderBooks.put(orderBook.getProductId(), orderBook);
-                });
-            }
-        } else {
-            this.accountBook = new AccountBook(null, logWriter);
+        this.accountBook=new AccountBook(logWriter);
+
+        this.commandOffset = matchingEngineStateStore.getCommandOffset();
+        if (this.commandOffset == null) {
+            Map<String, Long> tradeIds = matchingEngineStateStore.getTradeIds();
+            Map<String, Long> sequences = matchingEngineStateStore.getSequences();
+
+            matchingEngineStateStore.forEachAccount(accountBook::add);
+            matchingEngineStateStore.forEachOrder(order -> orderBooks
+                .computeIfAbsent(order.getProductId(), k -> new OrderBook(order.getProductId(), null,
+                    tradeIds.get(order.getProductId()), sequences.get(order.getProductId()), accountBook, productBook))
+                .addOrder(order));
         }
     }
 
@@ -57,7 +57,7 @@ public class MatchingEngine {
     private OrderBook createOrderBook(String productId) {
         OrderBook orderBook = orderBooks.get(productId);
         if (orderBook == null) {
-            orderBook = new OrderBook(productId, null, logWriter, accountBook, productBook);
+            orderBook = new OrderBook(productId, logWriter, null, null, accountBook, productBook);
             orderBooks.put(productId, orderBook);
         }
         return orderBook;

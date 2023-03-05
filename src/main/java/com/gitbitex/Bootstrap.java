@@ -13,9 +13,10 @@ import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.LogWriter;
-import com.gitbitex.matchingengine.MatchingEngineSnapshotThread;
+
+import com.gitbitex.matchingengine.MatchingEngineStateStore;
 import com.gitbitex.matchingengine.MatchingEngineThread;
-import com.gitbitex.matchingengine.OrderBookSnapshotThread;
+
 import com.gitbitex.matchingengine.command.MatchingEngineCommand;
 import com.gitbitex.matchingengine.command.MatchingEngineCommandDeserializer;
 import com.gitbitex.matchingengine.log.AccountMessageDeserializer;
@@ -54,6 +55,7 @@ public class Bootstrap {
     private final RedissonClient redissonClient;
     private final List<Thread> threads = new ArrayList<>();
     private final LogWriter logWriter;
+    private final MatchingEngineStateStore matchingEngineStateStore;
 
     @PostConstruct
     public void init() {
@@ -92,36 +94,16 @@ public class Bootstrap {
             String groupId = "Matchin1g";
             KafkaConsumer<String, MatchingEngineCommand> consumer= new KafkaConsumer<>(getProperties(groupId),
                 new StringDeserializer(), new MatchingEngineCommandDeserializer());
-            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, logWriter, appProperties);
+            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, matchingEngineStateStore, logWriter, appProperties);
             matchingEngineThread.setName(groupId + "-" + matchingEngineThread.getId());
             matchingEngineThread.start();
             threads.add(matchingEngineThread);
         }
     }
 
-    private void startMatchingEngineSnapshotThread(int nThreads) {
-        for (int i = 0; i < nThreads; i++) {
-            String groupId = "MatchingEngineSnapshotThread";
-            KafkaConsumer<String, MatchingEngineCommand> consumer= new KafkaConsumer<>(getProperties(groupId),
-                new StringDeserializer(), new MatchingEngineCommandDeserializer());
-            MatchingEngineSnapshotThread matchingEngineThread = new MatchingEngineSnapshotThread(consumer, orderBookManager, appProperties);
-            matchingEngineThread.setName(groupId + "-" + matchingEngineThread.getId());
-            matchingEngineThread.start();
-            threads.add(matchingEngineThread);
-        }
-    }
 
-    private void startOrderBookSnapshotThread(int nThreads) {
-        for (int i = 0; i < nThreads; i++) {
-            String groupId = "startMatchingEngineSnapshot";
-            KafkaConsumer<String, MatchingEngineCommand> consumer= new KafkaConsumer<>(getProperties(groupId),
-                new StringDeserializer(), new MatchingEngineCommandDeserializer());
-            OrderBookSnapshotThread matchingEngineThread = new OrderBookSnapshotThread(consumer, orderBookManager, appProperties);
-            matchingEngineThread.setName(groupId + "-" + matchingEngineThread.getId());
-            matchingEngineThread.start();
-            threads.add(matchingEngineThread);
-        }
-    }
+
+
 
     private void startOrderPersistenceThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {

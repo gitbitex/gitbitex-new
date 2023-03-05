@@ -33,21 +33,17 @@ public class OrderBook {
     private final TreeMap<BigDecimal, PriceGroupOrderCollection> bids = new TreeMap<>(Comparator.reverseOrder());
     private final LinkedHashMap<String, Order> orderById = new LinkedHashMap<>();
 
-    public OrderBook(String productId, LogWriter logWriter, AccountBook accountBook, ProductBook productBook) {
+    public OrderBook(String productId, LogWriter logWriter, Long tradeId, Long logSequence, AccountBook accountBook,
+        ProductBook productBook) {
         this.productId = productId;
         this.logWriter = logWriter;
         this.productBook = productBook;
         this.accountBook = accountBook;
-    }
-
-    public OrderBook(String productId, OrderBookSnapshot snapshot, LogWriter logWriter, AccountBook accountBook,
-        ProductBook productBook) {
-        this(productId, logWriter, accountBook, productBook);
-        if (snapshot != null) {
-            this.tradeId.set(snapshot.getTradeId());
-            this.logSequence.set(snapshot.getLogSequence());
-            this.addOrders(snapshot.getAsks());
-            this.addOrders(snapshot.getBids());
+        if (tradeId != null) {
+            this.tradeId.set(tradeId);
+        }
+        if (logSequence != null) {
+            this.logSequence.set(logSequence);
         }
     }
 
@@ -252,6 +248,9 @@ public class OrderBook {
             .computeIfAbsent(order.getPrice(), k -> new PriceGroupOrderCollection())
             .put(order.getOrderId(), order);
         orderById.put(order.getOrderId(), order);
+    }
+
+    public void removeOrder(Order order){
     }
 
     public void addOrders(List<Order> orders) {

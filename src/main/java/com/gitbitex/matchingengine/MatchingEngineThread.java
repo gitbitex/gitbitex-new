@@ -28,12 +28,14 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
     protected long lastSnapshotOffset;
     protected long lastSnapshotTime;
     protected long offset;
+    private final MatchingEngineStateStore matchingEngineStateStore;
 
-    public MatchingEngineThread(KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, LogWriter logWriter,
+    public MatchingEngineThread(KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, MatchingEngineStateStore matchingEngineStateStore, LogWriter logWriter,
         AppProperties appProperties) {
         super(messageKafkaConsumer, logger);
         this.appProperties = appProperties;
         this.logWriter = logWriter;
+        this.matchingEngineStateStore=matchingEngineStateStore;
     }
 
     @Override
@@ -48,7 +50,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
             MatchingEngineSnapshot snapshot = null;// = orderBookManager.getFullOrderBookSnapshot();
-            this.matchingEngine = new MatchingEngine(snapshot, logWriter);
+            this.matchingEngine = new MatchingEngine(matchingEngineStateStore, logWriter);
             if (snapshot != null) {
                 offset = snapshot.getCommandOffset();
                 lastSnapshotOffset = snapshot.getCommandOffset();

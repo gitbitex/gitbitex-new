@@ -50,6 +50,7 @@ public class Order implements Cloneable {
             throw new NullPointerException("price");
         }
 
+        this.productId=command.getProductId();
         this.userId = command.getUserId();
         this.orderId = command.getOrderId();
         this.type = command.getOrderType();

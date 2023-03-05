@@ -8,13 +8,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,28 +20,35 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
+import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.matchingengine.log.Log;
 import com.gitbitex.matchingengine.log.OrderDoneMessage;
 import com.gitbitex.matchingengine.log.OrderLog;
 import com.gitbitex.matchingengine.log.OrderMatchMessage;
 import com.gitbitex.matchingengine.log.OrderOpenMessage;
 import com.gitbitex.matchingengine.log.OrderReceivedMessage;
+import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.var;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
+import org.rocksdb.OptimisticTransactionDB;
+import org.rocksdb.RocksDB;
 import org.springframework.stereotype.Component;
-import org.springframework.web.servlet.handler.WebRequestHandlerInterceptorAdapter;
 
 @Slf4j
 @Component
 public class LogWriter {
+    static {
+        RocksDB.loadLibrary();
+    }
+
     private final KafkaMessageProducer producer;
     private final RedissonClient redissonClient;
     private final AppProperties appProperties;
@@ -51,17 +56,20 @@ public class LogWriter {
     private final RTopic orderTopic;
     private final RTopic tradeTopic;
     private final RTopic orderBookTopic;
-
+    private final MatchingEngineStateStore matchingEngineStateStore;// = new MatchingEngineStateStore();
     BlockingQueue<Runnable> orderQueue = new LinkedBlockingQueue<>(10000000);
-    //ThreadPoolExecutor accountLogSender=new ThreadPoolExecutor(1,1,0,TimeUnit.SECONDS,accountQueue);
     ThreadPoolExecutor mainExecutor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, orderQueue);
     StripedExecutorService kafkaExecutor = new StripedExecutorService(2);
+    StripedExecutorService redisExecutor = new StripedExecutorService(2);
+    StripedExecutorService l2OrderBookExecutor = new StripedExecutorService(2);
     ScheduledExecutorService snapshotExecutor = Executors.newScheduledThreadPool(1);
-
     ConcurrentSkipListMap<Long, DirtyObjectList<Object>> dirtyObjectsByCommandOffset = new ConcurrentSkipListMap<>(
         Comparator.naturalOrder());
+    OptimisticTransactionDB db;
+    ConcurrentHashMap<String, SimpleOrderBook> orderBookByProductId = new ConcurrentHashMap<>();
 
-    public LogWriter(KafkaMessageProducer producer, RedissonClient redissonClient, AppProperties appProperties) {
+    public LogWriter(KafkaMessageProducer producer, RedissonClient redissonClient,
+        MatchingEngineStateStore matchingEngineStateStore, AppProperties appProperties) {
         this.producer = producer;
         this.redissonClient = redissonClient;
         this.appProperties = appProperties;
@@ -69,27 +77,46 @@ public class LogWriter {
         this.orderTopic = redissonClient.getTopic("order", StringCodec.INSTANCE);
         this.tradeTopic = redissonClient.getTopic("trade", StringCodec.INSTANCE);
         this.orderBookTopic = redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE);
-        snapshotExecutor.scheduleAtFixedRate(()->{
+        this.matchingEngineStateStore = matchingEngineStateStore;
+        snapshotExecutor.scheduleWithFixedDelay(() -> {
             try {
                 createSnapshot();
-            }catch (Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
-        },5,5,TimeUnit.SECONDS);
+        }, 5, 5, TimeUnit.SECONDS);
+
+        snapshotExecutor.scheduleWithFixedDelay(() -> {
+            try {
+                orderBookByProductId.forEach((k,v)->{
+                    l2OrderBookExecutor.execute(k,()->{
+                        L2OrderBook l2OrderBook=new L2OrderBook(v);
+                        logger.info("l2OrderBook {}",JSON.toJSONString(l2OrderBook,true));
+                    });
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }, 5, 5, TimeUnit.SECONDS);
+
     }
 
+    @SneakyThrows
     private void createSnapshot() {
         long beginCommandOffset;
         long endCommandOffset;
         Set<Account> accounts = new HashSet<>();
         Set<Order> orders = new HashSet<>();
+        Set<Product> products = new HashSet<>();
         Map<String, Long> tradeIdByProductId = new HashMap<>();
         Map<String, Long> sequenceByProductId = new HashMap<>();
 
-        if (dirtyObjectsByCommandOffset.size() <= 1) {
+        if (dirtyObjectsByCommandOffset.isEmpty()) {
             return;
         }
-        int i=0;
+
+        int i = 0;
         var itr = dirtyObjectsByCommandOffset.entrySet().iterator();
         beginCommandOffset = endCommandOffset = dirtyObjectsByCommandOffset.firstKey();
         while (itr.hasNext()) {
@@ -104,14 +131,14 @@ public class LogWriter {
                     } else if (obj instanceof Trade) {
                         Trade trade = (Trade)obj;
                         tradeIdByProductId.put(trade.getProductId(), trade.getTradeId());
-                    } else if (obj instanceof OrderLog){
-                        OrderLog orderLog=(OrderLog)obj;
-                        sequenceByProductId.put(orderLog.getProductId(),orderLog.getSequence());
+                    } else if (obj instanceof OrderLog) {
+                        OrderLog orderLog = (OrderLog)obj;
+                        sequenceByProductId.put(orderLog.getProductId(), orderLog.getSequence());
                     }
                     endCommandOffset = entry.getKey();
                 }
                 itr.remove();
-                if (endCommandOffset-beginCommandOffset>=2222){
+                if (endCommandOffset - beginCommandOffset >= 2222) {
                     break;
                 }
             } else {
@@ -119,27 +146,31 @@ public class LogWriter {
             }
         }
 
-        if (beginCommandOffset==endCommandOffset){
-            logger.info("nonthing changed: {} {}",beginCommandOffset,endCommandOffset);
-        }else{
-            logger.info("taking snapshot :{} {}",beginCommandOffset,endCommandOffset);
-        }
+        matchingEngineStateStore.write(endCommandOffset, accounts, orders, products, tradeIdByProductId,
+            sequenceByProductId);
 
-        MatchingEngineSnapshot snapshot = new MatchingEngineSnapshot();
-        snapshot.setAccounts(accounts);
-        snapshot.setOrders(orders);
-        snapshot.setBeginCommandOffset(beginCommandOffset);
-        snapshot.setEndCommandOffset(endCommandOffset);
-        snapshot.setTradeIds(tradeIdByProductId);
-        snapshot.setSequences(sequenceByProductId);
-        System.out.println(JSON.toJSONString(snapshot, true));
+        System.out.println(matchingEngineStateStore.getCommandOffset());
+        System.out.println("order");
+        matchingEngineStateStore.forEachOrder(x -> {
+            System.out.println(JSON.toJSONString(x));
+        });
+        System.out.println("account");
+        matchingEngineStateStore.forEachAccount(x -> {
+            System.out.println(JSON.toJSONString(x));
+        });
+        System.out.println("tradeid");
+        matchingEngineStateStore.forEachTradeId((productId, tradeId) -> {
+            System.out.println(productId + "=" + tradeId);
+        });
+        System.out.println("sequence");
+        matchingEngineStateStore.forEachSequence((productId, sequence) -> {
+            System.out.println(productId + "=" + sequence);
+        });
+
     }
 
     public void flush(Long commandOffset, DirtyObjectList<Object> dirtyObjects) {
-        //setRefCount(commandOffset, dirtyObjects.size());
-
         dirtyObjectsByCommandOffset.put(commandOffset, dirtyObjects);
-
         for (Object dirtyObject : dirtyObjects) {
             if (dirtyObject instanceof Order) {
                 flush(commandOffset, (Order)dirtyObject);
@@ -147,6 +178,9 @@ public class LogWriter {
                 flush(commandOffset, (Account)dirtyObject);
             } else if (dirtyObject instanceof Trade) {
                 flush(commandOffset, (Trade)dirtyObject);
+            } else if (dirtyObject instanceof OrderLog) {
+                flush(commandOffset, (OrderLog)dirtyObject);
+                decrRefCount(commandOffset);
             }
         }
     }
@@ -175,6 +209,16 @@ public class LogWriter {
                     decrRefCount(commandOffset);
                 });
         });
+        l2OrderBookExecutor.execute(order.getProductId(), () -> {
+            SimpleOrderBook orderBook = orderBookByProductId.computeIfAbsent(order.getProductId(),
+                k -> new SimpleOrderBook());
+            if (order.getStatus() == OrderStatus.OPEN) {
+                orderBook.putOrder(order);
+            } else {
+                orderBook.removeOrder(order);
+            }
+
+        });
     }
 
     public void flush(Long commandOffset, Trade trade) {
@@ -190,8 +234,11 @@ public class LogWriter {
         });
     }
 
-    private void setRefCount(Long commandOffset, int count) {
-        //dirtyObjectsByCommandOffset.put(commandOffset, new AtomicLong(count));
+    public void flush(Long commandOffset, OrderLog orderLog) {
+        redisExecutor.execute(orderLog.getProductId(), () -> {
+            String data = JSON.toJSONString(orderLog);
+            orderBookTopic.publishAsync(data);
+        });
     }
 
     private void decrRefCount(Long commandOffset) {
@@ -203,13 +250,6 @@ public class LogWriter {
             //logger.info("not safe");
         }
     }
-
-    private void createSafePoint(Long commandOffset) {
-        logger.info("creating safe point at command offset: {}", commandOffset);
-
-    }
-
-
 
     public void onOrderReceived(Order order, long sequence) {
         mainExecutor.execute(() -> {

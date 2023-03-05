@@ -1,7 +1,9 @@
 package com.gitbitex.matchingengine.snapshot;
 
 import com.gitbitex.enums.OrderSide;
+import com.gitbitex.matchingengine.Order;
 import com.gitbitex.matchingengine.OrderBook;
+import com.gitbitex.matchingengine.SimpleOrderBook;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.lang.Nullable;
@@ -26,16 +28,28 @@ public class L2OrderBook {
     public L2OrderBook() {
     }
 
-    public L2OrderBook(OrderBook orderBook) {
-        this.productId = orderBook.getProductId();
-        this.sequence = orderBook.getLogSequence().get();
+    public L2OrderBook(SimpleOrderBook orderBook) {
+        //this.productId = orderBook.getProductId();
+        //this.sequence = orderBook.getLogSequence().get();
         this.time = System.currentTimeMillis();
+        this.asks = orderBook.getAsks().entrySet().stream()
+            .limit(50)
+            .map(x->new Line(x.getKey(),x.getValue().getRemainingSize(),x.getValue().size()))
+            .collect(Collectors.toList());
+        this.bids = orderBook.getBids().entrySet().stream()
+            .limit(50)
+            .map(x->new Line(x.getKey(),x.getValue().getRemainingSize(),x.getValue().size()))
+            .collect(Collectors.toList());
         /*this.asks = orderBook.getAsks().getLines().stream()
             .map(Line::new)
             .collect(Collectors.toList());
         this.bids = orderBook.getBids().getLines().stream()
             .map(Line::new)
             .collect(Collectors.toList());*/
+    }
+
+    public void addOrder(Order order){
+
     }
 
     public L2OrderBook(OrderBook orderBook, int maxSize) {
