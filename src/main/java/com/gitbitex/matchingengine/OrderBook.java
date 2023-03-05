@@ -86,7 +86,6 @@ public class OrderBook {
 
                 dirtyObjects.add(orderMatchMessage(takerOrder.clone(), makerOrder.clone(), trade));
 
-
                 // exchange account funds
                 Account makerBaseAccount = accountBook.getAccount(makerOrder.getUserId(), product.getBaseCurrency());
                 Account makerQuoteAccount = accountBook.getAccount(makerOrder.getUserId(), product.getQuoteCurrency());
@@ -97,7 +96,7 @@ public class OrderBook {
                     orderItr.remove();
                     orderById.remove(makerOrder.getOrderId());
                     dirtyObjects.add(orderDoneMessage(makerOrder.clone()));
-                     unholdOrderFunds(makerOrder, makerBaseAccount, makerQuoteAccount);
+                    unholdOrderFunds(makerOrder, makerBaseAccount, makerQuoteAccount);
                 }
 
                 dirtyObjects.add(makerOrder);
@@ -133,10 +132,10 @@ public class OrderBook {
         }
 
         dirtyObjects.add(takerBaseAccount);
-        dirtyObjects.add(takerQuoteAccount);
+        if (takerQuoteAccount!=null) {
+            dirtyObjects.add(takerQuoteAccount);
+        }
         return dirtyObjects;
-
-        //flush(commandOffset, dirtyObjects);
     }
 
     public void cancelOrder(String orderId, Long commandOffset) {
@@ -217,20 +216,6 @@ public class OrderBook {
                           Account makerQuoteAccount, Trade trade) {
         accountBook.exchange(takerBaseAccount, takerQuoteAccount, makerBaseAccount, makerQuoteAccount, trade.getSide(),
                 trade.getSize(), trade.getFunds());
-    }
-
-    private void flush(Long commandOffset, DirtyObjectList<Object> dirtyObjects) {
-        /*if (logWriter != null) {
-            for (int i = 0; i < dirtyObjects.size(); i++) {
-                Object obj = dirtyObjects.get(i);
-                if (obj instanceof Order) {
-                    dirtyObjects.set(i, ((Order)obj).clone());
-                } else if (obj instanceof Account) {
-                    dirtyObjects.set(i, ((Account)obj).clone());
-                }
-            }
-            logWriter.flush(commandOffset, dirtyObjects);
-        }*/
     }
 
     public void addOrder(Order order) {

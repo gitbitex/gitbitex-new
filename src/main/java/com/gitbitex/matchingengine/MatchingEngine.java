@@ -23,14 +23,13 @@ public class MatchingEngine {
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
     private final DirtyObjectHandler dirtyObjectHandler;
     private final AtomicLong logSequence = new AtomicLong();
-    private Long commandOffset;
 
     public MatchingEngine(MatchingEngineStateStore matchingEngineStateStore, DirtyObjectHandler dirtyObjectHandler) {
         this.dirtyObjectHandler = dirtyObjectHandler;
         this.accountBook=new AccountBook(dirtyObjectHandler);
 
-        this.commandOffset = matchingEngineStateStore.getCommandOffset();
-        if (this.commandOffset == null) {
+        Long commandOffset = matchingEngineStateStore.getCommandOffset();
+        if ( commandOffset == null) {
             Map<String, Long> tradeIds = matchingEngineStateStore.getTradeIds();
             Map<String, Long> sequences = matchingEngineStateStore.getSequences();
 
@@ -43,16 +42,14 @@ public class MatchingEngine {
     }
 
     public void executeCommand(DepositCommand command) {
-        commandOffset = command.getOffset();
         accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
-            command.getTransactionId(), commandOffset);
+            command.getTransactionId(), command.getOffset());
     }
 
     public void executeCommand(PlaceOrderCommand command) {
-        //commandOffset = command.getOffset();
         OrderBook orderBook = createOrderBook(command.getProductId());
         DirtyObjectList<Object> dirtyObjects= orderBook.placeOrder(new Order(command));
-        flush(commandOffset,dirtyObjects);
+        flush(command.getOffset(),dirtyObjects);
     }
 
     private OrderBook createOrderBook(String productId) {
@@ -65,44 +62,7 @@ public class MatchingEngine {
     }
 
     public void executeCommand(CancelOrderCommand command) {
-        commandOffset = command.getOffset();
-        orderBooks.get(command.getProductId()).cancelOrder(command.getOrderId(), commandOffset);
-    }
-
-    public MatchingEngineSnapshot takeSnapshot() {
-        List<Product> products = this.productBook.getProducts().stream()
-            .map(Product::clone)
-            .collect(Collectors.toList());
-        Set<Account> accounts = this.accountBook.getAllAccounts().stream()
-            .map(Account::clone)
-            .collect(Collectors.toSet());
-        List<OrderBookSnapshot> orderBookSnapshots = this.orderBooks.values().stream()
-            .map(OrderBookSnapshot::new)
-            .collect(Collectors.toList());
-        MatchingEngineSnapshot snapshot = new MatchingEngineSnapshot();
-        snapshot.setProducts(products);
-        snapshot.setAccounts(accounts);
-        snapshot.setOrderBookSnapshots(orderBookSnapshots);
-        snapshot.setLogSequence(logSequence.get());
-        snapshot.setCommandOffset(commandOffset);
-        snapshot.setTime(System.currentTimeMillis());
-        return snapshot;
-    }
-
-    public L2OrderBook takeL2OrderBookSnapshot(String productId, int depth) {
-        OrderBook orderBook = orderBooks.get(productId);
-        if (orderBook == null) {
-            return null;
-        }
-        return new L2OrderBook(orderBook, depth);
-    }
-
-    public L3OrderBook takeL3OrderBookSnapshot(String productId) {
-        OrderBook orderBook = orderBooks.get(productId);
-        if (orderBook == null) {
-            return null;
-        }
-        return new L3OrderBook(orderBook);
+        orderBooks.get(command.getProductId()).cancelOrder(command.getOrderId(), command.getOffset());
     }
 
     private void flush(Long commandOffset, DirtyObjectList<Object> dirtyObjects) {

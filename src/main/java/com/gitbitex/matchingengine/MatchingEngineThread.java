@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 
+import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.CommandDispatcher;

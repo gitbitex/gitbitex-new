@@ -52,7 +52,7 @@ public class DirtyObjectHandler {
         this.orderBookTopic = redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE);
         this.matchingEngineStateStore = matchingEngineStateStore;
         this.orderBookManager = orderBookManager;
-        snapshotExecutor.scheduleWithFixedDelay(() -> {
+        snapshotExecutor.scheduleAtFixedRate(() -> {
             try {
                 saveMatchingEngineState();
             } catch (Exception e) {
@@ -60,12 +60,12 @@ public class DirtyObjectHandler {
             }
         }, 5, 5, TimeUnit.SECONDS);
 
-        snapshotExecutor.scheduleWithFixedDelay(() -> {
+        snapshotExecutor.scheduleAtFixedRate(() -> {
             try {
                 orderBookByProductId.forEach((k, v) -> {
                     l2OrderBookExecutor.execute(k, () -> {
                         L2OrderBook l2OrderBook = new L2OrderBook(v);
-                        logger.info("l2OrderBook {}", JSON.toJSONString(l2OrderBook, true));
+                        //logger.info("l2OrderBook {}", JSON.toJSONString(l2OrderBook, true));
                         orderBookManager.saveL2BatchOrderBook(l2OrderBook);
                         //redissonClient.getTopic("l2_batch", StringCodec.INSTANCE).publishAsync(JSON.toJSONString(l2OrderBook));
                     });
@@ -134,8 +134,7 @@ public class DirtyObjectHandler {
             } else if (dirtyObject instanceof Trade) {
                 flush(commandOffset, (Trade) dirtyObject);
             } else if (dirtyObject instanceof OrderLog) {
-                flush((OrderLog) dirtyObject);
-                decrRefCount(commandOffset);
+                flush(commandOffset, (OrderLog) dirtyObject);
             }
         }
     }
@@ -189,7 +188,9 @@ public class DirtyObjectHandler {
         });
     }
 
-    private void flush(OrderLog orderLog) {
+    private void flush(Long commandOffset,OrderLog orderLog) {
+        decrRefCount(commandOffset);
+
         redisExecutor.execute(orderLog.getProductId(), () -> {
             String data = JSON.toJSONString(orderLog);
             orderBookTopic.publishAsync(data);
@@ -201,11 +202,14 @@ public class DirtyObjectHandler {
         });
     }
 
+    private void flush(Object notify){
+
+    }
+
     private void decrRefCount(Long commandOffset) {
         DirtyObjectList<Object> dirtyObjects = dirtyObjectsByCommandOffset.get(commandOffset);
         if (dirtyObjects.getFlushedCount().incrementAndGet() == dirtyObjects.size()) {
-            //logger.info("all flushed: commandOffset={}, size={}", commandOffset, dirtyObjects.size());
-            //createSafePoint(commandOffset);
+            logger.info("all flushed: commandOffset={}, size={}", commandOffset, dirtyObjects.size());
         }
     }
 

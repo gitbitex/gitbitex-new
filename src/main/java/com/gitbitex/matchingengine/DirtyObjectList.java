@@ -18,5 +18,13 @@ public class DirtyObjectList<T> extends ArrayList<T> {
     public boolean isAllFlushed() {
         return flushedCount.get() == size();
     }
+
+    @Override
+    public boolean add(T o){
+        if (o==null){
+            throw new NullPointerException("o");
+        }
+        return super. add(o);
+    }
 }
 

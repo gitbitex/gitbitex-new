@@ -72,7 +72,7 @@ public class MatchingEngineStateStore {
             Long savedCommandOffset = getCommandOffset();
             if (savedCommandOffset != null && commandOffset <= savedCommandOffset) {
                 logger.info("ignore data: {} {}", commandOffset, savedCommandOffset);
-                //return;
+                return;
             }
 
             transaction.put(commandOffsetCfh, "commandOffset".getBytes(), commandOffset.toString().getBytes());
