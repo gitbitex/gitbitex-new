@@ -87,7 +87,10 @@ public class OrderBook {
                 // exchange account funds
                 Account makerBaseAccount = accountBook.getAccount(makerOrder.getUserId(), product.getBaseCurrency());
                 Account makerQuoteAccount = accountBook.getAccount(makerOrder.getUserId(), product.getQuoteCurrency());
-                exchange(takerBaseAccount, takerQuoteAccount, makerBaseAccount, makerQuoteAccount, trade);
+                accountBook.exchange(takerBaseAccount, takerQuoteAccount, makerBaseAccount, makerQuoteAccount, takerOrder.getSide(),
+                        trade.getSize(), trade.getFunds());
+
+                //exchange(takerBaseAccount, takerQuoteAccount, makerBaseAccount, makerQuoteAccount, trade);
 
                 // if the maker order is filled or cancelled, remove it from the order book.
                 if (makerOrder.getStatus() == OrderStatus.FILLED || makerOrder.getStatus() == OrderStatus.CANCELLED) {
@@ -97,9 +100,11 @@ public class OrderBook {
                     unholdOrderFunds(makerOrder, makerBaseAccount, makerQuoteAccount);
                 }
 
-                dirtyObjects.add(makerOrder);
-                dirtyObjects.add(makerBaseAccount);
-                dirtyObjects.add(makerQuoteAccount);
+                dirtyObjects.add(makerOrder.clone());
+                dirtyObjects.add(makerBaseAccount.clone());
+                if (makerQuoteAccount==null) {
+                    dirtyObjects.add(makerQuoteAccount.clone());
+                }
                 dirtyObjects.add(trade);
             }
 

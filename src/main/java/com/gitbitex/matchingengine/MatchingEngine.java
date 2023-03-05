@@ -198,7 +198,7 @@ public class MatchingEngine {
     private void decrRefCount(Long commandOffset) {
         DirtyObjectList<Object> dirtyObjects = dirtyObjectsByCommandOffset.get(commandOffset);
         if (dirtyObjects.getFlushedCount().incrementAndGet() == dirtyObjects.size()) {
-            logger.info("all flushed: commandOffset={}, size={}", commandOffset, dirtyObjects.size());
+            //logger.info("all flushed: commandOffset={}, size={}", commandOffset, dirtyObjects.size());
         }
     }
 
