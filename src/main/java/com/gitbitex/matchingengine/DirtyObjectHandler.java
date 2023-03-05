@@ -76,6 +76,11 @@ public class DirtyObjectHandler {
             }
         }, 5, 5, TimeUnit.SECONDS);
 
+        matchingEngineStateStore.forEachOrder(x->{
+            orderBookByProductId.computeIfAbsent(x.getProductId(),k->new SimpleOrderBook(x.getProductId())).putOrder(x);
+        });
+
+
     }
 
     private void saveMatchingEngineState() {

@@ -21,6 +21,11 @@ public class SimpleOrderBook {
         this.productId = productId;
     }
 
+    public SimpleOrderBook(String productId,long sequence) {
+        this.productId = productId;
+        this.sequence=sequence;
+    }
+
     public void putOrder(Order order) {
         TreeMap<BigDecimal, PriceGroupOrderCollection> page = (order.getSide() == OrderSide.BUY ? bids : asks);
         PriceGroupOrderCollection priceGroupOrderCollection = page.computeIfAbsent(order.getPrice(),

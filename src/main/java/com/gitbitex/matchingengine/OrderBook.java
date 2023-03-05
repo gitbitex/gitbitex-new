@@ -46,11 +46,9 @@ public class OrderBook {
         Account takerQuoteAccount = accountBook.getAccount(takerOrder.getUserId(), product.getQuoteCurrency());
         DirtyObjectList<Object> dirtyObjects = new DirtyObjectList<>();
 
-        dirtyObjects.add(takerOrder);
-
         if (!holdOrderFunds(takerOrder, takerBaseAccount, takerQuoteAccount)) {
             takerOrder.setStatus(OrderStatus.REJECTED);
-            //flush(commandOffset, dirtyObjects);
+            dirtyObjects.add(takerOrder);
             return dirtyObjects;
         }
 
@@ -117,19 +115,13 @@ public class OrderBook {
         if (takerOrder.getType() == OrderType.LIMIT && takerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
             addOrder(takerOrder);
             takerOrder.setStatus(OrderStatus.OPEN);
-            /*if (logWriter != null) {
-                logWriter.onOrderOpen(takerOrder.clone(), logSequence.incrementAndGet());
-            }*/
             dirtyObjects.add(orderOpenMessage(takerOrder.clone()));
         } else {
             takerOrder.setStatus(OrderStatus.CANCELLED);
-            /*if (logWriter != null) {
-            dirtyObjects.add(orderDoneMessage(makerOrder.clone()));
-                logWriter.onOrderDone(takerOrder.clone(), logSequence.incrementAndGet());
-            }*/
             dirtyObjects.add(orderDoneMessage(takerOrder.clone()));
             unholdOrderFunds(takerOrder, takerBaseAccount, takerQuoteAccount);
         }
+        dirtyObjects.add(takerOrder.clone());
 
         dirtyObjects.add(takerBaseAccount);
         if (takerQuoteAccount!=null) {
