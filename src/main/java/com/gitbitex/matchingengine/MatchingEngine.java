@@ -28,7 +28,7 @@ public class MatchingEngine {
     private final AccountBook accountBook;
     @Getter
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
-    private final Map<String, SimpleOrderBook> simpleOrderBooks = new HashMap<>();
+    private final ConcurrentHashMap<String, SimpleOrderBook> simpleOrderBooks = new ConcurrentHashMap<>();
     private final StripedExecutorService simpleOrderBookExecutor = new StripedExecutorService(2);
     private final ConcurrentSkipListMap<Long, ModifiedObjectList<Object>> modifiedObjectsByCommandOffset
             = new ConcurrentSkipListMap<>();
@@ -149,9 +149,9 @@ public class MatchingEngine {
             SimpleOrderBook orderBook = simpleOrderBooks.computeIfAbsent(order.getProductId(),
                     k -> new SimpleOrderBook(order.getProductId()));
             if (order.getStatus() == OrderStatus.OPEN) {
-                //orderBook.putOrder(order);
+                orderBook.putOrder(order);
             } else {
-                //orderBook.removeOrder(order);
+                orderBook.removeOrder(order);
             }
         });
     }
@@ -180,10 +180,7 @@ public class MatchingEngine {
         });
 
         simpleOrderBookExecutor.execute(orderLog.getProductId(), () -> {
-            //SimpleOrderBook orderBook = simpleOrderBooks.computeIfAbsent(productId,
-            //    k -> new SimpleOrderBook(productId));
-            //orderBook.setSequence(orderLog.getSequence());
-            //simpleOrderBooks.get(productId).setSequence(orderLog.getSequence());
+            simpleOrderBooks.get(productId).setSequence(orderLog.getSequence());
         });
     }
 
@@ -192,8 +189,8 @@ public class MatchingEngine {
     }
 
     private void decrSavedCount(Long commandOffset) {
-        ModifiedObjectList<Object> dirtyObjects = modifiedObjectsByCommandOffset.get(commandOffset);
-        if (dirtyObjects.getSavedCount().incrementAndGet() == dirtyObjects.size()) {
+        ModifiedObjectList<Object> modifiedObjects = modifiedObjectsByCommandOffset.get(commandOffset);
+        if (modifiedObjects.getSavedCount().incrementAndGet() == modifiedObjects.size()) {
             //logger.info("all flushed: commandOffset={}, size={}", commandOffset, dirtyObjects.size());
         }
     }
@@ -213,14 +210,14 @@ public class MatchingEngine {
         var itr = modifiedObjectsByCommandOffset.entrySet().iterator();
         while (itr.hasNext()) {
             var entry = itr.next();
-            ModifiedObjectList<Object> dirtyObjects = entry.getValue();
-            if (!dirtyObjects.isAllSaved()) {
+            ModifiedObjectList<Object> modifiedObjects = entry.getValue();
+            if (!modifiedObjects.isAllSaved()) {
                 break;
             }
 
             commandOffset = entry.getKey();
 
-            for (Object obj : dirtyObjects) {
+            for (Object obj : modifiedObjects) {
                 if (obj instanceof Account) {
                     accounts.add((Account) obj);
                 } else if (obj instanceof Order) {
@@ -237,11 +234,10 @@ public class MatchingEngine {
             itr.remove();
         }
 
-        if (commandOffset == null) {
-            return;
+        if (commandOffset != null) {
+            matchingEngineStateStore.write(commandOffset, accounts, orders, products, tradeIdByProductId,
+                    sequenceByProductId);
         }
-        matchingEngineStateStore.write(commandOffset, accounts, orders, products, tradeIdByProductId,
-                sequenceByProductId);
     }
 
     private void saveOrderBook() {
