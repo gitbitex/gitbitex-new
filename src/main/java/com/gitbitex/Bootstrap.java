@@ -89,10 +89,10 @@ public class Bootstrap {
 
     private void startMatchingEngine(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "Matchin1g";
+            String groupId = "Matchin1gkk";
             KafkaConsumer<String, MatchingEngineCommand> consumer= new KafkaConsumer<>(getProperties(groupId),
                 new StringDeserializer(), new MatchingEngineCommandDeserializer());
-            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, matchingEngineStateStore,messageProducer,redissonClient, appProperties);
+            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, matchingEngineStateStore,messageProducer,redissonClient, orderBookManager, appProperties);
             matchingEngineThread.setName(groupId + "-" + matchingEngineThread.getId());
             matchingEngineThread.start();
             threads.add(matchingEngineThread);

@@ -15,6 +15,7 @@ import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.UUID;
@@ -31,7 +32,7 @@ public class CoinbaseTrader {
     private final ExecutorService executor = Executors.newFixedThreadPool(1);
     private final AppProperties appProperties;
 
-    //@PostConstruct
+    @PostConstruct
     public void init() throws URISyntaxException {
 
         if (appProperties.getLiquidityTraderUserIds().isEmpty()) {
@@ -87,7 +88,7 @@ public class CoinbaseTrader {
 
     public class MyClient extends org.java_websocket.client.WebSocketClient {
         //String productId = "BTC-USDT";
-        String userId = "01dc3a96-d067-4da7-b687-83c42e9308cb";
+        String userId = "test";
 
         public MyClient(URI serverUri) {
             super(serverUri, new Draft_6455(), null, 1000);

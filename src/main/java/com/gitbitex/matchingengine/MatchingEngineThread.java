@@ -13,6 +13,7 @@ import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.MatchingEngineCommand;
 import com.gitbitex.matchingengine.command.MatchingEngineCommandHandler;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
+import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -31,15 +32,17 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
     private final MatchingEngineStateStore matchingEngineStateStore;
     KafkaMessageProducer producer;
     RedissonClient redissonClient;
+    OrderBookManager orderBookManager;
 
     public MatchingEngineThread(KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, MatchingEngineStateStore matchingEngineStateStore,
-                                KafkaMessageProducer producer, RedissonClient redissonClient,
+                                KafkaMessageProducer producer, RedissonClient redissonClient, OrderBookManager orderBookManager,
         AppProperties appProperties) {
         super(messageKafkaConsumer, logger);
         this.appProperties = appProperties;
         this.matchingEngineStateStore=matchingEngineStateStore;
         this.producer=producer;
         this.redissonClient=redissonClient;
+        this.orderBookManager=orderBookManager;
     }
 
     @Override
@@ -53,7 +56,8 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            this.matchingEngine = new MatchingEngine(matchingEngineStateStore, producer, redissonClient, appProperties);
+            this.matchingEngine = new MatchingEngine(matchingEngineStateStore, producer, redissonClient, orderBookManager, appProperties);
+            consumer.seek(partition,0);
             //consumer.seek(partition, matchingEngine.getCommandOffset() + 1);
         }
     }
@@ -75,14 +79,14 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
             MatchingEngineCommand command = x.value();
             command.setOffset(x.offset());
             offset = x.offset();
-            //logger.info("{}", JSON.toJSONString(command));
+            logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
             i++;
-            /*try {
-                Thread.sleep(1000);
+            try {
+                Thread.sleep(300);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
-            }*/
+            }
         });
         System.out.println(i+" "+(System.currentTimeMillis()-t1));
 

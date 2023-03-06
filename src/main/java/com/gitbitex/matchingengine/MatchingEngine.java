@@ -9,8 +9,8 @@ import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import com.gitbitex.matchingengine.log.OrderLog;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
+import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.stripexecutor.StripedExecutorService;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.var;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -25,11 +25,10 @@ import java.util.concurrent.*;
 @Slf4j
 public class MatchingEngine {
     private final ProductBook productBook = new ProductBook();
-    private final AccountBook accountBook;
-    @Getter
+    private final AccountBook accountBook = new AccountBook();
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
     private final ConcurrentHashMap<String, SimpleOrderBook> simpleOrderBooks = new ConcurrentHashMap<>();
-    private final StripedExecutorService simpleOrderBookExecutor = new StripedExecutorService(2);
+    private final StripedExecutorService simpleOrderBookExecutor = new StripedExecutorService(5);
     private final ConcurrentSkipListMap<Long, ModifiedObjectList<Object>> modifiedObjectsByCommandOffset
             = new ConcurrentSkipListMap<>();
     private final ExecutorService saveExecutor = new ThreadPoolExecutor(1, 1,
@@ -41,14 +40,15 @@ public class MatchingEngine {
     RedissonClient redissonClient;
     AppProperties appProperties;
     MatchingEngineStateStore matchingEngineStateStore;
+    private final OrderBookManager orderBookManager;
 
     public MatchingEngine(MatchingEngineStateStore matchingEngineStateStore, KafkaMessageProducer producer,
-                          RedissonClient redissonClient, AppProperties appProperties) {
-        this.accountBook = new AccountBook();
+                          RedissonClient redissonClient, OrderBookManager orderBookManager, AppProperties appProperties) {
         this.appProperties = appProperties;
         this.producer = producer;
         this.redissonClient = redissonClient;
         this.matchingEngineStateStore = matchingEngineStateStore;
+        this.orderBookManager = orderBookManager;
 
         Long commandOffset = matchingEngineStateStore.getCommandOffset();
         if (commandOffset == null) {
@@ -103,18 +103,20 @@ public class MatchingEngine {
         return orderBook;
     }
 
-    private void save(Long commandOffset, ModifiedObjectList<Object> dirtyObjects) {
-        modifiedObjectsByCommandOffset.put(commandOffset, dirtyObjects);
+    private void save(Long commandOffset, ModifiedObjectList<Object> modifiedObjects) {
+        modifiedObjectsByCommandOffset.put(commandOffset, modifiedObjects);
         saveExecutor.execute(() -> {
-            for (Object dirtyObject : dirtyObjects) {
-                if (dirtyObject instanceof Order) {
-                    save(commandOffset, (Order) dirtyObject);
-                } else if (dirtyObject instanceof Account) {
-                    save(commandOffset, (Account) dirtyObject);
-                } else if (dirtyObject instanceof Trade) {
-                    save(commandOffset, (Trade) dirtyObject);
-                } else if (dirtyObject instanceof OrderLog) {
-                    save(commandOffset, (OrderLog) dirtyObject);
+            for (Object obj : modifiedObjects) {
+                if (obj instanceof Order) {
+                    save(commandOffset, (Order) obj);
+                } else if (obj instanceof Account) {
+                    save(commandOffset, (Account) obj);
+                } else if (obj instanceof Trade) {
+                    save(commandOffset, (Trade) obj);
+                } else if (obj instanceof OrderLog) {
+                    save(commandOffset, (OrderLog) obj);
+                } else if (obj instanceof OrderBookCompleteNotify) {
+                    save(commandOffset, (OrderBookCompleteNotify) obj);
                 }
             }
         });
@@ -134,6 +136,8 @@ public class MatchingEngine {
     }
 
     private void save(Long commandOffset, Order order) {
+        String productId=order.getProductId();
+
         kafkaExecutor.execute(order.getUserId(), () -> {
             String data = JSON.toJSONString(order);
             producer.send(new ProducerRecord<>(appProperties.getOrderMessageTopic(), order.getUserId(), data),
@@ -146,12 +150,12 @@ public class MatchingEngine {
         });
 
         simpleOrderBookExecutor.execute(order.getProductId(), () -> {
-            SimpleOrderBook orderBook = simpleOrderBooks.computeIfAbsent(order.getProductId(),
-                    k -> new SimpleOrderBook(order.getProductId()));
+            simpleOrderBooks.putIfAbsent(productId, new SimpleOrderBook(productId));
+            SimpleOrderBook simpleOrderBook = simpleOrderBooks.get(productId);
             if (order.getStatus() == OrderStatus.OPEN) {
-                orderBook.putOrder(order);
+                simpleOrderBook.putOrder(order);
             } else {
-                orderBook.removeOrder(order);
+                simpleOrderBook.removeOrder(order);
             }
         });
     }
@@ -180,12 +184,23 @@ public class MatchingEngine {
         });
 
         simpleOrderBookExecutor.execute(orderLog.getProductId(), () -> {
+            simpleOrderBooks.putIfAbsent(productId, new SimpleOrderBook(productId));
             simpleOrderBooks.get(productId).setSequence(orderLog.getSequence());
         });
     }
 
-    private void save(Long commandOffset, Object notify) {
-
+    private void save(Long commandOffset, OrderBookCompleteNotify orderBookCompleteNotify) {
+        String productId=orderBookCompleteNotify.getProductId();
+        simpleOrderBookExecutor.execute(orderBookCompleteNotify.getProductId(), () -> {
+            simpleOrderBooks.putIfAbsent(productId, new SimpleOrderBook(productId));
+            SimpleOrderBook simpleOrderBook = simpleOrderBooks.get(productId);
+            if (simpleOrderBook != null) {
+                L2OrderBook l2OrderBook = new L2OrderBook(simpleOrderBook);
+                logger.info(JSON.toJSONString(l2OrderBook));
+                orderBookManager.saveL2BatchOrderBook(l2OrderBook);
+                //redissonClient.getTopic("l2_batch", StringCodec.INSTANCE).publishAsync(JSON.toJSONString(l2OrderBook));
+            }
+        });
     }
 
     private void decrSavedCount(Long commandOffset) {
@@ -238,12 +253,5 @@ public class MatchingEngine {
             matchingEngineStateStore.write(commandOffset, accounts, orders, products, tradeIdByProductId,
                     sequenceByProductId);
         }
-    }
-
-    private void saveOrderBook() {
-        simpleOrderBooks.forEach((k, v) -> {
-            L2OrderBook l2OrderBook = new L2OrderBook(v);
-            logger.info(JSON.toJSONString(l2OrderBook));
-        });
     }
 }

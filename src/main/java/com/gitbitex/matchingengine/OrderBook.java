@@ -88,12 +88,9 @@ public class OrderBook {
                 modifiedObjects.add(orderMatchMessage(takerOrder.clone(), makerOrder.clone(), trade));
 
                 // exchange account funds
-                //Account makerBaseAccount = accountBook.getAccount(makerOrder.getUserId(), product.getBaseCurrency());
-                //Account makerQuoteAccount = accountBook.getAccount(makerOrder.getUserId(), product.getQuoteCurrency());
-                accountBook.exchange(takerOrder.getUserId(), makerOrder.getUserId(), product.getBaseCurrency(), product.getQuoteCurrency(), takerOrder.getSide(),
-                        trade.getSize(), trade.getFunds(), modifiedObjects);
-
-                //exchange(takerBaseAccount, takerQuoteAccount, makerBaseAccount, makerQuoteAccount, trade);
+                accountBook.exchange(takerOrder.getUserId(), makerOrder.getUserId(), product.getBaseCurrency(),
+                        product.getQuoteCurrency(), takerOrder.getSide(), trade.getSize(), trade.getFunds(),
+                        modifiedObjects);
 
                 // if the maker order is filled or cancelled, remove it from the order book.
                 if (makerOrder.getStatus() == OrderStatus.FILLED || makerOrder.getStatus() == OrderStatus.CANCELLED) {
@@ -126,6 +123,10 @@ public class OrderBook {
             unholdOrderFunds(takerOrder, product, modifiedObjects);
         }
         modifiedObjects.add(takerOrder.clone());
+
+        OrderBookCompleteNotify orderBookCompleteNotify=new OrderBookCompleteNotify();
+        orderBookCompleteNotify.setProductId(productId);
+        modifiedObjects.add(orderBookCompleteNotify);
     }
 
     public void cancelOrder(String orderId, Long commandOffset) {
