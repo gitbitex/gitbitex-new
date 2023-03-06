@@ -40,21 +40,24 @@ public class OrderBook {
         }
     }
 
-    public ModifiedObjectList<Object> placeOrder(Order takerOrder) {
+    public void placeOrder(Order takerOrder, ModifiedObjectList<Object> modifiedObjects) {
         Product product = productBook.getProduct(productId);
-        Account takerBaseAccount = accountBook.getAccount(takerOrder.getUserId(), product.getBaseCurrency());
-        Account takerQuoteAccount = accountBook.getAccount(takerOrder.getUserId(), product.getQuoteCurrency());
-        ModifiedObjectList<Object> dirtyObjects = new ModifiedObjectList<>();
 
-        if (!holdOrderFunds(takerOrder, takerBaseAccount, takerQuoteAccount)) {
+        if (takerOrder.getSide() == OrderSide.BUY) {
+            accountBook.hold(takerOrder.getUserId(), product.getQuoteCurrency(), takerOrder.getRemainingFunds(), modifiedObjects);
+        } else {
+            accountBook.hold(takerOrder.getUserId(), product.getBaseCurrency(), takerOrder.getRemainingSize(), modifiedObjects);
+        }
+
+        if (modifiedObjects.isEmpty()) {
             takerOrder.setStatus(OrderStatus.REJECTED);
-            dirtyObjects.add(takerOrder);
-            return dirtyObjects;
+            modifiedObjects.add(takerOrder);
+            return;
         }
 
         // order received
         takerOrder.setStatus(OrderStatus.RECEIVED);
-        dirtyObjects.add(orderReceivedMessage(takerOrder));
+        modifiedObjects.add(orderReceivedMessage(takerOrder));
 
         // start matching
         Iterator<Entry<BigDecimal, PriceGroupOrderCollection>> priceItr = (takerOrder.getSide() == OrderSide.BUY
@@ -82,13 +85,13 @@ public class OrderBook {
                 }
                 entry.getValue().decrRemainingSize(trade.getSize());
 
-                dirtyObjects.add(orderMatchMessage(takerOrder.clone(), makerOrder.clone(), trade));
+                modifiedObjects.add(orderMatchMessage(takerOrder.clone(), makerOrder.clone(), trade));
 
                 // exchange account funds
-                Account makerBaseAccount = accountBook.getAccount(makerOrder.getUserId(), product.getBaseCurrency());
-                Account makerQuoteAccount = accountBook.getAccount(makerOrder.getUserId(), product.getQuoteCurrency());
-                accountBook.exchange(takerBaseAccount, takerQuoteAccount, makerBaseAccount, makerQuoteAccount, takerOrder.getSide(),
-                        trade.getSize(), trade.getFunds());
+                //Account makerBaseAccount = accountBook.getAccount(makerOrder.getUserId(), product.getBaseCurrency());
+                //Account makerQuoteAccount = accountBook.getAccount(makerOrder.getUserId(), product.getQuoteCurrency());
+                accountBook.exchange(takerOrder.getUserId(), makerOrder.getUserId(), product.getBaseCurrency(), product.getQuoteCurrency(), takerOrder.getSide(),
+                        trade.getSize(), trade.getFunds(), modifiedObjects);
 
                 //exchange(takerBaseAccount, takerQuoteAccount, makerBaseAccount, makerQuoteAccount, trade);
 
@@ -96,16 +99,12 @@ public class OrderBook {
                 if (makerOrder.getStatus() == OrderStatus.FILLED || makerOrder.getStatus() == OrderStatus.CANCELLED) {
                     orderItr.remove();
                     orderById.remove(makerOrder.getOrderId());
-                    dirtyObjects.add(orderDoneMessage(makerOrder.clone()));
-                    unholdOrderFunds(makerOrder, makerBaseAccount, makerQuoteAccount);
+                    modifiedObjects.add(orderDoneMessage(makerOrder.clone()));
+                    unholdOrderFunds(makerOrder, product, modifiedObjects);
                 }
 
-                dirtyObjects.add(makerOrder.clone());
-                dirtyObjects.add(makerBaseAccount.clone());
-                if (makerQuoteAccount==null) {
-                    dirtyObjects.add(makerQuoteAccount.clone());
-                }
-                dirtyObjects.add(trade);
+                modifiedObjects.add(makerOrder.clone());
+                modifiedObjects.add(trade);
             }
 
             // remove price line with empty order list
@@ -120,19 +119,13 @@ public class OrderBook {
         if (takerOrder.getType() == OrderType.LIMIT && takerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
             addOrder(takerOrder);
             takerOrder.setStatus(OrderStatus.OPEN);
-            dirtyObjects.add(orderOpenMessage(takerOrder.clone()));
+            modifiedObjects.add(orderOpenMessage(takerOrder.clone()));
         } else {
             takerOrder.setStatus(OrderStatus.CANCELLED);
-            dirtyObjects.add(orderDoneMessage(takerOrder.clone()));
-            unholdOrderFunds(takerOrder, takerBaseAccount, takerQuoteAccount);
+            modifiedObjects.add(orderDoneMessage(takerOrder.clone()));
+            unholdOrderFunds(takerOrder, product, modifiedObjects);
         }
-        dirtyObjects.add(takerOrder.clone());
-
-        dirtyObjects.add(takerBaseAccount);
-        if (takerQuoteAccount!=null) {
-            dirtyObjects.add(takerQuoteAccount);
-        }
-        return dirtyObjects;
+        modifiedObjects.add(takerOrder.clone());
     }
 
     public void cancelOrder(String orderId, Long commandOffset) {
@@ -160,7 +153,7 @@ public class OrderBook {
         Map<String, Account> makerAccounts = accountBook.getAccountsByUserId(order.getUserId());
         Account makerBaseAccount = makerAccounts.get(product.getBaseCurrency());
         Account makerQuoteAccount = makerAccounts.get(product.getQuoteCurrency());
-        unholdOrderFunds(order, makerBaseAccount, makerQuoteAccount);
+        //unholdOrderFunds(order, makerBaseAccount, makerQuoteAccount);
     }
 
     private Trade trade(Order takerOrder, Order makerOrder) {
@@ -209,12 +202,6 @@ public class OrderBook {
         return trade;
     }
 
-    private void exchange(Account takerBaseAccount, Account takerQuoteAccount, Account makerBaseAccount,
-                          Account makerQuoteAccount, Trade trade) {
-        accountBook.exchange(takerBaseAccount, takerQuoteAccount, makerBaseAccount, makerQuoteAccount, trade.getSide(),
-                trade.getSize(), trade.getFunds());
-    }
-
     public void addOrder(Order order) {
         (order.getSide() == OrderSide.BUY ? bids : asks)
                 .computeIfAbsent(order.getPrice(), k -> new PriceGroupOrderCollection())
@@ -233,31 +220,14 @@ public class OrderBook {
         }
     }
 
-    private boolean holdOrderFunds(Order takerOrder, Account takerBaseAccount, Account takerQuoteAccount) {
-        if (takerOrder.getSide() == OrderSide.BUY) {
-            if (takerQuoteAccount == null || takerQuoteAccount.getAvailable().compareTo(takerOrder.getRemainingFunds())
-                    < 0) {
-                return false;
-            }
-            accountBook.hold(takerQuoteAccount, takerOrder.getRemainingFunds());
-        } else {
-            if (takerBaseAccount == null || takerBaseAccount.getAvailable().compareTo(takerOrder.getRemainingSize())
-                    < 0) {
-                return false;
-            }
-            accountBook.hold(takerBaseAccount, takerOrder.getRemainingSize());
-        }
-        return true;
-    }
-
-    private void unholdOrderFunds(Order makerOrder, Account baseAccount, Account quoteAccount) {
+    private void unholdOrderFunds(Order makerOrder, Product product, ModifiedObjectList<Object> modifiedObjects) {
         if (makerOrder.getSide() == OrderSide.BUY) {
             if (makerOrder.getRemainingFunds().compareTo(BigDecimal.ZERO) > 0) {
-                accountBook.unhold(quoteAccount, makerOrder.getRemainingFunds());
+                accountBook.unhold(makerOrder.getUserId(), product.getQuoteCurrency(), makerOrder.getRemainingFunds(), modifiedObjects);
             }
         } else {
             if (makerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
-                accountBook.unhold(baseAccount, makerOrder.getRemainingSize());
+                accountBook.unhold(makerOrder.getUserId(), product.getBaseCurrency(), makerOrder.getRemainingSize(), modifiedObjects);
             }
         }
     }

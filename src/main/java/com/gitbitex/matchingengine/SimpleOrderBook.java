@@ -28,8 +28,7 @@ public class SimpleOrderBook {
 
     public void putOrder(Order order) {
         TreeMap<BigDecimal, PriceGroupOrderCollection> page = (order.getSide() == OrderSide.BUY ? bids : asks);
-        PriceGroupOrderCollection priceGroupOrderCollection = page.computeIfAbsent(order.getPrice(),
-                k -> new PriceGroupOrderCollection());
+        PriceGroupOrderCollection priceGroupOrderCollection = page.putIfAbsent(order.getPrice(), new PriceGroupOrderCollection());
         Order old = priceGroupOrderCollection.get(order.getOrderId());
         if (old != null) {
             BigDecimal diff = old.getRemainingSize().subtract(order.getRemainingSize());

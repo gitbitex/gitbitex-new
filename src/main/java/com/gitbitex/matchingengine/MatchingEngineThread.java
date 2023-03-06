@@ -24,7 +24,6 @@ import org.redisson.api.RedissonClient;
 public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEngineCommand>
     implements MatchingEngineCommandHandler, ConsumerRebalanceListener {
     private final AppProperties appProperties;
-    private final DirtyObjectHandler dirtyObjectHandler;
     protected MatchingEngine matchingEngine;
     protected long lastSnapshotOffset;
     protected long lastSnapshotTime;
@@ -33,12 +32,11 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
     KafkaMessageProducer producer;
     RedissonClient redissonClient;
 
-    public MatchingEngineThread(KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, MatchingEngineStateStore matchingEngineStateStore, DirtyObjectHandler dirtyObjectHandler,
+    public MatchingEngineThread(KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, MatchingEngineStateStore matchingEngineStateStore,
                                 KafkaMessageProducer producer, RedissonClient redissonClient,
         AppProperties appProperties) {
         super(messageKafkaConsumer, logger);
         this.appProperties = appProperties;
-        this.dirtyObjectHandler = dirtyObjectHandler;
         this.matchingEngineStateStore=matchingEngineStateStore;
         this.producer=producer;
         this.redissonClient=redissonClient;
@@ -55,14 +53,8 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            MatchingEngineSnapshot snapshot = null;// = orderBookManager.getFullOrderBookSnapshot();
-            this.matchingEngine = new MatchingEngine(matchingEngineStateStore,producer,redissonClient,appProperties);
-            if (snapshot != null) {
-                offset = snapshot.getCommandOffset();
-                lastSnapshotOffset = snapshot.getCommandOffset();
-                lastSnapshotTime = snapshot.getTime();
-                consumer.seek(partition, snapshot.getCommandOffset() + 1);
-            }
+            this.matchingEngine = new MatchingEngine(matchingEngineStateStore, producer, redissonClient, appProperties);
+            //consumer.seek(partition, matchingEngine.getCommandOffset() + 1);
         }
     }
 
@@ -71,9 +63,14 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
         consumer.subscribe(Collections.singletonList(appProperties.getMatchingEngineCommandTopic()), this);
     }
 
+    long t1;
+    long t2;
     int i;
     @Override
     protected void doPoll() {
+        if (t1==0){
+            t1=System.currentTimeMillis();
+        }
         consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
             MatchingEngineCommand command = x.value();
             command.setOffset(x.offset());
@@ -87,7 +84,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
                 throw new RuntimeException(e);
             }*/
         });
-        System.out.println(i);
+        System.out.println(i+" "+(System.currentTimeMillis()-t1));
 
         //matchingEngine.getOrderBooks().keySet().forEach(x -> {
         //L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);

@@ -12,7 +12,6 @@ import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.matchingengine.DirtyObjectHandler;
 
 import com.gitbitex.matchingengine.MatchingEngineStateStore;
 import com.gitbitex.matchingengine.MatchingEngineThread;
@@ -54,7 +53,6 @@ public class Bootstrap {
     private final KafkaProperties kafkaProperties;
     private final RedissonClient redissonClient;
     private final List<Thread> threads = new ArrayList<>();
-    private final DirtyObjectHandler dirtyObjectHandler;
     private final MatchingEngineStateStore matchingEngineStateStore;
 
     @PostConstruct
@@ -94,7 +92,7 @@ public class Bootstrap {
             String groupId = "Matchin1g";
             KafkaConsumer<String, MatchingEngineCommand> consumer= new KafkaConsumer<>(getProperties(groupId),
                 new StringDeserializer(), new MatchingEngineCommandDeserializer());
-            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, matchingEngineStateStore, dirtyObjectHandler,messageProducer,redissonClient, appProperties);
+            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, matchingEngineStateStore,messageProducer,redissonClient, appProperties);
             matchingEngineThread.setName(groupId + "-" + matchingEngineThread.getId());
             matchingEngineThread.start();
             threads.add(matchingEngineThread);
