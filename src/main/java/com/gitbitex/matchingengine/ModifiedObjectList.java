@@ -5,18 +5,18 @@ import lombok.Getter;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class DirtyObjectList<T> extends ArrayList<T> {
+public class ModifiedObjectList<T> extends ArrayList<T> {
     @Getter
-    private final AtomicLong flushedCount = new AtomicLong();
+    private final AtomicLong savedCount = new AtomicLong();
 
-    public static <T> DirtyObjectList<T> singletonList(T obj) {
-        DirtyObjectList<T> list = new DirtyObjectList<>();
+    public static <T> ModifiedObjectList<T> singletonList(T obj) {
+        ModifiedObjectList<T> list = new ModifiedObjectList<>();
         list.add(obj);
         return list;
     }
 
-    public boolean isAllFlushed() {
-        return flushedCount.get() == size();
+    public boolean isAllSaved() {
+        return savedCount.get() == size();
     }
 
     @Override

@@ -51,13 +51,13 @@ public class AccountBook {
         return null;
     }
 
-    public DirtyObjectList<Object> deposit(String userId, String currency, BigDecimal amount, String transactionId,Long commandOffset) {
+    public ModifiedObjectList<Object> deposit(String userId, String currency, BigDecimal amount, String transactionId,Long commandOffset) {
         Account account = getAccount(userId, currency);
         if (account == null) {
             account = createAccount(userId, currency);
         }
         account.setAvailable(account.getAvailable().add(amount));
-        return DirtyObjectList.singletonList(account );
+        return ModifiedObjectList.singletonList(account );
     }
 
     public void hold(Account account, BigDecimal amount) {

@@ -100,7 +100,7 @@ public class MatchingEngineStateStore {
                 transaction.put(sequenceCfh, entry.getKey().getBytes(), entry.getValue().toString().getBytes());
             }
             transaction.commit();
-            logger.info("------------------------------saved:{}", commandOffset);
+            logger.info("------------------------------saved: commandOffset={}", commandOffset);
         }
     }
 

@@ -40,11 +40,11 @@ public class OrderBook {
         }
     }
 
-    public DirtyObjectList<Object> placeOrder(Order takerOrder) {
+    public ModifiedObjectList<Object> placeOrder(Order takerOrder) {
         Product product = productBook.getProduct(productId);
         Account takerBaseAccount = accountBook.getAccount(takerOrder.getUserId(), product.getBaseCurrency());
         Account takerQuoteAccount = accountBook.getAccount(takerOrder.getUserId(), product.getQuoteCurrency());
-        DirtyObjectList<Object> dirtyObjects = new DirtyObjectList<>();
+        ModifiedObjectList<Object> dirtyObjects = new ModifiedObjectList<>();
 
         if (!holdOrderFunds(takerOrder, takerBaseAccount, takerQuoteAccount)) {
             takerOrder.setStatus(OrderStatus.REJECTED);

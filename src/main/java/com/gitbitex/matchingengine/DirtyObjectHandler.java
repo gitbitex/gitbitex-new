@@ -37,7 +37,7 @@ public class DirtyObjectHandler {
     StripedExecutorService redisExecutor = new StripedExecutorService(2);
     StripedExecutorService l2OrderBookExecutor = new StripedExecutorService(2);
     ScheduledExecutorService snapshotExecutor = Executors.newScheduledThreadPool(1);
-    private final ConcurrentSkipListMap<Long, DirtyObjectList<Object>> dirtyObjectsByCommandOffset = new ConcurrentSkipListMap<>(
+    private final ConcurrentSkipListMap<Long, ModifiedObjectList<Object>> dirtyObjectsByCommandOffset = new ConcurrentSkipListMap<>(
             Comparator.naturalOrder());
     ConcurrentHashMap<String, SimpleOrderBook> orderBookByProductId = new ConcurrentHashMap<>();
 
@@ -98,8 +98,8 @@ public class DirtyObjectHandler {
         var itr = dirtyObjectsByCommandOffset.entrySet().iterator();
         while (itr.hasNext()) {
             var entry = itr.next();
-            DirtyObjectList<Object> dirtyObjects = entry.getValue();
-            if (!dirtyObjects.isAllFlushed()) {
+            ModifiedObjectList<Object> dirtyObjects = entry.getValue();
+            if (!dirtyObjects.isAllSaved()) {
                 break;
             }
 
@@ -129,7 +129,7 @@ public class DirtyObjectHandler {
                 sequenceByProductId);
     }
 
-    public void flush(Long commandOffset, DirtyObjectList<Object> dirtyObjects) {
+    public void flush(Long commandOffset, ModifiedObjectList<Object> dirtyObjects) {
         dirtyObjectsByCommandOffset.put(commandOffset, dirtyObjects);
         for (Object dirtyObject : dirtyObjects) {
             if (dirtyObject instanceof Order) {
@@ -212,8 +212,8 @@ public class DirtyObjectHandler {
     }
 
     private void decrRefCount(Long commandOffset) {
-        DirtyObjectList<Object> dirtyObjects = dirtyObjectsByCommandOffset.get(commandOffset);
-        if (dirtyObjects.getFlushedCount().incrementAndGet() == dirtyObjects.size()) {
+        ModifiedObjectList<Object> dirtyObjects = dirtyObjectsByCommandOffset.get(commandOffset);
+        if (dirtyObjects.getSavedCount().incrementAndGet() == dirtyObjects.size()) {
             logger.info("all flushed: commandOffset={}, size={}", commandOffset, dirtyObjects.size());
         }
     }
