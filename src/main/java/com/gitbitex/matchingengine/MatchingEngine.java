@@ -143,7 +143,7 @@ public class MatchingEngine {
                         decrSavedCount(commandOffset);
                     });
         });
-        updateOrderBook(commandOffset, order);
+        //updateOrderBook(commandOffset, order);
     }
 
     private void save(Long commandOffset, Trade trade) {
@@ -156,7 +156,7 @@ public class MatchingEngine {
                         }
                         decrSavedCount(commandOffset);
                     });
-            tradeTopic.publishAsync(data);
+            //tradeTopic.publishAsync(data);
         });
     }
 
@@ -168,12 +168,12 @@ public class MatchingEngine {
             //logger.info(data);
             orderBookLogTopic.publishAsync(data);
         });
-        updateOrderBook(commandOffset, orderLog);
+        //updateOrderBook(commandOffset, orderLog);
     }
 
     private void save(Long commandOffset, OrderBookCompleteNotify orderBookCompleteNotify) {
         decrSavedCount(commandOffset);
-        updateOrderBook(commandOffset, orderBookCompleteNotify);
+        //updateOrderBook(commandOffset, orderBookCompleteNotify);
     }
 
     private void decrSavedCount(Long commandOffset) {
