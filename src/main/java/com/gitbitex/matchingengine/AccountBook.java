@@ -1,14 +1,19 @@
 package com.gitbitex.matchingengine;
 
+import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.enums.OrderSide;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.Nullable;
-
-import java.math.BigDecimal;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -18,20 +23,20 @@ public class AccountBook {
     public void addAll(Set<Account> accounts) {
         for (Account account : accounts) {
             this.accounts.computeIfAbsent(account.getUserId(), x -> new HashMap<>())
-                    .put(account.getCurrency(), account);
+                .put(account.getCurrency(), account);
         }
     }
 
     public void add(Account account) {
         this.accounts.computeIfAbsent(account.getUserId(), x -> new HashMap<>())
-                .put(account.getCurrency(), account);
+            .put(account.getCurrency(), account);
     }
 
     public List<Account> getAllAccounts() {
         return accounts.values().stream()
-                .map(Map::values)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
+            .map(Map::values)
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList());
     }
 
     public Map<String, Account> getAccountsByUserId(String userId) {
@@ -47,23 +52,24 @@ public class AccountBook {
         return null;
     }
 
-    public ModifiedObjectList<Object> deposit(String userId, String currency, BigDecimal amount, String transactionId, Long commandOffset) {
+    public void deposit(String userId, String currency, BigDecimal amount, String transactionId,
+        ModifiedObjectList<Object> modifiedObjects) {
         Account account = getAccount(userId, currency);
         if (account == null) {
             account = createAccount(userId, currency);
         }
         account.setAvailable(account.getAvailable().add(amount));
-        return ModifiedObjectList.singletonList(account.clone());
+        modifiedObjects.add(account.clone());
     }
 
     public void hold(String userId, String currency, BigDecimal amount, ModifiedObjectList<Object> modifiedObjects) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new NullPointerException("amount should greater than 0");
+            logger.error("amount should greater than 0: {}", amount);
+            return;
         }
         Account account = getAccount(userId, currency);
         if (account == null || account.getAvailable().compareTo(amount) < 0) {
             return;
-            //throw new NullPointerException("insufficient funds");
         }
         account.setAvailable(account.getAvailable().subtract(amount));
         account.setHold(account.getHold().add(amount));
@@ -84,14 +90,13 @@ public class AccountBook {
     }
 
     public void exchange(
-            String takerUserId, String makerUserId,
-            String baseCurrency, String quoteCurrency,
-            OrderSide takerSide, BigDecimal size, BigDecimal funds, ModifiedObjectList<Object> modifiedObjects) {
+        String takerUserId, String makerUserId,
+        String baseCurrency, String quoteCurrency,
+        OrderSide takerSide, BigDecimal size, BigDecimal funds, ModifiedObjectList<Object> modifiedObjects) {
         Account takerBaseAccount = getAccount(takerUserId, baseCurrency);
         Account takerQuoteAccount = getAccount(takerUserId, quoteCurrency);
         Account makerBaseAccount = getAccount(makerUserId, baseCurrency);
         Account makerQuoteAccount = getAccount(makerUserId, quoteCurrency);
-        ;
 
         if (takerBaseAccount == null) {
             takerBaseAccount = createAccount(takerUserId, baseCurrency);

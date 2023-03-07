@@ -9,12 +9,6 @@ public class ModifiedObjectList<T> extends ArrayList<T> {
     @Getter
     private final AtomicLong savedCount = new AtomicLong();
 
-    public static <T> ModifiedObjectList<T> singletonList(T obj) {
-        ModifiedObjectList<T> list = new ModifiedObjectList<>();
-        list.add(obj);
-        return list;
-    }
-
     public boolean isAllSaved() {
         return savedCount.get() == size();
     }

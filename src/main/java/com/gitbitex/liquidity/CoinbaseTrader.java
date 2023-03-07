@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,7 +35,6 @@ public class CoinbaseTrader {
 
     @PostConstruct
     public void init() throws URISyntaxException {
-
         if (appProperties.getLiquidityTraderUserIds().isEmpty()) {
             return;
         }
@@ -44,6 +44,9 @@ public class CoinbaseTrader {
 
         Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
             try {
+                test();
+                if (true)return;;
+
                 if (!client.isOpen()) {
                     try {
                         if (client.getReadyState().equals(ReadyState.NOT_YET_CONNECTED)) {
@@ -63,7 +66,7 @@ public class CoinbaseTrader {
             } catch (Exception e) {
                 logger.error("send ping error: {}", e.getMessage(), e);
             }
-        }, 0, 5, TimeUnit.SECONDS);
+        }, 0, 1, TimeUnit.SECONDS);
     }
 
     @Getter
@@ -84,6 +87,21 @@ public class CoinbaseTrader {
         private String funds;
         private String order_type;
         private String reason;
+    }
+
+    public void test(){
+        User user = new User();
+        user.setUserId("test");
+
+        PlaceOrderRequest order = new PlaceOrderRequest();
+        order.setProductId("BTC-USDT");
+        order.setClientOid(UUID.randomUUID().toString());
+        order.setPrice( String.valueOf (new Random().nextInt(10)+1));
+        order.setSize(String.valueOf (new Random().nextInt(10) +1));
+        order.setFunds(String.valueOf (new Random().nextInt(10) +1));
+        order.setSide(new Random().nextBoolean()?"BUY":"SELL");
+        order.setType("limit");
+        orderController.placeOrder(order, user);
     }
 
     public class MyClient extends org.java_websocket.client.WebSocketClient {

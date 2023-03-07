@@ -4,6 +4,7 @@ import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.AccountPersistenceThread;
 import com.gitbitex.marketdata.CandleMakerThread;
 import com.gitbitex.marketdata.OrderPersistenceThread;
+import com.gitbitex.marketdata.TickerThread;
 import com.gitbitex.marketdata.TradePersistenceThread;
 import com.gitbitex.marketdata.manager.AccountManager;
 import com.gitbitex.marketdata.manager.OrderManager;
@@ -63,7 +64,8 @@ public class Bootstrap {
         //startOrderPersistenceThread(1);
         //startTradePersistenceThread(1);
         //startAccountPersistenceThread(appProperties.getAccountantThreadNum());
-        //startCandleMaker(1);
+        startCandleMaker(1);
+        startTickerThread(1);
     }
 
     @PreDestroy
@@ -100,7 +102,17 @@ public class Bootstrap {
     }
 
 
-
+    private void startTickerThread(int nThreads) {
+        for (int i = 0; i < nThreads; i++) {
+            String groupId = "Ticker";
+            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                new TradeMessageDeserializer());
+            TickerThread tickerThread = new TickerThread(consumer, tickerManager, appProperties);
+            tickerThread.setName(groupId + "-" + tickerThread.getId());
+            tickerThread.start();
+            threads.add(tickerThread);
+        }
+    }
 
 
     private void startOrderPersistenceThread(int nThreads) {

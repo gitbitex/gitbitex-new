@@ -13,7 +13,6 @@ public class SimpleOrderBook {
     private final TreeMap<BigDecimal, PriceGroupOrderCollection> asks = new TreeMap<>(Comparator.naturalOrder());
     private final TreeMap<BigDecimal, PriceGroupOrderCollection> bids = new TreeMap<>(Comparator.reverseOrder());
     private final String productId;
-    private long version;
     @Setter
     private long sequence;
 

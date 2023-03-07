@@ -1,5 +1,11 @@
 package com.gitbitex.openapi.controller;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Product;
 import com.gitbitex.marketdata.entity.Trade;
@@ -8,6 +14,7 @@ import com.gitbitex.marketdata.manager.UserManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
+import com.gitbitex.matchingengine.command.PutProductCommand;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.openapi.model.PagedList;
 import com.gitbitex.openapi.model.ProductDto;
@@ -19,11 +26,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
 @RestController()
 @RequiredArgsConstructor
 public class ProductController {
@@ -32,6 +34,7 @@ public class ProductController {
     private final TradeRepository tradeRepository;
     private final CandleRepository candleRepository;
     private final UserManager userManager;
+    private final KafkaMessageProducer producer;
 
     @GetMapping("/api/admin/addProduct")
     public void addProduct(@RequestParam String baseCurrency, @RequestParam String quoteCurrency) {
@@ -44,6 +47,12 @@ public class ProductController {
         product.setBaseMinSize(BigDecimal.ZERO);
         product.setBaseMaxSize(new BigDecimal("100000000"));
         productRepository.save(product);
+
+        PutProductCommand putProductCommand = new PutProductCommand();
+        putProductCommand.setProductId(product.getProductId());
+        putProductCommand.setBaseCurrency(product.getBaseCurrency());
+        putProductCommand.setQuoteCurrency(product.getQuoteCurrency());
+        producer.sendToMatchingEngine("all", putProductCommand, null);
     }
 
     @GetMapping("/api/admin/addUser")
@@ -66,7 +75,7 @@ public class ProductController {
 
     @GetMapping("/api/products/{productId}/candles")
     public List<List<Object>> getProductCandles(@PathVariable String productId, @RequestParam int granularity,
-                                                @RequestParam(defaultValue = "1000") int limit) {
+        @RequestParam(defaultValue = "1000") int limit) {
         PagedList<Candle> candlePage = candleRepository.findAll(productId, granularity / 60, 1, limit);
 
         //[

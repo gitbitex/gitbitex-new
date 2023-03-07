@@ -57,6 +57,13 @@ public class MatchingEngineStateStore {
         }
     }
 
+    public void close(){
+        for (ColumnFamilyHandle columnFamilyHandle : columnFamilyHandles) {
+            columnFamilyHandle.close();
+        }
+        db.close();
+    }
+
     @SneakyThrows
     public void write(Long commandOffset, Set<Account> accounts, Set<Order> orders, Set<Product> products,
         Map<String, Long> tradeIds, Map<String, Long> sequences) {
@@ -130,6 +137,16 @@ public class MatchingEngineStateStore {
         try (RocksIterator iterator = db.newIterator(accountCfh)) {
             for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
                 consumer.accept(JSON.parseObject(iterator.value(), Account.class));
+            }
+        }
+    }
+
+    public void forEachProduct(Consumer<Product> consumer) {
+        System.out.println("----------------------");
+        ColumnFamilyHandle cfh = columnFamilyHandles.get(3);
+        try (RocksIterator iterator = db.newIterator(cfh)) {
+            for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
+                consumer.accept(JSON.parseObject(iterator.value(), Product.class));
             }
         }
     }

@@ -1,5 +1,16 @@
 package com.gitbitex.matchingengine;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
@@ -9,12 +20,6 @@ import com.gitbitex.matchingengine.log.OrderOpenMessage;
 import com.gitbitex.matchingengine.log.OrderReceivedMessage;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Getter
 @Slf4j
@@ -28,7 +33,8 @@ public class OrderBook {
     private final TreeMap<BigDecimal, PriceGroupOrderCollection> bids = new TreeMap<>(Comparator.reverseOrder());
     private final LinkedHashMap<String, Order> orderById = new LinkedHashMap<>();
 
-    public OrderBook(String productId, Long tradeId, Long logSequence, AccountBook accountBook, ProductBook productBook) {
+    public OrderBook(String productId, Long tradeId, Long logSequence, AccountBook accountBook,
+        ProductBook productBook) {
         this.productId = productId;
         this.productBook = productBook;
         this.accountBook = accountBook;
@@ -42,13 +48,19 @@ public class OrderBook {
 
     public void placeOrder(Order takerOrder, ModifiedObjectList<Object> modifiedObjects) {
         Product product = productBook.getProduct(productId);
-
-        if (takerOrder.getSide() == OrderSide.BUY) {
-            accountBook.hold(takerOrder.getUserId(), product.getQuoteCurrency(), takerOrder.getRemainingFunds(), modifiedObjects);
-        } else {
-            accountBook.hold(takerOrder.getUserId(), product.getBaseCurrency(), takerOrder.getRemainingSize(), modifiedObjects);
+        if (product == null) {
+            takerOrder.setStatus(OrderStatus.REJECTED);
+            modifiedObjects.add(takerOrder);
+            return;
         }
 
+        if (takerOrder.getSide() == OrderSide.BUY) {
+            accountBook.hold(takerOrder.getUserId(), product.getQuoteCurrency(), takerOrder.getRemainingFunds(),
+                modifiedObjects);
+        } else {
+            accountBook.hold(takerOrder.getUserId(), product.getBaseCurrency(), takerOrder.getRemainingSize(),
+                modifiedObjects);
+        }
         if (modifiedObjects.isEmpty()) {
             takerOrder.setStatus(OrderStatus.REJECTED);
             modifiedObjects.add(takerOrder);
@@ -61,7 +73,7 @@ public class OrderBook {
 
         // start matching
         Iterator<Entry<BigDecimal, PriceGroupOrderCollection>> priceItr = (takerOrder.getSide() == OrderSide.BUY
-                ? asks : bids).entrySet().iterator();
+            ? asks : bids).entrySet().iterator();
         MATCHING:
         while (priceItr.hasNext()) {
             Map.Entry<BigDecimal, PriceGroupOrderCollection> entry = priceItr.next();
@@ -89,8 +101,8 @@ public class OrderBook {
 
                 // exchange account funds
                 accountBook.exchange(takerOrder.getUserId(), makerOrder.getUserId(), product.getBaseCurrency(),
-                        product.getQuoteCurrency(), takerOrder.getSide(), trade.getSize(), trade.getFunds(),
-                        modifiedObjects);
+                    product.getQuoteCurrency(), takerOrder.getSide(), trade.getSize(), trade.getFunds(),
+                    modifiedObjects);
 
                 // if the maker order is filled or cancelled, remove it from the order book.
                 if (makerOrder.getStatus() == OrderStatus.FILLED || makerOrder.getStatus() == OrderStatus.CANCELLED) {
@@ -124,12 +136,12 @@ public class OrderBook {
         }
         modifiedObjects.add(takerOrder.clone());
 
-        OrderBookCompleteNotify orderBookCompleteNotify=new OrderBookCompleteNotify();
+        OrderBookCompleteNotify orderBookCompleteNotify = new OrderBookCompleteNotify();
         orderBookCompleteNotify.setProductId(productId);
         modifiedObjects.add(orderBookCompleteNotify);
     }
 
-    public void cancelOrder(String orderId, Long commandOffset) {
+    public void cancelOrder(String orderId, ModifiedObjectList<Object> modifiedObjects) {
         Order order = orderById.remove(orderId);
         if (order == null) {
             return;
@@ -145,15 +157,14 @@ public class OrderBook {
         orderById.remove(orderId);
 
         order.setStatus(OrderStatus.CANCELLED);
-        /*if (logWriter != null) {
-            logWriter.onOrderDone(order.clone(), logSequence.incrementAndGet());
-        }*/
+        modifiedObjects.add(order);
 
         // unhold funds
         Product product = productBook.getProduct(productId);
-        Map<String, Account> makerAccounts = accountBook.getAccountsByUserId(order.getUserId());
-        Account makerBaseAccount = makerAccounts.get(product.getBaseCurrency());
-        Account makerQuoteAccount = makerAccounts.get(product.getQuoteCurrency());
+        unholdOrderFunds(order, product, modifiedObjects);
+        //Map<String, Account> makerAccounts = accountBook.getAccountsByUserId(order.getUserId());
+        //Account makerBaseAccount = makerAccounts.get(product.getBaseCurrency());
+        //Account makerQuoteAccount = makerAccounts.get(product.getQuoteCurrency());
         //unholdOrderFunds(order, makerBaseAccount, makerQuoteAccount);
     }
 
@@ -205,8 +216,8 @@ public class OrderBook {
 
     public void addOrder(Order order) {
         (order.getSide() == OrderSide.BUY ? bids : asks)
-                .computeIfAbsent(order.getPrice(), k -> new PriceGroupOrderCollection())
-                .put(order.getOrderId(), order);
+            .computeIfAbsent(order.getPrice(), k -> new PriceGroupOrderCollection())
+            .put(order.getOrderId(), order);
         orderById.put(order.getOrderId(), order);
     }
 
@@ -224,11 +235,13 @@ public class OrderBook {
     private void unholdOrderFunds(Order makerOrder, Product product, ModifiedObjectList<Object> modifiedObjects) {
         if (makerOrder.getSide() == OrderSide.BUY) {
             if (makerOrder.getRemainingFunds().compareTo(BigDecimal.ZERO) > 0) {
-                accountBook.unhold(makerOrder.getUserId(), product.getQuoteCurrency(), makerOrder.getRemainingFunds(), modifiedObjects);
+                accountBook.unhold(makerOrder.getUserId(), product.getQuoteCurrency(), makerOrder.getRemainingFunds(),
+                    modifiedObjects);
             }
         } else {
             if (makerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
-                accountBook.unhold(makerOrder.getUserId(), product.getBaseCurrency(), makerOrder.getRemainingSize(), modifiedObjects);
+                accountBook.unhold(makerOrder.getUserId(), product.getBaseCurrency(), makerOrder.getRemainingSize(),
+                    modifiedObjects);
             }
         }
     }

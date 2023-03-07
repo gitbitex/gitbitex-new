@@ -14,5 +14,6 @@ public class MatchingEngineCommand {
         CANCEL_ORDER,
         DEPOSIT,
         WITHDRAWAL,
+        PUT_PRODUCT,
     }
 }

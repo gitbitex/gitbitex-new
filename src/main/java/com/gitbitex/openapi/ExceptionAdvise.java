@@ -9,8 +9,12 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.support.RequestContext;
 
+import javax.servlet.ServletRequest;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
@@ -31,8 +35,8 @@ public class ExceptionAdvise {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(ServiceException.class)
     @ResponseBody
-    public ErrorMessage handleException(ServiceException e) {
-        logger.error("http error: {} {}", e.getCode(), e.getMessage(), e);
+    public ErrorMessage handleException(ServiceException e, RequestContext request) {
+        logger.error("http error: {} {} {}", e.getCode(), e.getMessage(), request.getRequestUri());
 
         return new ErrorMessage(e.getCode().name());
     }
@@ -53,8 +57,8 @@ public class ExceptionAdvise {
 
     @ExceptionHandler(ResponseStatusException.class)
     @ResponseBody
-    public ErrorMessage handleException(ResponseStatusException e, HttpServletResponse response) {
-        logger.error("http error", e);
+    public ErrorMessage handleException(ResponseStatusException e, HttpServletRequest request, HttpServletResponse response) {
+        logger.error("http error: {} {}", e.getMessage(), request.getRequestURI());
 
         response.setStatus(e.getStatus().value());
         return new ErrorMessage(e.getMessage());

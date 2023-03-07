@@ -20,6 +20,8 @@ public class MatchingEngineCommandDeserializer implements Deserializer<MatchingE
             }
 
             switch (command.getType()) {
+                case PUT_PRODUCT:
+                    return JSON.parseObject(jsonString, PutProductCommand.class);
                 case DEPOSIT:
                     return JSON.parseObject(jsonString, DepositCommand.class);
                 case PLACE_ORDER:

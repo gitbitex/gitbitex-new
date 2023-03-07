@@ -151,7 +151,7 @@ public class SessionManager {
                     }
                 }
             } catch (Exception e) {
-                logger.error("send error: {}", e.getMessage(), e);
+                logger.error("send error: {}", e.getMessage());
             }
         });
     }

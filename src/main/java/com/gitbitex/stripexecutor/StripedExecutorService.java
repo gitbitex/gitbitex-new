@@ -18,6 +18,7 @@
 package com.gitbitex.stripexecutor;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,7 +84,7 @@ public class StripedExecutorService extends AbstractExecutorService {
      * in order to avoid a memory leak.
      */
     private final Map<Object, SerialExecutor> executors =
-            new IdentityHashMap<>();
+            new HashMap<>();
     /**
      * Valid states are RUNNING and SHUTDOWN.  We rely on the
      * underlying executor service for the remaining states.

@@ -13,6 +13,7 @@ import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.MatchingEngineCommand;
 import com.gitbitex.matchingengine.command.MatchingEngineCommandHandler;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
+import com.gitbitex.matchingengine.command.PutProductCommand;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
@@ -79,22 +80,27 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
             MatchingEngineCommand command = x.value();
             command.setOffset(x.offset());
             offset = x.offset();
-            logger.info("{}", JSON.toJSONString(command));
+            //logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
             i++;
-            try {
+            /*try {
                 Thread.sleep(300);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
-            }
+            }*/
         });
-        System.out.println(i+" "+(System.currentTimeMillis()-t1));
+        //System.out.println(i+" "+(System.currentTimeMillis()-t1));
 
         //matchingEngine.getOrderBooks().keySet().forEach(x -> {
         //L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);
         //logger.info(JSON.toJSONString(l2OrderBook, true));
         //orderBookManager.saveL2BatchOrderBook(l2OrderBook);
         //});
+    }
+
+    @Override
+    public void on(PutProductCommand command) {
+        matchingEngine.executeCommand(command);
     }
 
     @Override
