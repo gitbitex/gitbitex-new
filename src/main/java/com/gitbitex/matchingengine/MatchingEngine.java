@@ -95,7 +95,6 @@ public class MatchingEngine {
     private void save(Long commandOffset, ModifiedObjectList<Object> modifiedObjects) {
 
         modifiedObjectsByCommandOffset.put(commandOffset, modifiedObjects);
-        //if (true)return;
         saveExecutor.execute(() -> {
             for (Object obj : modifiedObjects) {
                 if (obj instanceof Product) {
