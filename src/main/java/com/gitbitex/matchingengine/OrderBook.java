@@ -71,6 +71,8 @@ public class OrderBook {
         takerOrder.setStatus(OrderStatus.RECEIVED);
         modifiedObjects.add(orderReceivedMessage(takerOrder));
 
+        boolean orderBookChanged=false;
+
         // start matching
         Iterator<Entry<BigDecimal, PriceGroupOrderCollection>> priceItr = (takerOrder.getSide() == OrderSide.BUY
             ? asks : bids).entrySet().iterator();
@@ -101,8 +103,7 @@ public class OrderBook {
 
                 // exchange account funds
                 accountBook.exchange(takerOrder.getUserId(), makerOrder.getUserId(), product.getBaseCurrency(),
-                    product.getQuoteCurrency(), takerOrder.getSide(), trade.getSize(), trade.getFunds(),
-                    modifiedObjects);
+                    product.getQuoteCurrency(), takerOrder.getSide(), trade.getSize(), trade.getFunds(), modifiedObjects);
 
                 // if the maker order is filled or cancelled, remove it from the order book.
                 if (makerOrder.getStatus() == OrderStatus.FILLED || makerOrder.getStatus() == OrderStatus.CANCELLED) {
@@ -112,6 +113,7 @@ public class OrderBook {
                     unholdOrderFunds(makerOrder, product, modifiedObjects);
                 }
 
+                orderBookChanged=true;
                 modifiedObjects.add(makerOrder.clone());
                 modifiedObjects.add(trade);
             }
@@ -129,6 +131,7 @@ public class OrderBook {
             addOrder(takerOrder);
             takerOrder.setStatus(OrderStatus.OPEN);
             modifiedObjects.add(orderOpenMessage(takerOrder.clone()));
+            orderBookChanged=true;
         } else {
             takerOrder.setStatus(OrderStatus.CANCELLED);
             modifiedObjects.add(orderDoneMessage(takerOrder.clone()));
@@ -136,9 +139,11 @@ public class OrderBook {
         }
         modifiedObjects.add(takerOrder.clone());
 
-        OrderBookCompleteNotify orderBookCompleteNotify = new OrderBookCompleteNotify();
-        orderBookCompleteNotify.setProductId(productId);
-        modifiedObjects.add(orderBookCompleteNotify);
+        if (orderBookChanged) {
+            OrderBookCompleteNotify orderBookCompleteNotify = new OrderBookCompleteNotify();
+            orderBookCompleteNotify.setProductId(productId);
+            modifiedObjects.add(orderBookCompleteNotify);
+        }
     }
 
     public void cancelOrder(String orderId, ModifiedObjectList<Object> modifiedObjects) {

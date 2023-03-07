@@ -36,25 +36,6 @@ public class ProductController {
     private final UserManager userManager;
     private final KafkaMessageProducer producer;
 
-    @GetMapping("/api/admin/addProduct")
-    public void addProduct(@RequestParam String baseCurrency, @RequestParam String quoteCurrency) {
-        Product product = new Product();
-        product.setProductId(baseCurrency + "-" + quoteCurrency);
-        product.setBaseCurrency(baseCurrency);
-        product.setQuoteCurrency(quoteCurrency);
-        product.setBaseScale(6);
-        product.setQuoteScale(2);
-        product.setBaseMinSize(BigDecimal.ZERO);
-        product.setBaseMaxSize(new BigDecimal("100000000"));
-        productRepository.save(product);
-
-        PutProductCommand putProductCommand = new PutProductCommand();
-        putProductCommand.setProductId(product.getProductId());
-        putProductCommand.setBaseCurrency(product.getBaseCurrency());
-        putProductCommand.setQuoteCurrency(product.getQuoteCurrency());
-        producer.sendToMatchingEngine("all", putProductCommand, null);
-    }
-
     @GetMapping("/api/admin/addUser")
     public void addUser(@RequestParam String email, @RequestParam String password) {
         User user = new User();

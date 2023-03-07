@@ -28,7 +28,7 @@ public class UserManager {
 
         // create new user
         user = new User();
-        user.setUserId(UUID.randomUUID().toString());
+        user.setId(UUID.randomUUID().toString());
         user.setEmail(email);
         user.setPasswordSalt(UUID.randomUUID().toString());
         user.setPasswordHash(encryptPassword(password, user.getPasswordSalt()));
@@ -37,7 +37,7 @@ public class UserManager {
     }
 
     public String generateAccessToken(User user, String sessionId) {
-        String accessToken = user.getUserId() + ":" + sessionId + ":" + generateAccessTokenSecret(user);
+        String accessToken = user.getId() + ":" + sessionId + ":" + generateAccessTokenSecret(user);
 
         redissonClient.getBucket(redisKeyForAccessToken(accessToken))
                 .set(new Date().toString(), 14, TimeUnit.DAYS);
@@ -94,7 +94,7 @@ public class UserManager {
     }
 
     private String generateAccessTokenSecret(User user) {
-        String key = user.getUserId() + user.getEmail() + user.getPasswordHash();
+        String key = user.getId() + user.getEmail() + user.getPasswordHash();
         return DigestUtils.md5DigestAsHex(key.getBytes(StandardCharsets.UTF_8));
     }
 

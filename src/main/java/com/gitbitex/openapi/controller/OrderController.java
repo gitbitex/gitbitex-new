@@ -53,7 +53,7 @@ public class OrderController {
         PlaceOrderCommand command = new PlaceOrderCommand();
         command.setProductId(request.getProductId());
         command.setOrderId(UUID.randomUUID().toString());
-        command.setUserId(currentUser.getUserId());
+        command.setUserId(currentUser.getId());
         command.setOrderType(type);
         command.setOrderSide(side);
         command.setSize(size);
@@ -78,7 +78,7 @@ public class OrderController {
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "order not found: " + orderId);
         }
-        if (!order.getUserId().equals(currentUser.getUserId())) {
+        if (!order.getUserId().equals(currentUser.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
@@ -97,7 +97,7 @@ public class OrderController {
 
         OrderSide orderSide = side != null ? OrderSide.valueOf(side.toUpperCase()) : null;
 
-        PagedList<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, OrderStatus.OPEN,
+        PagedList<Order> orderPage = orderRepository.findAll(currentUser.getId(), productId, OrderStatus.OPEN,
                 orderSide, 1, 20000);
 
         for (Order order : orderPage.getItems()) {
@@ -117,7 +117,7 @@ public class OrderController {
 
         OrderStatus orderStatus = status != null ? OrderStatus.valueOf(status.toUpperCase()) : null;
 
-        PagedList<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, orderStatus, null,
+        PagedList<Order> orderPage = orderRepository.findAll(currentUser.getId(), productId, orderStatus, null,
                 page,
                 pageSize);
         return new PagedList<>(

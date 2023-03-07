@@ -9,12 +9,11 @@ import java.util.Date;
 @Getter
 @Setter
 public class User {
-
     private Date createdAt;
 
     private Date updatedAt;
 
-    private String userId;
+    private String id;
 
     private String email;
 

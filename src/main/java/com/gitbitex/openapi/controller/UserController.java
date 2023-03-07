@@ -92,7 +92,7 @@ public class UserController {
 
     private UserDto userDto(User user) {
         UserDto userDto = new UserDto();
-        userDto.setId(user.getUserId());
+        userDto.setId(user.getId());
         userDto.setEmail(user.getEmail());
         userDto.setBand(false);
         userDto.setCreatedAt(user.getCreatedAt() != null ? user.getCreatedAt().toInstant().toString() : null);

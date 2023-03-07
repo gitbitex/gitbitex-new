@@ -26,7 +26,7 @@ public class AppController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        List<App> apps = appRepository.findByUserId(currentUser.getUserId());
+        List<App> apps = appRepository.findByUserId(currentUser.getId());
         return apps.stream().map(this::appDto).collect(Collectors.toList());
     }
 
@@ -38,7 +38,7 @@ public class AppController {
 
         App app = new App();
         app.setAppId(UUID.randomUUID().toString());
-        app.setUserId(currentUser.getUserId());
+        app.setUserId(currentUser.getId());
         app.setAccessKey(UUID.randomUUID().toString());
         app.setSecretKey(UUID.randomUUID().toString());
         app.setName(request.getName());
@@ -57,7 +57,7 @@ public class AppController {
         if (app == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
-        if (!app.getUserId().equals(currentUser.getUserId())) {
+        if (!app.getUserId().equals(currentUser.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 

@@ -121,7 +121,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
             candleRepository.saveAll(candles.values());
         }
         long t2 = System.currentTimeMillis();
-        logger.info("candles size: {} time: {}", candles.size(), t2 - t1);
+        //logger.info("candles size: {} time: {}", candles.size(), t2 - t1);
     }
 
     private Candle makeCandle(Trade trade, int granularity) {

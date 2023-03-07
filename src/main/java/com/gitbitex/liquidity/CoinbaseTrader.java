@@ -3,6 +3,7 @@ package com.gitbitex.liquidity;
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.User;
+import com.gitbitex.openapi.controller.AdminController;
 import com.gitbitex.openapi.controller.OrderController;
 import com.gitbitex.openapi.model.PlaceOrderRequest;
 import com.google.common.util.concurrent.RateLimiter;
@@ -32,6 +33,7 @@ public class CoinbaseTrader {
     private final OrderController orderController;
     private final ExecutorService executor = Executors.newFixedThreadPool(1);
     private final AppProperties appProperties;
+    private final AdminController adminController;
 
     @PostConstruct
     public void init() throws URISyntaxException {
@@ -40,12 +42,16 @@ public class CoinbaseTrader {
         }
         logger.info("start");
 
+        adminController.addProduct("BTC","USDT");
+        adminController.deposit("test","BTC","10000000");
+        adminController.deposit("test","USDT","10000000");
+
         MyClient client = new MyClient(new URI("wss://ws-feed.exchange.coinbase.com"));
 
         Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
             try {
-                test();
-                if (true)return;;
+                //test();
+                //if (true)return;;
 
                 if (!client.isOpen()) {
                     try {
@@ -91,7 +97,7 @@ public class CoinbaseTrader {
 
     public void test(){
         User user = new User();
-        user.setUserId("test");
+        user.setId("test");
 
         PlaceOrderRequest order = new PlaceOrderRequest();
         order.setProductId("BTC-USDT");
@@ -122,7 +128,7 @@ public class CoinbaseTrader {
         @Override
         public void onMessage(String s) {
             User user = new User();
-            user.setUserId(userId);
+            user.setId(userId);
             executor.execute(() -> {
                 try {
                     ChannelMessage message = JSON.parseObject(s, ChannelMessage.class);

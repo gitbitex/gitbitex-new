@@ -28,7 +28,7 @@ public class AuthHandshakeInterceptor extends HttpSessionHandshakeInterceptor {
         if (accessToken != null) {
             User user = userManager.getUserByAccessToken(accessToken);
             if (user != null) {
-                attributes.put("CURRENT_USER_ID", user.getUserId());
+                attributes.put("CURRENT_USER_ID", user.getId());
             }
         }
         return true;

@@ -187,7 +187,7 @@ public class SessionManager {
             pongFeedMessage.setType("pong");
             session.sendMessage(new TextMessage(JSON.toJSONString(pongFeedMessage)));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("send pong error: {}",e.getMessage());
         }
     }
 

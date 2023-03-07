@@ -4,18 +4,15 @@ import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Account;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.manager.AccountManager;
-import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.openapi.model.AccountDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -32,7 +29,7 @@ public class AccountController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        List<Account> accounts = accountManager.getAccounts(currentUser.getUserId());
+        List<Account> accounts = accountManager.getAccounts(currentUser.getId());
         Map<String, Account> accountSet = accounts.stream().collect(Collectors.toMap(Account::getCurrency, x -> x));
 
         List<AccountDto> accountDtoList = new ArrayList<>();
@@ -51,16 +48,7 @@ public class AccountController {
         return accountDtoList;
     }
 
-    @GetMapping("/admin/deposit")
-    public String deposit(@RequestParam String userId, @RequestParam String currency, @RequestParam String amount) {
-        DepositCommand command = new DepositCommand();
-        command.setUserId(userId);
-        command.setCurrency(currency);
-        command.setAmount(new BigDecimal(amount));
-        command.setTransactionId(UUID.randomUUID().toString());
-        producer.sendToMatchingEngine("all", command, null);
-        return "ok";
-    }
+
 
     private AccountDto accountDto(Account account) {
         AccountDto accountDto = new AccountDto();
