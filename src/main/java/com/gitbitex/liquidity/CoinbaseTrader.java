@@ -35,7 +35,7 @@ public class CoinbaseTrader {
     private final AppProperties appProperties;
     private final AdminController adminController;
 
-    @PostConstruct
+    //@PostConstruct
     public void init() throws URISyntaxException {
         if (appProperties.getLiquidityTraderUserIds().isEmpty()) {
             return;

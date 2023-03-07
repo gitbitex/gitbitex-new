@@ -93,7 +93,9 @@ public class MatchingEngine {
     }
 
     private void save(Long commandOffset, ModifiedObjectList<Object> modifiedObjects) {
+
         modifiedObjectsByCommandOffset.put(commandOffset, modifiedObjects);
+        //if (true)return;
         saveExecutor.execute(() -> {
             for (Object obj : modifiedObjects) {
                 if (obj instanceof Product) {
@@ -210,10 +212,10 @@ public class MatchingEngine {
             SimpleOrderBook simpleOrderBook = simpleOrderBooks.get(productId);
             if (simpleOrderBook != null) {
                 //logger.info("take orderbook snapshot: {} {}",commandOffset,simpleOrderBook.getSequence());
-                L2OrderBook l2OrderBook = new L2OrderBook(simpleOrderBook);
-                l2OrderBook.setCommandOffset(commandOffset);
+                //L2OrderBook l2OrderBook = new L2OrderBook(simpleOrderBook);
+                //l2OrderBook.setCommandOffset(commandOffset);
                 //logger.info(JSON.toJSONString(l2OrderBook));
-                orderBookManager.saveL2BatchOrderBook(l2OrderBook);
+                //orderBookManager.saveL2BatchOrderBook(l2OrderBook);
             }
         });
     }
