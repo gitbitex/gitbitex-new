@@ -50,8 +50,8 @@ public class CoinbaseTrader {
 
         Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
             try {
-                test();
-                if (true)return;;
+                //test();
+                //if (true)return;;
 
                 if (!client.isOpen()) {
                     try {

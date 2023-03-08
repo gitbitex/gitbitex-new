@@ -7,6 +7,7 @@ import java.util.concurrent.Future;
 import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
+import com.gitbitex.matchingengine.Account;
 import com.gitbitex.matchingengine.command.CommandType;
 import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.MatchingEngineCommand;
@@ -41,5 +42,8 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
             }
         });
     }
+
+
+
 
 }

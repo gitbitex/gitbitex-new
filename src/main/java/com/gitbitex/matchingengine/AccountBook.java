@@ -117,10 +117,10 @@ public class AccountBook {
             makerBaseAccount.setHold(makerBaseAccount.getHold().subtract(size));
             makerQuoteAccount.setAvailable(makerQuoteAccount.getAvailable().add(funds));
         } else {
-            takerBaseAccount.setAvailable(takerBaseAccount.getHold().subtract(size));
-            takerQuoteAccount.setHold(takerQuoteAccount.getAvailable().add(funds));
-            makerBaseAccount.setHold(makerBaseAccount.getAvailable().add(size));
-            makerQuoteAccount.setAvailable(makerQuoteAccount.getHold().subtract(funds));
+            takerBaseAccount.setHold(takerBaseAccount.getHold().subtract(size));
+            takerQuoteAccount.setAvailable(takerQuoteAccount.getAvailable().add(funds));
+            makerBaseAccount.setAvailable(makerBaseAccount.getAvailable().add(size));
+            makerQuoteAccount.setHold(makerQuoteAccount.getHold().subtract(funds));
         }
 
         validateAccount(takerBaseAccount);

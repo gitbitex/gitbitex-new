@@ -60,6 +60,7 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
             TradeMessage tradeMessage = x.value();
             refreshTicker(tradeMessage);
         });
+        consumer.commitSync();
     }
 
     public void refreshTicker(Trade trade) {

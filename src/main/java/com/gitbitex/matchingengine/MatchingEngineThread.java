@@ -1,19 +1,9 @@
 package com.gitbitex.matchingengine;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.matchingengine.command.CancelOrderCommand;
-import com.gitbitex.matchingengine.command.CommandDispatcher;
-import com.gitbitex.matchingengine.command.DepositCommand;
-import com.gitbitex.matchingengine.command.MatchingEngineCommand;
-import com.gitbitex.matchingengine.command.MatchingEngineCommandHandler;
-import com.gitbitex.matchingengine.command.PlaceOrderCommand;
-import com.gitbitex.matchingengine.command.PutProductCommand;
+import com.gitbitex.matchingengine.command.*;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
@@ -22,9 +12,13 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.redisson.api.RedissonClient;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+
 @Slf4j
 public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEngineCommand>
-    implements MatchingEngineCommandHandler, ConsumerRebalanceListener {
+        implements MatchingEngineCommandHandler, ConsumerRebalanceListener {
     private final AppProperties appProperties;
     protected MatchingEngine matchingEngine;
     protected long lastSnapshotOffset;
@@ -37,13 +31,13 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
 
     public MatchingEngineThread(KafkaConsumer<String, MatchingEngineCommand> messageKafkaConsumer, MatchingEngineStateStore matchingEngineStateStore,
                                 KafkaMessageProducer producer, RedissonClient redissonClient, OrderBookManager orderBookManager,
-        AppProperties appProperties) {
+                                AppProperties appProperties) {
         super(messageKafkaConsumer, logger);
         this.appProperties = appProperties;
-        this.matchingEngineStateStore=matchingEngineStateStore;
-        this.producer=producer;
-        this.redissonClient=redissonClient;
-        this.orderBookManager=orderBookManager;
+        this.matchingEngineStateStore = matchingEngineStateStore;
+        this.producer = producer;
+        this.redissonClient = redissonClient;
+        this.orderBookManager = orderBookManager;
     }
 
     @Override
@@ -58,8 +52,10 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
             this.matchingEngine = new MatchingEngine(matchingEngineStateStore, producer, redissonClient, orderBookManager, appProperties);
-            consumer.seek(partition,0);
-            //consumer.seek(partition, matchingEngine.getCommandOffset() + 1);
+            if (matchingEngine.getLastCommandOffset() != null) {
+                logger.info("seek to offset: {}",matchingEngine.getLastCommandOffset()+1);
+                consumer.seek(partition, matchingEngine.getLastCommandOffset()+1);
+            }
         }
     }
 
@@ -71,10 +67,11 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
     long t1;
     long t2;
     int i;
+
     @Override
     protected void doPoll() {
-        if (t1==0){
-            t1=System.currentTimeMillis();
+        if (t1 == 0) {
+            t1 = System.currentTimeMillis();
         }
         consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
             MatchingEngineCommand command = x.value();
@@ -84,12 +81,12 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, MatchingEn
             CommandDispatcher.dispatch(command, this);
             i++;
             /*try {
-                Thread.sleep(300);
+                Thread.sleep(50);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }*/
         });
-        System.out.println(i+" "+(System.currentTimeMillis()-t1));
+        System.out.println(i + " " + (System.currentTimeMillis() - t1));
 
         //matchingEngine.getOrderBooks().keySet().forEach(x -> {
         //L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);

@@ -64,6 +64,8 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderMes
         orderManager.saveAll(orders.values());
         long t2 = System.currentTimeMillis();
         logger.info("orders size: {} time: {}", orders.size(), t2 - t1);
+
+        consumer.commitSync();
     }
 
     private Order order(OrderMessage message) {

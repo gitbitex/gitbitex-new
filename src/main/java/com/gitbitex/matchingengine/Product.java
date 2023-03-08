@@ -11,6 +11,8 @@ public class Product implements Cloneable {
     private String baseCurrency;
     private String quoteCurrency;
 
+    public Product(){}
+
     public Product(PutProductCommand command){
         this.productId=command.getProductId();
         this.baseCurrency=command.getBaseCurrency();

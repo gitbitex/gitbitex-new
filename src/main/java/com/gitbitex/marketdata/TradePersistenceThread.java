@@ -35,7 +35,6 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, TradeMes
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
         }
-        consumer.commitSync();
     }
 
     @Override
@@ -67,6 +66,8 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, TradeMes
         tradeRepository.saveAll(trades.values());
         long t2 = System.currentTimeMillis();
         logger.info("trades size: {} time: {}", trades.size(), t2 - t1);
+
+        consumer.commitSync();
     }
 
     private Trade order(TradeMessage message) {

@@ -59,12 +59,10 @@ public class Bootstrap {
     @PostConstruct
     public void init() {
         startMatchingEngine(1);
-        //startMatchingEngineSnapshotThread(1);
-        //startOrderBookSnapshotThread(1);
         //startOrderPersistenceThread(1);
-        //startTradePersistenceThread(1);
-        //startAccountPersistenceThread(appProperties.getAccountantThreadNum());
-        //startCandleMaker(1);
+        startTradePersistenceThread(1);
+        startAccountPersistenceThread(appProperties.getAccountantThreadNum());
+        startCandleMaker(1);
         startTickerThread(1);
     }
 

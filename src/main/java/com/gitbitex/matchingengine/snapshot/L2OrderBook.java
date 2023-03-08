@@ -36,11 +36,11 @@ public class L2OrderBook {
         this.sequence = orderBook.getSequence();
         this.time = System.currentTimeMillis();
         this.asks = orderBook.getAsks().entrySet().stream()
-            .limit(50)
+            .limit(20)
             .map(x->new Line(x.getKey(),x.getValue().getRemainingSize(),x.getValue().size()))
             .collect(Collectors.toList());
         this.bids = orderBook.getBids().entrySet().stream()
-            .limit(50)
+            .limit(20)
             .map(x->new Line(x.getKey(),x.getValue().getRemainingSize(),x.getValue().size()))
             .collect(Collectors.toList());
         /*this.asks = orderBook.getAsks().getLines().stream()

@@ -11,6 +11,7 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.alibaba.fastjson.JSON;
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
@@ -49,6 +50,7 @@ public class OrderBook {
     public void placeOrder(Order takerOrder, ModifiedObjectList<Object> modifiedObjects) {
         Product product = productBook.getProduct(productId);
         if (product == null) {
+            logger.warn("order rejected, reason: PRODUCT_NOT_FOUND");
             takerOrder.setStatus(OrderStatus.REJECTED);
             modifiedObjects.add(takerOrder);
             return;
@@ -62,6 +64,7 @@ public class OrderBook {
                 modifiedObjects);
         }
         if (modifiedObjects.isEmpty()) {
+            logger.warn("order rejected, reason: INSUFFICIENT_FUNDS: {}", JSON.toJSONString(takerOrder));
             takerOrder.setStatus(OrderStatus.REJECTED);
             modifiedObjects.add(takerOrder);
             return;

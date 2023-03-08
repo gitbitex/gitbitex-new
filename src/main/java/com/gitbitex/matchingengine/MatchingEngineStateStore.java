@@ -1,30 +1,16 @@
 package com.gitbitex.matchingengine;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.enums.OrderStatus;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.rocksdb.ColumnFamilyDescriptor;
-import org.rocksdb.ColumnFamilyHandle;
-import org.rocksdb.ColumnFamilyOptions;
-import org.rocksdb.DBOptions;
-import org.rocksdb.OptimisticTransactionDB;
-import org.rocksdb.RocksDB;
-import org.rocksdb.RocksIterator;
-import org.rocksdb.Transaction;
-import org.rocksdb.WriteOptions;
+import org.rocksdb.*;
 import org.springframework.stereotype.Component;
+
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 @Slf4j
 @Component
@@ -32,8 +18,9 @@ public class MatchingEngineStateStore {
     static {
         RocksDB.loadLibrary();
     }
+
     private OptimisticTransactionDB db;
-    private List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
+    private final List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
 
     public MatchingEngineStateStore() {
         initDb();
@@ -50,14 +37,14 @@ public class MatchingEngineStateStore {
             ColumnFamilyDescriptor sequenceCfd = new ColumnFamilyDescriptor("sequence".getBytes(), cfOpts);
             ColumnFamilyDescriptor commandOffsetCfd = new ColumnFamilyDescriptor("commandOffset".getBytes(), cfOpts);
             List<ColumnFamilyDescriptor> cfDescriptors = Arrays.asList(defaultCfd, orderCfd, accountCfd, productCfd,
-                tradeIdCfd, sequenceCfd, commandOffsetCfd);
+                    tradeIdCfd, sequenceCfd, commandOffsetCfd);
             try (DBOptions options = new DBOptions().setCreateIfMissing(true).setCreateMissingColumnFamilies(true)) {
                 db = OptimisticTransactionDB.open(options, "rocksdb", cfDescriptors, columnFamilyHandles);
             }
         }
     }
 
-    public void close(){
+    public void close() {
         for (ColumnFamilyHandle columnFamilyHandle : columnFamilyHandles) {
             columnFamilyHandle.close();
         }
@@ -66,7 +53,7 @@ public class MatchingEngineStateStore {
 
     @SneakyThrows
     public void write(Long commandOffset, Set<Account> accounts, Set<Order> orders, Set<Product> products,
-        Map<String, Long> tradeIds, Map<String, Long> sequences) {
+                      Map<String, Long> tradeIds, Map<String, Long> sequences) {
         try (WriteOptions writeOptions = new WriteOptions();
              Transaction transaction = db.beginTransaction(writeOptions)) {
             ColumnFamilyHandle orderCfh = columnFamilyHandles.get(1);
@@ -86,7 +73,7 @@ public class MatchingEngineStateStore {
 
             for (Account account : accounts) {
                 transaction.put(accountCfh, (account.getUserId() + "-" + account.getCurrency()).getBytes(),
-                    JSON.toJSONString(account).getBytes());
+                        JSON.toJSONString(account).getBytes());
             }
             for (Order order : orders) {
                 if (order.getStatus() == OrderStatus.OPEN) {
@@ -122,7 +109,6 @@ public class MatchingEngineStateStore {
     }
 
     public void forEachOrder(Consumer<Order> consumer) {
-        System.out.println("----------------------");
         ColumnFamilyHandle orderCfh = columnFamilyHandles.get(1);
         try (RocksIterator iterator = db.newIterator(orderCfh)) {
             for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
@@ -132,7 +118,6 @@ public class MatchingEngineStateStore {
     }
 
     public void forEachAccount(Consumer<Account> consumer) {
-        System.out.println("----------------------");
         ColumnFamilyHandle accountCfh = columnFamilyHandles.get(2);
         try (RocksIterator iterator = db.newIterator(accountCfh)) {
             for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
@@ -142,7 +127,6 @@ public class MatchingEngineStateStore {
     }
 
     public void forEachProduct(Consumer<Product> consumer) {
-        System.out.println("----------------------");
         ColumnFamilyHandle cfh = columnFamilyHandles.get(3);
         try (RocksIterator iterator = db.newIterator(cfh)) {
             for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
@@ -152,7 +136,6 @@ public class MatchingEngineStateStore {
     }
 
     public void forEachTradeId(BiConsumer<String, Long> consumer) {
-        System.out.println("----------------------");
         ColumnFamilyHandle tradeIdCfh = columnFamilyHandles.get(4);
         try (RocksIterator iterator = db.newIterator(tradeIdCfh)) {
             for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
@@ -161,8 +144,8 @@ public class MatchingEngineStateStore {
         }
     }
 
-    public Map<String,Long> getTradeIds(){
-        Map<String,Long> tradeIds=new HashMap<>();
+    public Map<String, Long> getTradeIds() {
+        Map<String, Long> tradeIds = new HashMap<>();
         ColumnFamilyHandle tradeIdCfh = columnFamilyHandles.get(4);
         try (RocksIterator iterator = db.newIterator(tradeIdCfh)) {
             for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
@@ -172,8 +155,8 @@ public class MatchingEngineStateStore {
         return tradeIds;
     }
 
-    public Map<String,Long> getSequences(){
-        Map<String,Long> tradeIds=new HashMap<>();
+    public Map<String, Long> getSequences() {
+        Map<String, Long> tradeIds = new HashMap<>();
         ColumnFamilyHandle sequenceCfh = columnFamilyHandles.get(5);
         try (RocksIterator iterator = db.newIterator(sequenceCfh)) {
             for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
@@ -184,7 +167,6 @@ public class MatchingEngineStateStore {
     }
 
     public void forEachSequence(BiConsumer<String, Long> consumer) {
-        System.out.println("----------------------");
         ColumnFamilyHandle sequenceCfh = columnFamilyHandles.get(5);
         try (RocksIterator iterator = db.newIterator(sequenceCfh)) {
             for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
