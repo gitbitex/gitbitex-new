@@ -1,6 +1,9 @@
 package com.gitbitex.matchingengine.command;
 
+import java.nio.charset.Charset;
+
 import com.alibaba.fastjson.JSON;
+
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -10,30 +13,28 @@ public class MatchingEngineCommandDeserializer implements Deserializer<MatchingE
     @Override
     @SneakyThrows
     public MatchingEngineCommand deserialize(String topic, byte[] bytes) {
-        String jsonString = new String(bytes);
-
         try {
-            MatchingEngineCommand command = JSON.parseObject(jsonString, MatchingEngineCommand.class);
-            if (command.getType() == null) {
-                logger.warn("Unknown command: {}", jsonString);
-                return command;
-            }
-
-            switch (command.getType()) {
+            CommandType commandType = CommandType.valueOfByte(bytes[0]);
+            switch (commandType) {
                 case PUT_PRODUCT:
-                    return JSON.parseObject(jsonString, PutProductCommand.class);
+                    return JSON.parseObject(bytes, 1, bytes.length - 1, Charset.defaultCharset(),
+                        PutProductCommand.class);
                 case DEPOSIT:
-                    return JSON.parseObject(jsonString, DepositCommand.class);
+                    return JSON.parseObject(bytes, 1, bytes.length - 1, Charset.defaultCharset(), DepositCommand.class);
                 case PLACE_ORDER:
-                    return JSON.parseObject(jsonString, PlaceOrderCommand.class);
+                    return JSON.parseObject(bytes, 1, bytes.length - 1, Charset.defaultCharset(),
+                        PlaceOrderCommand.class);
                 case CANCEL_ORDER:
-                    return JSON.parseObject(jsonString, CancelOrderCommand.class);
+                    return JSON.parseObject(bytes, 1, bytes.length - 1, Charset.defaultCharset(),
+                        CancelOrderCommand.class);
                 default:
-                    logger.warn("Unhandled order message type: {}", command.getType());
-                    return command;
+                    logger.warn("Unhandled order message type: {}", commandType);
+                    return JSON.parseObject(bytes, 1, bytes.length - 1, Charset.defaultCharset(),
+                        MatchingEngineCommand.class);
             }
         } catch (Exception e) {
-            throw new RuntimeException("deserialize error: " + jsonString, e);
+            throw new RuntimeException("deserialize error: " + new String(bytes), e);
         }
     }
 }
+

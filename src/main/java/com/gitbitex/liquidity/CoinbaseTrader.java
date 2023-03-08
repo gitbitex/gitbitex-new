@@ -50,8 +50,8 @@ public class CoinbaseTrader {
 
         Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
             try {
-                //test();
-                //if (true)return;;
+                test();
+                if (true)return;;
 
                 if (!client.isOpen()) {
                     try {
@@ -72,7 +72,7 @@ public class CoinbaseTrader {
             } catch (Exception e) {
                 logger.error("send ping error: {}", e.getMessage(), e);
             }
-        }, 0, 1, TimeUnit.SECONDS);
+        }, 0, 10, TimeUnit.MILLISECONDS);
     }
 
     @Getter

@@ -64,7 +64,7 @@ public class Bootstrap {
         //startOrderPersistenceThread(1);
         //startTradePersistenceThread(1);
         //startAccountPersistenceThread(appProperties.getAccountantThreadNum());
-        startCandleMaker(1);
+        //startCandleMaker(1);
         startTickerThread(1);
     }
 
