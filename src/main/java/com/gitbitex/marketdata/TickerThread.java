@@ -56,9 +56,10 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
 
     @Override
     protected void doPoll() {
-        consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
+        consumer.poll(Duration.ofSeconds(1)).forEach(x -> {
             TradeMessage tradeMessage = x.value();
             refreshTicker(tradeMessage);
+            System.out.println(x.value().getTradeId());
         });
         consumer.commitSync();
     }
