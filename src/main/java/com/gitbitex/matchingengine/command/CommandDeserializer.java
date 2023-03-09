@@ -9,10 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.Deserializer;
 
 @Slf4j
-public class MatchingEngineCommandDeserializer implements Deserializer<MatchingEngineCommand> {
+public class CommandDeserializer implements Deserializer<Command> {
     @Override
     @SneakyThrows
-    public MatchingEngineCommand deserialize(String topic, byte[] bytes) {
+    public Command deserialize(String topic, byte[] bytes) {
         try {
             CommandType commandType = CommandType.valueOfByte(bytes[0]);
             switch (commandType) {
@@ -30,7 +30,7 @@ public class MatchingEngineCommandDeserializer implements Deserializer<MatchingE
                 default:
                     logger.warn("Unhandled order message type: {}", commandType);
                     return JSON.parseObject(bytes, 1, bytes.length - 1, Charset.defaultCharset(),
-                        MatchingEngineCommand.class);
+                        Command.class);
             }
         } catch (Exception e) {
             throw new RuntimeException("deserialize error: " + new String(bytes), e);

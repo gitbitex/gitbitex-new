@@ -1,6 +1,6 @@
 package com.gitbitex.enums;
 
-public enum TimeInForcePolicy {
+public enum TimeInForce {
     GTC,
     GTT,
     IOC,

@@ -1,12 +1,12 @@
 package com.gitbitex.marketdata.manager;
 
+import java.util.Collection;
+
 import com.gitbitex.marketdata.entity.Order;
 import com.gitbitex.marketdata.repository.FillRepository;
 import com.gitbitex.marketdata.repository.OrderRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-
-import java.util.Collection;
 
 @Component
 @Slf4j

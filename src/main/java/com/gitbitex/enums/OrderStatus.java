@@ -1,12 +1,9 @@
 package com.gitbitex.enums;
 
 public enum OrderStatus {
-    NEW,
+    REJECTED,
+    RECEIVED,
     OPEN,
     CANCELLED,
     FILLED,
-    DENIED,
-    RECEIVED,
-    ACCEPTED,
-    REJECTED,
 }

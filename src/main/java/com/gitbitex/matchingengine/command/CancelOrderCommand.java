@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class CancelOrderCommand extends MatchingEngineCommand {
+public class CancelOrderCommand extends Command {
     private String orderId;
     private String productId;
 

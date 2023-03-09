@@ -6,7 +6,7 @@ import java.util.LinkedHashMap;
 import lombok.Getter;
 
 @Getter
-public class PriceGroupOrderCollection extends LinkedHashMap<String, Order> {
+public class PriceGroupedOrderCollection extends LinkedHashMap<String, Order> {
     //public BigDecimal remainingSize = BigDecimal.ZERO;
 
     public void addOrder(Order order) {
@@ -14,14 +14,14 @@ public class PriceGroupOrderCollection extends LinkedHashMap<String, Order> {
         //remainingSize = remainingSize.add(order.getRemainingSize());
     }
 
-    public void decrRemainingSize(BigDecimal size){
+    public void decrRemainingSize(BigDecimal size) {
         //remainingSize=remainingSize.subtract(size);
     }
 
-    public BigDecimal getRemainingSize(){
+    public BigDecimal getRemainingSize() {
         return values().stream()
-                .map(x->x.getRemainingSize())
-                .reduce((x,y)->x.add(y))
-                .get();
+            .map(x -> x.getRemainingSize())
+            .reduce((x, y) -> x.add(y))
+            .get();
     }
 }

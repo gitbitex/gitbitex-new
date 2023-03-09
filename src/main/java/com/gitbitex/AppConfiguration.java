@@ -1,5 +1,7 @@
 package com.gitbitex;
 
+import java.util.Properties;
+
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.middleware.kafka.KafkaProperties;
 import lombok.RequiredArgsConstructor;
@@ -10,15 +12,13 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Properties;
-
 @Configuration
 @RequiredArgsConstructor
 @EnableConfigurationProperties(AppProperties.class)
 @Slf4j
 public class AppConfiguration {
 
-    @Bean
+    @Bean(destroyMethod = "close")
     public KafkaMessageProducer kafkaMessageProducer(AppProperties appProperties, KafkaProperties kafkaProperties) {
         Properties properties = new Properties();
         properties.put("bootstrap.servers", kafkaProperties.getBootstrapServers());

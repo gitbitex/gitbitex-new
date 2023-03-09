@@ -43,7 +43,7 @@ class ApplicationTests {
         //AppConfig.keyPrefix= UUID.randomUUID().toString();
 
         Product product = new Product();
-        product.setProductId(productId);
+        product.setId(productId);
         product.setBaseCurrency("BTC");
         product.setQuoteCurrency("USDT");
         product.setBaseScale(4);

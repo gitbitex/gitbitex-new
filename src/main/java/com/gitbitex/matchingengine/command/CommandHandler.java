@@ -1,6 +1,6 @@
 package com.gitbitex.matchingengine.command;
 
-public interface MatchingEngineCommandHandler {
+public interface CommandHandler {
 
     void on(PutProductCommand command);
 

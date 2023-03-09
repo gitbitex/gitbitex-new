@@ -1,13 +1,13 @@
 package com.gitbitex.matchingengine.command;
 
+import java.math.BigDecimal;
+
 import lombok.Getter;
 import lombok.Setter;
 
-import java.math.BigDecimal;
-
 @Getter
 @Setter
-public class DepositCommand extends MatchingEngineCommand {
+public class DepositCommand extends Command {
     private String userId;
     private String currency;
     private BigDecimal amount;

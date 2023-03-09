@@ -1,15 +1,21 @@
 package com.gitbitex.marketdata.repository;
 
-import com.gitbitex.marketdata.entity.Trade;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.*;
-import org.bson.conversions.Bson;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
+import com.gitbitex.marketdata.entity.Trade;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Indexes;
+import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.ReplaceOptions;
+import com.mongodb.client.model.Sorts;
+import com.mongodb.client.model.WriteModel;
+import org.bson.conversions.Bson;
+import org.springframework.stereotype.Component;
 
 @Component
 public class TradeRepository {
@@ -17,13 +23,14 @@ public class TradeRepository {
 
     public TradeRepository(MongoDatabase database) {
         this.mongoCollection = database.getCollection(Trade.class.getSimpleName(), Trade.class);
+        this.mongoCollection.createIndex(Indexes.)
     }
 
     public List<Trade> findTradesByProductId(String productId, int limit) {
         return this.mongoCollection.find(Filters.eq("productId", productId))
-                .sort(Sorts.descending("time"))
-                .limit(limit)
-                .into(new ArrayList<>());
+            .sort(Sorts.descending("time"))
+            .limit(limit)
+            .into(new ArrayList<>());
     }
 
     public void saveAll(Collection<Trade> trades) {
@@ -33,7 +40,7 @@ public class TradeRepository {
             WriteModel<Trade> writeModel = new ReplaceOneModel<>(filter, item, new ReplaceOptions().upsert(true));
             writeModels.add(writeModel);
         }
-        mongoCollection.bulkWrite(writeModels);
+        mongoCollection.bulkWrite(writeModels, new BulkWriteOptions().ordered(false));
     }
 
 }

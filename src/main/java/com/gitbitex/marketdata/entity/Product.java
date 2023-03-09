@@ -1,20 +1,19 @@
 package com.gitbitex.marketdata.entity;
 
-import lombok.Getter;
-import lombok.Setter;
-
 import java.math.BigDecimal;
 import java.util.Date;
+
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
 public class Product {
+    private String id;
 
     private Date createdAt;
 
     private Date updatedAt;
-
-    private String productId;
 
     private String baseCurrency;
 

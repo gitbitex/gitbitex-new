@@ -1,11 +1,11 @@
 package com.gitbitex;
 
+import java.util.Set;
+
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
-
-import java.util.Set;
 
 @ConfigurationProperties(prefix = "gbe")
 @Getter

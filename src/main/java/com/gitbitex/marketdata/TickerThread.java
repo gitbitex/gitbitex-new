@@ -1,17 +1,5 @@
 package com.gitbitex.marketdata;
 
-import com.gitbitex.AppProperties;
-import com.gitbitex.marketdata.entity.Ticker;
-import com.gitbitex.marketdata.manager.TickerManager;
-import com.gitbitex.marketdata.util.DateUtil;
-import com.gitbitex.matchingengine.Trade;
-import com.gitbitex.matchingengine.log.TradeMessage;
-import com.gitbitex.middleware.kafka.KafkaConsumerThread;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.TopicPartition;
-
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -21,6 +9,19 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.gitbitex.AppProperties;
+import com.gitbitex.marketdata.entity.Ticker;
+import com.gitbitex.marketdata.manager.TickerManager;
+import com.gitbitex.marketdata.util.DateUtil;
+import com.gitbitex.matchingengine.Trade;
+import com.gitbitex.matchingengine.message.TradeMessage;
+import com.gitbitex.middleware.kafka.KafkaConsumerThread;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
+
 @Slf4j
 public class TickerThread extends KafkaConsumerThread<String, TradeMessage> implements ConsumerRebalanceListener {
     private final AppProperties appProperties;
@@ -28,7 +29,7 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
     private final Map<String, Ticker> tickerByProductId = new HashMap<>();
 
     public TickerThread(KafkaConsumer<String, TradeMessage> consumer, TickerManager tickerManager,
-                        AppProperties appProperties) {
+        AppProperties appProperties) {
         super(consumer, logger);
         this.tickerManager = tickerManager;
         this.appProperties = appProperties;
@@ -56,10 +57,14 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
 
     @Override
     protected void doPoll() {
-        consumer.poll(Duration.ofSeconds(1)).forEach(x -> {
+        ConsumerRecords<String, TradeMessage> records = consumer.poll(Duration.ofSeconds(5));
+        if (records.isEmpty()) {
+            return;
+        }
+
+        records.forEach(x -> {
             TradeMessage tradeMessage = x.value();
             refreshTicker(tradeMessage);
-            System.out.println(x.value().getTradeId());
         });
         consumer.commitSync();
     }
@@ -72,9 +77,9 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
         }
 
         long time24h = DateUtil.round(ZonedDateTime.ofInstant(trade.getTime().toInstant(), ZoneId.systemDefault()),
-                ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
+            ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
         long time30d = DateUtil.round(ZonedDateTime.ofInstant(trade.getTime().toInstant(), ZoneId.systemDefault()),
-                ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
+            ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
 
         if (ticker.getTime24h() == null || ticker.getTime24h() != time24h) {
             ticker.setTime24h(time24h);

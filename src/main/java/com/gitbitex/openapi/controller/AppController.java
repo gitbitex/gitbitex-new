@@ -1,5 +1,9 @@
 package com.gitbitex.openapi.controller;
 
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import com.gitbitex.marketdata.entity.App;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.repository.AppRepository;
@@ -7,12 +11,14 @@ import com.gitbitex.openapi.model.AppDto;
 import com.gitbitex.openapi.model.CreateAppRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -37,7 +43,7 @@ public class AppController {
         }
 
         App app = new App();
-        app.setAppId(UUID.randomUUID().toString());
+        app.setId(UUID.randomUUID().toString());
         app.setUserId(currentUser.getId());
         app.setAccessKey(UUID.randomUUID().toString());
         app.setSecretKey(UUID.randomUUID().toString());
@@ -66,7 +72,7 @@ public class AppController {
 
     private AppDto appDto(App app) {
         AppDto appDto = new AppDto();
-        appDto.setId(app.getAppId());
+        appDto.setId(app.getId());
         appDto.setName(app.getName());
         appDto.setKey(app.getAccessKey());
         appDto.setSecret(app.getSecretKey());

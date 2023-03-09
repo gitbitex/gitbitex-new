@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class MatchingEngineCommand {
+public class Command {
     private long offset;
     private CommandType type;
 }

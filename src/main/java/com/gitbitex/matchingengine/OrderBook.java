@@ -12,13 +12,14 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
-import com.gitbitex.matchingengine.log.OrderDoneMessage;
-import com.gitbitex.matchingengine.log.OrderMatchMessage;
-import com.gitbitex.matchingengine.log.OrderOpenMessage;
-import com.gitbitex.matchingengine.log.OrderReceivedMessage;
+import com.gitbitex.matchingengine.message.OrderDoneMessage;
+import com.gitbitex.matchingengine.message.OrderMatchMessage;
+import com.gitbitex.matchingengine.message.OrderOpenMessage;
+import com.gitbitex.matchingengine.message.OrderReceivedMessage;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,8 +31,8 @@ public class OrderBook {
     private final AtomicLong logSequence = new AtomicLong();
     private final ProductBook productBook;
     private final AccountBook accountBook;
-    private final TreeMap<BigDecimal, PriceGroupOrderCollection> asks = new TreeMap<>(Comparator.naturalOrder());
-    private final TreeMap<BigDecimal, PriceGroupOrderCollection> bids = new TreeMap<>(Comparator.reverseOrder());
+    private final TreeMap<BigDecimal, PriceGroupedOrderCollection> asks = new TreeMap<>(Comparator.naturalOrder());
+    private final TreeMap<BigDecimal, PriceGroupedOrderCollection> bids = new TreeMap<>(Comparator.reverseOrder());
     private final LinkedHashMap<String, Order> orderById = new LinkedHashMap<>();
 
     public OrderBook(String productId, Long tradeId, Long logSequence, AccountBook accountBook,
@@ -47,7 +48,7 @@ public class OrderBook {
         }
     }
 
-    public void placeOrder(Order takerOrder, ModifiedObjectList<Object> modifiedObjects) {
+    public void placeOrder(Order takerOrder, ModifiedObjectList modifiedObjects) {
         Product product = productBook.getProduct(productId);
         if (product == null) {
             logger.warn("order rejected, reason: PRODUCT_NOT_FOUND");
@@ -74,16 +75,16 @@ public class OrderBook {
         takerOrder.setStatus(OrderStatus.RECEIVED);
         modifiedObjects.add(orderReceivedMessage(takerOrder));
 
-        boolean orderBookChanged=false;
+        boolean orderBookChanged = false;
 
         // start matching
-        Iterator<Entry<BigDecimal, PriceGroupOrderCollection>> priceItr = (takerOrder.getSide() == OrderSide.BUY
+        Iterator<Entry<BigDecimal, PriceGroupedOrderCollection>> priceItr = (takerOrder.getSide() == OrderSide.BUY
             ? asks : bids).entrySet().iterator();
         MATCHING:
         while (priceItr.hasNext()) {
-            Map.Entry<BigDecimal, PriceGroupOrderCollection> entry = priceItr.next();
+            Map.Entry<BigDecimal, PriceGroupedOrderCollection> entry = priceItr.next();
             BigDecimal price = entry.getKey();
-            PriceGroupOrderCollection orders = entry.getValue();
+            PriceGroupedOrderCollection orders = entry.getValue();
 
             // check whether there is price crossing between the taker and the maker
             if (!isPriceCrossed(takerOrder, price)) {
@@ -106,7 +107,8 @@ public class OrderBook {
 
                 // exchange account funds
                 accountBook.exchange(takerOrder.getUserId(), makerOrder.getUserId(), product.getBaseCurrency(),
-                    product.getQuoteCurrency(), takerOrder.getSide(), trade.getSize(), trade.getFunds(), modifiedObjects);
+                    product.getQuoteCurrency(), takerOrder.getSide(), trade.getSize(), trade.getFunds(),
+                    modifiedObjects);
 
                 // if the maker order is filled or cancelled, remove it from the order book.
                 if (makerOrder.getStatus() == OrderStatus.FILLED || makerOrder.getStatus() == OrderStatus.CANCELLED) {
@@ -116,7 +118,7 @@ public class OrderBook {
                     unholdOrderFunds(makerOrder, product, modifiedObjects);
                 }
 
-                orderBookChanged=true;
+                orderBookChanged = true;
                 modifiedObjects.add(makerOrder.clone());
                 modifiedObjects.add(trade);
             }
@@ -134,7 +136,7 @@ public class OrderBook {
             addOrder(takerOrder);
             takerOrder.setStatus(OrderStatus.OPEN);
             modifiedObjects.add(orderOpenMessage(takerOrder.clone()));
-            orderBookChanged=true;
+            orderBookChanged = true;
         } else {
             takerOrder.setStatus(OrderStatus.CANCELLED);
             modifiedObjects.add(orderDoneMessage(takerOrder.clone()));
@@ -149,14 +151,14 @@ public class OrderBook {
         }
     }
 
-    public void cancelOrder(String orderId, ModifiedObjectList<Object> modifiedObjects) {
+    public void cancelOrder(String orderId, ModifiedObjectList modifiedObjects) {
         Order order = orderById.remove(orderId);
         if (order == null) {
             return;
         }
 
         // remove order from order book
-        TreeMap<BigDecimal, PriceGroupOrderCollection> ordersByPrice = order.getSide() == OrderSide.BUY ? bids : asks;
+        TreeMap<BigDecimal, PriceGroupedOrderCollection> ordersByPrice = order.getSide() == OrderSide.BUY ? bids : asks;
         LinkedHashMap<String, Order> orders = ordersByPrice.get(order.getPrice());
         orders.remove(orderId);
         if (orders.isEmpty()) {
@@ -166,14 +168,11 @@ public class OrderBook {
 
         order.setStatus(OrderStatus.CANCELLED);
         modifiedObjects.add(order);
+        modifiedObjects.add(orderDoneMessage(order.clone()));
 
-        // unhold funds
+        // un-hold funds
         Product product = productBook.getProduct(productId);
         unholdOrderFunds(order, product, modifiedObjects);
-        //Map<String, Account> makerAccounts = accountBook.getAccountsByUserId(order.getUserId());
-        //Account makerBaseAccount = makerAccounts.get(product.getBaseCurrency());
-        //Account makerQuoteAccount = makerAccounts.get(product.getQuoteCurrency());
-        //unholdOrderFunds(order, makerBaseAccount, makerQuoteAccount);
     }
 
     private Trade trade(Order takerOrder, Order makerOrder) {
@@ -224,7 +223,7 @@ public class OrderBook {
 
     public void addOrder(Order order) {
         (order.getSide() == OrderSide.BUY ? bids : asks)
-            .computeIfAbsent(order.getPrice(), k -> new PriceGroupOrderCollection())
+            .computeIfAbsent(order.getPrice(), k -> new PriceGroupedOrderCollection())
             .put(order.getOrderId(), order);
         orderById.put(order.getOrderId(), order);
     }
@@ -240,7 +239,7 @@ public class OrderBook {
         }
     }
 
-    private void unholdOrderFunds(Order makerOrder, Product product, ModifiedObjectList<Object> modifiedObjects) {
+    private void unholdOrderFunds(Order makerOrder, Product product, ModifiedObjectList modifiedObjects) {
         if (makerOrder.getSide() == OrderSide.BUY) {
             if (makerOrder.getRemainingFunds().compareTo(BigDecimal.ZERO) > 0) {
                 accountBook.unhold(makerOrder.getUserId(), product.getQuoteCurrency(), makerOrder.getRemainingFunds(),

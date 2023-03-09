@@ -1,18 +1,29 @@
 package com.gitbitex.openapi.controller;
 
-import com.gitbitex.marketdata.entity.User;
-import com.gitbitex.marketdata.manager.UserManager;
-import com.gitbitex.marketdata.repository.UserRepository;
-import com.gitbitex.openapi.model.*;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+
+import com.gitbitex.marketdata.entity.User;
+import com.gitbitex.marketdata.manager.UserManager;
+import com.gitbitex.marketdata.repository.UserRepository;
+import com.gitbitex.openapi.model.SignInRequest;
+import com.gitbitex.openapi.model.SignUpRequest;
+import com.gitbitex.openapi.model.TokenDto;
+import com.gitbitex.openapi.model.UpdateProfileRequest;
+import com.gitbitex.openapi.model.UserDto;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api")
@@ -31,7 +42,7 @@ public class UserController {
 
     @PutMapping("/users/self")
     public UserDto updateProfile(@RequestBody UpdateProfileRequest updateProfileRequest,
-                                 @RequestAttribute(required = false) User currentUser) {
+        @RequestAttribute(required = false) User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
@@ -49,7 +60,7 @@ public class UserController {
 
     @PostMapping("/users/accessToken")
     public TokenDto signIn(@RequestBody @Valid SignInRequest signInRequest, HttpServletRequest request,
-                           HttpServletResponse response) {
+        HttpServletResponse response) {
         User user = userManager.getUser(signInRequest.getEmail(), signInRequest.getPassword());
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "email or password error");
@@ -67,7 +78,7 @@ public class UserController {
 
     @DeleteMapping("/users/accessToken")
     public void signOut(@RequestAttribute(required = false) User currentUser,
-                        @RequestAttribute(required = false) String accessToken) {
+        @RequestAttribute(required = false) String accessToken) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }

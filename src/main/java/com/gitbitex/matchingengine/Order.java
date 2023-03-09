@@ -1,5 +1,9 @@
 package com.gitbitex.matchingengine;
 
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.Objects;
+
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
@@ -7,10 +11,6 @@ import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.lang.Nullable;
-
-import java.math.BigDecimal;
-import java.util.Date;
-import java.util.Objects;
 
 @Getter
 @Setter
@@ -50,7 +50,7 @@ public class Order implements Cloneable {
             throw new NullPointerException("price");
         }
 
-        this.productId=command.getProductId();
+        this.productId = command.getProductId();
         this.userId = command.getUserId();
         this.orderId = command.getOrderId();
         this.type = command.getOrderType();
@@ -70,14 +70,14 @@ public class Order implements Cloneable {
     @Override
     public Order clone() {
         try {
-            return (Order) super.clone();
+            return (Order)super.clone();
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }
     }
 
     @Override
-    public boolean equals(Object obj){
+    public boolean equals(Object obj) {
         if (this == obj) {
             return true;
         }
@@ -87,12 +87,12 @@ public class Order implements Cloneable {
         if (!(obj instanceof Account)) {
             return false;
         }
-        Order other = (Order) obj;
+        Order other = (Order)obj;
         return Objects.equals(this.orderId, other.orderId);
     }
 
     @Override
-    public int hashCode(){
+    public int hashCode() {
         int result = 17;
         result = 31 * result + (orderId == null ? 0 : orderId.hashCode());
         return result;

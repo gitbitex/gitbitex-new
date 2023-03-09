@@ -1,6 +1,7 @@
 package com.gitbitex.marketdata.manager;
 
 import com.alibaba.fastjson.JSON;
+
 import com.gitbitex.marketdata.entity.Ticker;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;

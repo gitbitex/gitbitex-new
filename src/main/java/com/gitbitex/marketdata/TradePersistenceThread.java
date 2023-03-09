@@ -1,9 +1,15 @@
 package com.gitbitex.marketdata;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Trade;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.matchingengine.log.TradeMessage;
+import com.gitbitex.matchingengine.message.TradeMessage;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -11,20 +17,14 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
 @Slf4j
 public class TradePersistenceThread extends KafkaConsumerThread<String, TradeMessage>
-        implements ConsumerRebalanceListener {
+    implements ConsumerRebalanceListener {
     private final TradeRepository tradeRepository;
     private final AppProperties appProperties;
 
     public TradePersistenceThread(KafkaConsumer<String, TradeMessage> consumer, TradeRepository tradeRepository,
-                                  AppProperties appProperties) {
+        AppProperties appProperties) {
         super(consumer, logger);
         this.tradeRepository = tradeRepository;
         this.appProperties = appProperties;

@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnClass(RedissonClient.class)
 public class RedisConfig {
 
-    @Bean
+    @Bean(destroyMethod = "shutdown")
     public RedissonClient redissonClient(RedisProperties redisProperties) {
         Config config = new Config();
         SingleServerConfig singleServerConfig = config.useSingleServer();

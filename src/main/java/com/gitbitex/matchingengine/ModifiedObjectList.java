@@ -5,23 +5,24 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import lombok.Getter;
 
-public class ModifiedObjectList<T> extends ArrayList<T> {
-    @Getter
-    private final AtomicLong savedCount = new AtomicLong();
-    @Getter
-    private long commandOffset;
+@Getter
+public class ModifiedObjectList extends ArrayList<Object> {
+    private final AtomicLong savedCounter = new AtomicLong();
+    private final long commandOffset;
+    private final String productId;
 
-    public ModifiedObjectList(long commandOffset) {
+    public ModifiedObjectList(long commandOffset, String productId) {
         super();
         this.commandOffset = commandOffset;
+        this.productId = productId;
     }
 
     public boolean isAllSaved() {
-        return savedCount.get() == size();
+        return savedCounter.get() == size();
     }
 
     @Override
-    public boolean add(T o) {
+    public boolean add(Object o) {
         if (o == null) {
             throw new NullPointerException("o");
         }

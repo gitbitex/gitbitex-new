@@ -1,6 +1,5 @@
 package com.gitbitex.openapi.controller;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -14,7 +13,6 @@ import com.gitbitex.marketdata.manager.UserManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.matchingengine.command.PutProductCommand;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.openapi.model.PagedList;
 import com.gitbitex.openapi.model.ProductDto;
@@ -94,7 +92,7 @@ public class ProductController {
     private ProductDto productDto(Product product) {
         ProductDto productDto = new ProductDto();
         BeanUtils.copyProperties(product, productDto);
-        productDto.setId(product.getProductId());
+        productDto.setId(product.getId());
         productDto.setQuoteIncrement(String.valueOf(product.getQuoteIncrement()));
         return productDto;
     }

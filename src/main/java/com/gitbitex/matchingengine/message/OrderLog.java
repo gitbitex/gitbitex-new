@@ -1,4 +1,4 @@
-package com.gitbitex.matchingengine.log;
+package com.gitbitex.matchingengine.message;
 
 import lombok.Getter;
 import lombok.Setter;

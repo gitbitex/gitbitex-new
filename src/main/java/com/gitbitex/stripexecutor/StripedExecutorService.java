@@ -19,10 +19,19 @@ package com.gitbitex.stripexecutor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -54,7 +63,7 @@ public class StripedExecutorService extends AbstractExecutorService {
      * remove the thread local entry.
      */
     private final static ThreadLocal<Object> stripes =
-            new ThreadLocal<>();
+        new ThreadLocal<>();
     /**
      * This field is used for conditional compilation.  If it is
      * false, then the finalize method is an empty method, in
@@ -84,7 +93,7 @@ public class StripedExecutorService extends AbstractExecutorService {
      * in order to avoid a memory leak.
      */
     private final Map<Object, SerialExecutor> executors =
-            new HashMap<>();
+        new HashMap<>();
     /**
      * Valid states are RUNNING and SHUTDOWN.  We rely on the
      * underlying executor service for the remaining states.
@@ -133,7 +142,7 @@ public class StripedExecutorService extends AbstractExecutorService {
      * will be wrapped with a FutureTask.
      */
     protected <T> RunnableFuture<T> newTaskFor(
-            Runnable runnable, T value) {
+        Runnable runnable, T value) {
         saveStripedObject(runnable);
         return super.newTaskFor(runnable, value);
     }
@@ -144,7 +153,7 @@ public class StripedExecutorService extends AbstractExecutorService {
      * will be wrapped with a FutureTask.
      */
     protected <T> RunnableFuture<T> newTaskFor(
-            Callable<T> callable) {
+        Callable<T> callable) {
         saveStripedObject(callable);
         return super.newTaskFor(callable);
     }
@@ -155,7 +164,7 @@ public class StripedExecutorService extends AbstractExecutorService {
      */
     private void saveStripedObject(Object task) {
         if (isStripedObject(task)) {
-            stripes.set(((StripedObject) task).getStripe());
+            stripes.set(((StripedObject)task).getStripe());
         }
     }
 
@@ -214,7 +223,7 @@ public class StripedExecutorService extends AbstractExecutorService {
         assert lock.isHeldByCurrentThread();
         if (state != State.RUNNING) {
             throw new RejectedExecutionException(
-                    "executor not running");
+                "executor not running");
         }
     }
 
@@ -238,7 +247,7 @@ public class StripedExecutorService extends AbstractExecutorService {
                 SerialExecutor ser_exec = executors.get(stripe);
                 if (ser_exec == null) {
                     executors.put(stripe, ser_exec =
-                            new SerialExecutor(stripe));
+                        new SerialExecutor(stripe));
                 }
                 ser_exec.execute(command);
             } else {
@@ -271,7 +280,7 @@ public class StripedExecutorService extends AbstractExecutorService {
     private Object getStripe(Runnable command) {
         Object stripe;
         if (command instanceof StripedObject) {
-            stripe = (((StripedObject) command).getStripe());
+            stripe = (((StripedObject)command).getStripe());
         } else {
             stripe = stripes.get();
         }
@@ -357,13 +366,13 @@ public class StripedExecutorService extends AbstractExecutorService {
      * within the allotted amount of time.
      */
     public boolean awaitTermination(long timeout, TimeUnit unit)
-            throws InterruptedException {
+        throws InterruptedException {
         lock.lock();
         try {
             long waitUntil = System.nanoTime() + unit.toNanos(timeout);
             long remainingTime;
             while ((remainingTime = waitUntil - System.nanoTime()) > 0
-                    && !executors.isEmpty()) {
+                && !executors.isEmpty()) {
                 terminating.awaitNanos(remainingTime);
             }
             if (remainingTime <= 0) {
@@ -371,7 +380,7 @@ public class StripedExecutorService extends AbstractExecutorService {
             }
             if (executors.isEmpty()) {
                 return executor.awaitTermination(
-                        remainingTime, TimeUnit.NANOSECONDS);
+                    remainingTime, TimeUnit.NANOSECONDS);
             }
             return false;
         } finally {
@@ -386,7 +395,7 @@ public class StripedExecutorService extends AbstractExecutorService {
      * memory leak.
      */
     private void removeEmptySerialExecutor(Object stripe,
-                                           SerialExecutor ser_ex) {
+        SerialExecutor ser_ex) {
         assert ser_ex == executors.get(stripe);
         assert lock.isHeldByCurrentThread();
         assert ser_ex.isEmpty();
@@ -406,8 +415,8 @@ public class StripedExecutorService extends AbstractExecutorService {
         lock.lock();
         try {
             return "StripedExecutorService: state=" + state + ", " +
-                    "executor=" + executor + ", " +
-                    "serialExecutors=" + executors;
+                "executor=" + executor + ", " +
+                "serialExecutors=" + executors;
         } finally {
             lock.unlock();
         }
@@ -430,7 +439,7 @@ public class StripedExecutorService extends AbstractExecutorService {
          * The queue of unexecuted tasks.
          */
         private final BlockingQueue<Runnable> tasks =
-                new LinkedBlockingQueue<>();
+            new LinkedBlockingQueue<>();
         /**
          * The stripe that this SerialExecutor was defined for.  It
          * is needed so that we can remove this executor from the
@@ -526,7 +535,7 @@ public class StripedExecutorService extends AbstractExecutorService {
         public String toString() {
             assert lock.isHeldByCurrentThread();
             return "SerialExecutor: active=" + active + ", " +
-                    "tasks=" + tasks;
+                "tasks=" + tasks;
         }
     }
 }

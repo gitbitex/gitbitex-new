@@ -8,14 +8,5 @@ public enum OrderSide {
     /**
      * sell
      */
-    SELL;
-
-    /**
-     * opposite
-     *
-     * @return
-     */
-    public OrderSide opposite() {
-        return this == BUY ? SELL : BUY;
-    }
+    SELL
 }

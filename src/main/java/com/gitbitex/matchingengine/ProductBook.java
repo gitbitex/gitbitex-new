@@ -13,12 +13,12 @@ public class ProductBook {
         return products.get(productId);
     }
 
-    public void putProduct(Product product,ModifiedObjectList<Object> modifiedObjects) {
+    public void putProduct(Product product, ModifiedObjectList modifiedObjects) {
         products.put(product.getProductId(), product);
         modifiedObjects.add(product.clone());
     }
 
-    public void addProduct(Product product){
-        this.products.put(product.getProductId(),product);
+    public void addProduct(Product product) {
+        this.products.put(product.getProductId(), product);
     }
 }

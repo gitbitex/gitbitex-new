@@ -1,6 +1,5 @@
 package com.gitbitex.kafka;
 
-import java.nio.charset.Charset;
 import java.util.Properties;
 import java.util.concurrent.Future;
 
@@ -8,9 +7,9 @@ import com.alibaba.fastjson.JSON;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.Account;
-import com.gitbitex.matchingengine.command.CommandType;
-import com.gitbitex.matchingengine.command.DepositCommand;
-import com.gitbitex.matchingengine.command.MatchingEngineCommand;
+import com.gitbitex.matchingengine.Order;
+import com.gitbitex.matchingengine.Trade;
+import com.gitbitex.matchingengine.command.Command;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -28,7 +27,7 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
 
     // 35038 3699
     // 41599 2570
-    public Future<RecordMetadata> sendToMatchingEngine(String productId, MatchingEngineCommand command,
+    public Future<RecordMetadata> sendToMatchingEngine(String productId, Command command,
         Callback callback) {
         byte[] jsonBytes = JSON.toJSONBytes(command);
         byte[] messageBytes = new byte[jsonBytes.length + 1];
@@ -43,7 +42,34 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         });
     }
 
+    public void sendAccount(Account account, Callback callback) {
+        send(new ProducerRecord<>(appProperties.getAccountMessageTopic(), account.getUserId(),
+            JSON.toJSONString(account)), (m, e) -> {
+            if (e != null) {
+                throw new RuntimeException(e);
+            }
+            callback.onCompletion(m, null);
+        });
+    }
 
+    public void sendTrade(Trade trade, Callback callback) {
+        send(new ProducerRecord<>(appProperties.getTradeMessageTopic(), trade.getProductId(),
+            JSON.toJSONString(trade)), (m, e) -> {
+            if (e != null) {
+                throw new RuntimeException(e);
+            }
+            callback.onCompletion(m, null);
+        });
+    }
 
+    public void sendOrder(Order order, Callback callback) {
+        send(new ProducerRecord<>(appProperties.getOrderMessageTopic(), order.getOrderId(),
+            JSON.toJSONString(order)), (m, e) -> {
+            if (e != null) {
+                throw new RuntimeException(e);
+            }
+            callback.onCompletion(m, null);
+        });
+    }
 
 }

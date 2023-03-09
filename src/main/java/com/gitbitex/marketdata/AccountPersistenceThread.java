@@ -1,30 +1,30 @@
 package com.gitbitex.marketdata;
 
-import com.gitbitex.AppProperties;
-import com.gitbitex.marketdata.entity.Account;
-import com.gitbitex.marketdata.manager.AccountManager;
-import com.gitbitex.matchingengine.log.AccountMessage;
-import com.gitbitex.middleware.kafka.KafkaConsumerThread;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.TopicPartition;
-import org.redisson.api.RTopic;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.gitbitex.AppProperties;
+import com.gitbitex.marketdata.entity.Account;
+import com.gitbitex.marketdata.manager.AccountManager;
+import com.gitbitex.matchingengine.message.AccountMessage;
+import com.gitbitex.middleware.kafka.KafkaConsumerThread;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
+
 @Slf4j
-public class AccountPersistenceThread extends KafkaConsumerThread<String, AccountMessage> implements ConsumerRebalanceListener {
+public class AccountPersistenceThread extends KafkaConsumerThread<String, AccountMessage>
+    implements ConsumerRebalanceListener {
     private final AccountManager accountManager;
     private final AppProperties appProperties;
-    private long uncommittedRecordCount;
 
-    public AccountPersistenceThread(KafkaConsumer<String, AccountMessage> consumer, AccountManager accountManager, AppProperties appProperties) {
+    public AccountPersistenceThread(KafkaConsumer<String, AccountMessage> consumer, AccountManager accountManager,
+        AppProperties appProperties) {
         super(consumer, logger);
         this.accountManager = accountManager;
         this.appProperties = appProperties;
@@ -34,7 +34,6 @@ public class AccountPersistenceThread extends KafkaConsumerThread<String, Accoun
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
-            //consumer.commitSync();
         }
     }
 
