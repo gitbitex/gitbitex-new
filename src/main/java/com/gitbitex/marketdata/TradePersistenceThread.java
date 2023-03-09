@@ -65,7 +65,7 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, TradeMes
         long t1 = System.currentTimeMillis();
         tradeRepository.saveAll(trades.values());
         long t2 = System.currentTimeMillis();
-        logger.info("trades size: {} time: {}", trades.size(), t2 - t1);
+        //logger.info("trades size: {} time: {}", trades.size(), t2 - t1);
 
         consumer.commitSync();
     }

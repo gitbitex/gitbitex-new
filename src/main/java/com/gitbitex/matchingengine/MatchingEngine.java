@@ -1,21 +1,6 @@
 package com.gitbitex.matchingengine;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.kafka.KafkaMessageProducer;
@@ -33,6 +18,11 @@ import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
+
 @Slf4j
 public class MatchingEngine {
     private final ProductBook productBook = new ProductBook();
@@ -40,28 +30,27 @@ public class MatchingEngine {
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
     private final ConcurrentHashMap<String, SimpleOrderBook> simpleOrderBooks = new ConcurrentHashMap<>();
     private final ConcurrentSkipListMap<Long, ModifiedObjectList> modifiedObjectsByCommandOffset
-        = new ConcurrentSkipListMap<>();
+            = new ConcurrentSkipListMap<>();
     private final StripedExecutorService simpleOrderBookExecutor = new StripedExecutorService(1);
-    private final StripedExecutorService kafkaExecutor = new StripedExecutorService(2);
-    private final StripedExecutorService redisExecutor = new StripedExecutorService(2);
+    private final StripedExecutorService kafkaExecutor = new StripedExecutorService(20);
+    private final StripedExecutorService redisExecutor = new StripedExecutorService(20);
     private final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(3);
     private final OrderBookManager orderBookManager;
     private final KafkaMessageProducer producer;
-    private final AppProperties appProperties;
     private final MatchingEngineStateStore stateStore;
     private final RTopic accountTopic;
     private final RTopic orderTopic;
     private final RTopic orderBookLogTopic;
-    private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectQueue = new ConcurrentLinkedQueue<>();
-    private final AtomicLong modifiedObjectQueueSizeCounter = new AtomicLong();
+    private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectListQueue = new ConcurrentLinkedQueue<>();
+    private final AtomicLong modifiedObjectListQueueSizeCounter = new AtomicLong();
     private final ConcurrentHashMap<String, Long> lastL2OrderBookSequences = new ConcurrentHashMap<>();
-
     @Getter
     private Long startupCommandOffset;
+    AtomicLong modifiedObjectCreatedCounter=new AtomicLong();
+    AtomicLong modifiedObjectSavedCounter=new AtomicLong();
 
     public MatchingEngine(MatchingEngineStateStore stateStore, KafkaMessageProducer producer,
-        RedissonClient redissonClient, OrderBookManager orderBookManager, AppProperties appProperties) {
-        this.appProperties = appProperties;
+                          RedissonClient redissonClient, OrderBookManager orderBookManager, AppProperties appProperties) {
         this.producer = producer;
         this.stateStore = stateStore;
         this.orderBookManager = orderBookManager;
@@ -85,7 +74,7 @@ public class MatchingEngine {
     public void executeCommand(DepositCommand command) {
         ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), null);
         accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(), command.getTransactionId(),
-            modifiedObjects);
+                modifiedObjects);
         enqueue(modifiedObjects);
     }
 
@@ -118,12 +107,13 @@ public class MatchingEngine {
     }
 
     private void enqueue(ModifiedObjectList modifiedObjects) {
-        while (modifiedObjectQueueSizeCounter.get() >= 100000) {
+        modifiedObjectCreatedCounter.addAndGet(modifiedObjects.size());
+        while (modifiedObjectListQueueSizeCounter.get() >= 1000000) {
             logger.warn("modified object queue is full");
             Thread.yield();
         }
-        modifiedObjectQueue.offer(modifiedObjects);
-        modifiedObjectQueueSizeCounter.incrementAndGet();
+        modifiedObjectListQueue.offer(modifiedObjects);
+        modifiedObjectListQueueSizeCounter.incrementAndGet();
     }
 
     private void save(ModifiedObjectList modifiedObjects) {
@@ -131,15 +121,16 @@ public class MatchingEngine {
 
         modifiedObjects.forEach(obj -> {
             if (obj instanceof Order) {
-                save(modifiedObjects.getSavedCounter(), (Order)obj);
+                save(modifiedObjects.getSavedCounter(), (Order) obj);
             } else if (obj instanceof Account) {
-                save(modifiedObjects.getSavedCounter(), (Account)obj);
+                save(modifiedObjects.getSavedCounter(), (Account) obj);
             } else if (obj instanceof Trade) {
-                save(modifiedObjects.getSavedCounter(), (Trade)obj);
+                save(modifiedObjects.getSavedCounter(), (Trade) obj);
             } else if (obj instanceof OrderLog) {
-                save(modifiedObjects.getSavedCounter(), (OrderLog)obj);
+                save(modifiedObjects.getSavedCounter(), (OrderLog) obj);
             } else {
                 modifiedObjects.getSavedCounter().incrementAndGet();
+                modifiedObjectSavedCounter.incrementAndGet();
             }
         });
 
@@ -157,17 +148,17 @@ public class MatchingEngine {
             SimpleOrderBook simpleOrderBook = simpleOrderBooks.get(productId);
             modifiedObjects.forEach(obj -> {
                 if (obj instanceof Order) {
-                    Order order = (Order)obj;
+                    Order order = (Order) obj;
                     if (order.getStatus() == OrderStatus.OPEN) {
                         simpleOrderBook.putOrder(order);
                     } else {
                         simpleOrderBook.removeOrder(order);
                     }
                 } else if (obj instanceof OrderLog) {
-                    OrderLog orderLog = (OrderLog)obj;
+                    OrderLog orderLog = (OrderLog) obj;
                     simpleOrderBook.setSequence(orderLog.getSequence());
                 } else if (obj instanceof OrderBookCompleteNotify) {
-                    takeL2OrderBookSnapshot(simpleOrderBook, 500);
+                    takeL2OrderBookSnapshot(simpleOrderBook, 200);
                 }
             });
         });
@@ -177,9 +168,8 @@ public class MatchingEngine {
         String productId = simpleOrderBook.getProductId();
         long lastL2OrderBookSequence = lastL2OrderBookSequences.getOrDefault(productId, 0L);
         if (simpleOrderBook.getSequence() - lastL2OrderBookSequence > sequenceDiff) {
-            L2OrderBook l2OrderBook = new L2OrderBook(simpleOrderBook, 50);
+            L2OrderBook l2OrderBook = new L2OrderBook(simpleOrderBook, 25);
             lastL2OrderBookSequences.put(productId, simpleOrderBook.getSequence());
-            logger.info(JSON.toJSONString(l2OrderBook));
             orderBookManager.saveL2BatchOrderBook(l2OrderBook);
         }
     }
@@ -187,7 +177,10 @@ public class MatchingEngine {
     private void save(AtomicLong savedCounter, Account account) {
         kafkaExecutor.execute(account.getUserId(), () -> {
             String data = JSON.toJSONString(account);
-            producer.sendAccount(account, (m, e) -> savedCounter.incrementAndGet());
+            producer.sendAccount(account, (m, e) -> {
+                savedCounter.incrementAndGet();
+                modifiedObjectSavedCounter.incrementAndGet();
+            });
             accountTopic.publishAsync(data);
         });
     }
@@ -196,7 +189,10 @@ public class MatchingEngine {
         String productId = order.getProductId();
         kafkaExecutor.execute(productId, () -> {
             String data = JSON.toJSONString(order);
-            producer.sendOrder(order, (m, e) -> savedCounter.incrementAndGet());
+            producer.sendOrder(order, (m, e) ->{
+                savedCounter.incrementAndGet();
+                modifiedObjectSavedCounter.incrementAndGet();
+            });
             orderTopic.publishAsync(data);
         });
     }
@@ -204,12 +200,16 @@ public class MatchingEngine {
     private void save(AtomicLong savedCounter, Trade trade) {
         kafkaExecutor.execute(trade.getProductId(), () -> {
             String data = JSON.toJSONString(trade);
-            producer.sendTrade(trade, (m, e) -> savedCounter.incrementAndGet());
+            producer.sendTrade(trade, (m, e) -> {
+                savedCounter.incrementAndGet();
+                modifiedObjectSavedCounter.incrementAndGet();
+            });
         });
     }
 
     private void save(AtomicLong savedCounter, OrderLog orderLog) {
         savedCounter.incrementAndGet();
+        modifiedObjectSavedCounter.incrementAndGet();
         String productId = orderLog.getProductId();
         kafkaExecutor.execute(productId, () -> {
             orderBookLogTopic.publishAsync(JSON.toJSONString(orderLog));
@@ -237,17 +237,17 @@ public class MatchingEngine {
             }
             for (Object obj : modifiedObjects) {
                 if (obj instanceof Account) {
-                    accounts.add((Account)obj);
+                    accounts.add((Account) obj);
                 } else if (obj instanceof Order) {
-                    orders.add((Order)obj);
+                    orders.add((Order) obj);
                 } else if (obj instanceof Trade) {
-                    Trade trade = (Trade)obj;
+                    Trade trade = (Trade) obj;
                     tradeIds.put(trade.getProductId(), trade.getTradeId());
                 } else if (obj instanceof OrderLog) {
-                    OrderLog orderLog = (OrderLog)obj;
+                    OrderLog orderLog = (OrderLog) obj;
                     sequences.put(orderLog.getProductId(), orderLog.getSequence());
                 } else if (obj instanceof Product) {
-                    products.add((Product)obj);
+                    products.add((Product) obj);
                 }
             }
             commandOffset = entry.getKey();
@@ -262,9 +262,9 @@ public class MatchingEngine {
             }
             stateStore.write(commandOffset, accounts, orders, products, tradeIds, sequences);
             logger.info(
-                "state saved: commandOffset={}, {} account(s), {} order(s), {} product(s), {} tradeId(s), {} sequence"
-                    + "(s)",
-                commandOffset, accounts.size(), orders.size(), products.size(), tradeIds.size(), sequences.size());
+                    "state saved: commandOffset={}, {} account(s), {} order(s), {} product(s), {} tradeId(s), {} sequence"
+                            + "(s)",
+                    commandOffset, accounts.size(), orders.size(), products.size(), tradeIds.size(), sequences.size());
         }
     }
 
@@ -282,9 +282,9 @@ public class MatchingEngine {
             Long tradeId = tradeIds.get(productId);
             Long sequence = sequences.get(productId);
             orderBooks.computeIfAbsent(productId,
-                k -> new OrderBook(productId, tradeId, sequence, accountBook, productBook)).addOrder(order);
+                    k -> new OrderBook(productId, tradeId, sequence, accountBook, productBook)).addOrder(order);
             simpleOrderBooks.computeIfAbsent(productId,
-                k -> new SimpleOrderBook(productId, sequence)).putOrder(order);
+                    k -> new SimpleOrderBook(productId, sequence)).putOrder(order);
         });
     }
 
@@ -301,11 +301,11 @@ public class MatchingEngine {
     private void startModifiedObjectSaveTask() {
         scheduledExecutor.scheduleWithFixedDelay(() -> {
             while (true) {
-                ModifiedObjectList modifiedObjects = modifiedObjectQueue.poll();
+                ModifiedObjectList modifiedObjects = modifiedObjectListQueue.poll();
                 if (modifiedObjects == null) {
                     break;
                 }
-                modifiedObjectQueueSizeCounter.decrementAndGet();
+                modifiedObjectListQueueSizeCounter.decrementAndGet();
                 save(modifiedObjects);
             }
         }, 0, 1, TimeUnit.SECONDS);
@@ -313,6 +313,7 @@ public class MatchingEngine {
 
     public void startL2OrderBookPublishTask() {
         scheduledExecutor.scheduleWithFixedDelay(() -> {
+            System.out.println("modifiedObjectQueueSizeCounter.size=" + modifiedObjectListQueueSizeCounter.get() +" crated="+( modifiedObjectCreatedCounter.get()-modifiedObjectSavedCounter.get()));
             simpleOrderBooks.forEach((productId, simpleOrderBook) -> {
                 simpleOrderBookExecutor.execute(productId, () -> {
                     takeL2OrderBookSnapshot(simpleOrderBook, 0);

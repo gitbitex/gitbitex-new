@@ -58,11 +58,11 @@ public class Bootstrap {
     @PostConstruct
     public void init() {
         startMatchingEngine(1);
-        startOrderPersistenceThread(1);
-        startTradePersistenceThread(1);
-        startAccountPersistenceThread(appProperties.getAccountantThreadNum());
-        startCandleMaker(1);
-        startTickerThread(1);
+        //startOrderPersistenceThread(1);
+        //startTradePersistenceThread(1);
+        //startAccountPersistenceThread(appProperties.getAccountantThreadNum());
+        //startCandleMaker(1);
+        //startTickerThread(1);
     }
 
     @PreDestroy
@@ -102,7 +102,7 @@ public class Bootstrap {
 
     private void startTickerThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "Ticker";
+            String groupId = "Ticker111111111111";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
                 new TradeMessageDeserializer());
             TickerThread tickerThread = new TickerThread(consumer, tickerManager, appProperties);
@@ -155,7 +155,7 @@ public class Bootstrap {
         properties.put("enable.auto.commit", "false");
         properties.put("session.timeout.ms", "30000");
         properties.put("auto.offset.reset", "earliest");
-        properties.put("max.poll.records", 1000);
+        properties.put("max.poll.records", 2000);
         return properties;
     }
 }

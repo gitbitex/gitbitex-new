@@ -114,7 +114,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
             candleRepository.saveAll(candles.values());
         }
         long t2 = System.currentTimeMillis();
-        logger.info("saved {} candle(s), elapsed time: {} ms", candles.size(), t2 - t1);
+        //logger.info("saved {} candle(s), elapsed time: {} ms", candles.size(), t2 - t1);
 
         consumer.commitSync();
     }

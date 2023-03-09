@@ -93,7 +93,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
         });
 
         //logger.info(i + " " + (System.currentTimeMillis() - t1));
-        //System.out.println(i + " " + (System.currentTimeMillis() - t1));
+        System.out.println(i + " " + (System.currentTimeMillis() - t1));
 
         //matchingEngine.getOrderBooks().keySet().forEach(x -> {
         //L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);

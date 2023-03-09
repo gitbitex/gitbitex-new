@@ -69,7 +69,7 @@ public class OrderController {
         command.setPrice(price);
         command.setFunds(funds);
         command.setTime(new Date());
-        producer.sendToMatchingEngine("all", command, null);
+        producer.sendToMatchingEngine( command, null);
 
         OrderDto orderDto = new OrderDto();
         orderDto.setId(command.getOrderId());
@@ -94,7 +94,7 @@ public class OrderController {
         CancelOrderCommand command = new CancelOrderCommand();
         command.setProductId(order.getProductId());
         command.setOrderId(order.getId());
-        producer.sendToMatchingEngine("all", command, null);
+        producer.sendToMatchingEngine( command, null);
     }
 
     @DeleteMapping("/orders")

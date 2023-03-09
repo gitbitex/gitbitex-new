@@ -1,14 +1,5 @@
 package com.gitbitex.marketdata;
 
-import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoField;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.marketdata.manager.TickerManager;
@@ -22,6 +13,15 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
+import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 @Slf4j
 public class TickerThread extends KafkaConsumerThread<String, TradeMessage> implements ConsumerRebalanceListener {
     private final AppProperties appProperties;
@@ -29,7 +29,7 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
     private final Map<String, Ticker> tickerByProductId = new HashMap<>();
 
     public TickerThread(KafkaConsumer<String, TradeMessage> consumer, TickerManager tickerManager,
-        AppProperties appProperties) {
+                        AppProperties appProperties) {
         super(consumer, logger);
         this.tickerManager = tickerManager;
         this.appProperties = appProperties;
@@ -40,7 +40,6 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
         for (TopicPartition partition : partitions) {
             logger.info("partition revoked: {}", partition.toString());
         }
-        //consumer.commitSync();
     }
 
     @Override
@@ -72,14 +71,27 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
     public void refreshTicker(Trade trade) {
         Ticker ticker = tickerByProductId.get(trade.getProductId());
         if (ticker == null) {
+            ticker = tickerManager.getTicker(trade.getProductId());
+        }
+        if (ticker != null) {
+            long diff = trade.getTradeId() - ticker.getTradeId();
+            if (diff <= 0) {
+                System.out.println("ignore " + trade.getTradeId());
+                return;
+            } else if (diff > 1) {
+                throw new RuntimeException("MISS");
+            }
+        }
+
+        if (ticker == null) {
             ticker = new Ticker();
             ticker.setProductId(trade.getProductId());
         }
 
         long time24h = DateUtil.round(ZonedDateTime.ofInstant(trade.getTime().toInstant(), ZoneId.systemDefault()),
-            ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
+                ChronoField.MINUTE_OF_DAY, 24 * 60).toEpochSecond();
         long time30d = DateUtil.round(ZonedDateTime.ofInstant(trade.getTime().toInstant(), ZoneId.systemDefault()),
-            ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
+                ChronoField.MINUTE_OF_DAY, 24 * 60 * 30).toEpochSecond();
 
         if (ticker.getTime24h() == null || ticker.getTime24h() != time24h) {
             ticker.setTime24h(time24h);

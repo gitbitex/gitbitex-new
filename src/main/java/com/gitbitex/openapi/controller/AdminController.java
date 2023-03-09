@@ -28,7 +28,7 @@ public class AdminController {
         command.setCurrency(currency);
         command.setAmount(new BigDecimal(amount));
         command.setTransactionId(UUID.randomUUID().toString());
-        producer.sendToMatchingEngine("all", command, null);
+        producer.sendToMatchingEngine( command, null);
         return "ok";
     }
 
@@ -49,6 +49,6 @@ public class AdminController {
         putProductCommand.setProductId(product.getId());
         putProductCommand.setBaseCurrency(product.getBaseCurrency());
         putProductCommand.setQuoteCurrency(product.getQuoteCurrency());
-        producer.sendToMatchingEngine("all", putProductCommand, null);
+        producer.sendToMatchingEngine( putProductCommand, null);
     }
 }

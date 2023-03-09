@@ -40,7 +40,7 @@ public class CoinbaseTrader {
     private final AppProperties appProperties;
     private final AdminController adminController;
 
-    @PostConstruct
+    //@PostConstruct
     public void init() throws URISyntaxException {
         if (appProperties.getLiquidityTraderUserIds().isEmpty()) {
             return;
@@ -48,15 +48,15 @@ public class CoinbaseTrader {
         logger.info("start");
 
         adminController.saveProduct("BTC", "USDT");
-        adminController.deposit("test", "BTC", "10000000");
-        adminController.deposit("test", "USDT", "10000000");
+        adminController.deposit("test", "BTC", "10000000000");
+        adminController.deposit("test", "USDT", "10000000000");
 
         MyClient client = new MyClient(new URI("wss://ws-feed.exchange.coinbase.com"));
 
         scheduledExecutor.scheduleAtFixedRate(() -> {
             try {
-                test();
-                if (true) {return;}
+                //test();
+                //if (true) {return;}
 
                 if (!client.isOpen()) {
                     try {
@@ -77,7 +77,7 @@ public class CoinbaseTrader {
             } catch (Exception e) {
                 logger.error("send ping error: {}", e.getMessage(), e);
             }
-        }, 0, 10, TimeUnit.MILLISECONDS);
+        }, 0, 3000, TimeUnit.MILLISECONDS);
     }
 
     @PreDestroy

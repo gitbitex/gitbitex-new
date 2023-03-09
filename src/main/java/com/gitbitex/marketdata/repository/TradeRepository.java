@@ -23,7 +23,6 @@ public class TradeRepository {
 
     public TradeRepository(MongoDatabase database) {
         this.mongoCollection = database.getCollection(Trade.class.getSimpleName(), Trade.class);
-        this.mongoCollection.createIndex(Indexes.)
     }
 
     public List<Trade> findTradesByProductId(String productId, int limit) {
