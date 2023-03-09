@@ -10,20 +10,12 @@ import lombok.Setter;
 @Setter
 public class User {
     private String id;
-
     private Date createdAt;
-
     private Date updatedAt;
-
     private String email;
-
     private String passwordHash;
-
     private String passwordSalt;
-
     private String twoStepVerificationType;
-
     private BigDecimal gotpSecret;
-
     private String nickName;
 }

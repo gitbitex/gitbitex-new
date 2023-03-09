@@ -13,37 +13,21 @@ import lombok.Setter;
 @Setter
 public class Order {
     private String id;
-
     private Date createdAt;
-
     private Date updatedAt;
-
     private String productId;
-
     private String userId;
-
     private String clientOid;
-
     private Date time;
-
     private BigDecimal size;
-
     private BigDecimal funds;
-
     private BigDecimal filledSize;
-
     private BigDecimal executedValue;
-
     private BigDecimal price;
-
     private BigDecimal fillFees;
-
     private OrderType type;
-
     private OrderSide side;
-
     private OrderStatus status;
-
     /**
      * Time in force policies provide guarantees about the lifetime of an order. There are four policies: good till
      * canceled GTC, good till time GTT, immediate or cancel IOC, and fill or kill FOK.
@@ -61,9 +45,7 @@ public class Order {
      * FOK Fill or kill orders are rejected if the entire size cannot be matched.
      */
     private String timeInForce;
-
     private boolean settled;
-
     /**
      * The post-only flag indicates that the order should only make liquidity. If any part of the order results in
      * taking liquidity, the order will be rejected and no part of it will execute.

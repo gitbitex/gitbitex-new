@@ -11,24 +11,14 @@ import lombok.Setter;
 @Setter
 public class Trade {
     private String id;
-
     private Date createdAt;
-
     private Date updatedAt;
-
     private long tradeId;
-
     private String productId;
-
     private String takerOrderId;
-
     private String makerOrderId;
-
     private BigDecimal price;
-
     private BigDecimal size;
-
     private OrderSide side;
-
     private Date time;
 }
