@@ -8,7 +8,7 @@ import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import com.gitbitex.matchingengine.command.PutProductCommand;
-import com.gitbitex.matchingengine.message.OrderLog;
+import com.gitbitex.matchingengine.message.OrderBookMessage;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.stripexecutor.StripedExecutorService;
@@ -126,8 +126,8 @@ public class MatchingEngine {
                 save(modifiedObjects.getSavedCounter(), (Account) obj);
             } else if (obj instanceof Trade) {
                 save(modifiedObjects.getSavedCounter(), (Trade) obj);
-            } else if (obj instanceof OrderLog) {
-                save(modifiedObjects.getSavedCounter(), (OrderLog) obj);
+            } else if (obj instanceof OrderBookMessage) {
+                save(modifiedObjects.getSavedCounter(), (OrderBookMessage) obj);
             } else {
                 modifiedObjects.getSavedCounter().incrementAndGet();
                 modifiedObjectSavedCounter.incrementAndGet();
@@ -154,9 +154,9 @@ public class MatchingEngine {
                     } else {
                         simpleOrderBook.removeOrder(order);
                     }
-                } else if (obj instanceof OrderLog) {
-                    OrderLog orderLog = (OrderLog) obj;
-                    simpleOrderBook.setSequence(orderLog.getSequence());
+                } else if (obj instanceof OrderBookMessage) {
+                    OrderBookMessage orderBookMessage = (OrderBookMessage) obj;
+                    simpleOrderBook.setSequence(orderBookMessage.getSequence());
                 } else if (obj instanceof OrderBookCompleteNotify) {
                     takeL2OrderBookSnapshot(simpleOrderBook, 200);
                 }
@@ -207,12 +207,12 @@ public class MatchingEngine {
         });
     }
 
-    private void save(AtomicLong savedCounter, OrderLog orderLog) {
+    private void save(AtomicLong savedCounter, OrderBookMessage orderBookMessage) {
         savedCounter.incrementAndGet();
         modifiedObjectSavedCounter.incrementAndGet();
-        String productId = orderLog.getProductId();
+        String productId = orderBookMessage.getProductId();
         kafkaExecutor.execute(productId, () -> {
-            orderBookLogTopic.publishAsync(JSON.toJSONString(orderLog));
+            orderBookLogTopic.publishAsync(JSON.toJSONString(orderBookMessage));
         });
     }
 
@@ -243,9 +243,9 @@ public class MatchingEngine {
                 } else if (obj instanceof Trade) {
                     Trade trade = (Trade) obj;
                     tradeIds.put(trade.getProductId(), trade.getTradeId());
-                } else if (obj instanceof OrderLog) {
-                    OrderLog orderLog = (OrderLog) obj;
-                    sequences.put(orderLog.getProductId(), orderLog.getSequence());
+                } else if (obj instanceof OrderBookMessage) {
+                    OrderBookMessage orderBookMessage = (OrderBookMessage) obj;
+                    sequences.put(orderBookMessage.getProductId(), orderBookMessage.getSequence());
                 } else if (obj instanceof Product) {
                     products.add((Product) obj);
                 }

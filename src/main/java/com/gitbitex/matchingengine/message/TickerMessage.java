@@ -9,7 +9,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class TickerMessage extends Log {
+public class TickerMessage  {
     private String productId;
     private long tradeId;
     private long sequence;
@@ -29,8 +29,4 @@ public class TickerMessage extends Log {
     private BigDecimal high30d;
     private BigDecimal low30d;
     private BigDecimal volume30d;
-
-    public TickerMessage() {
-        this.setType(LogType.TICKER);
-    }
 }

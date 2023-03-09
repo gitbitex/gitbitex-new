@@ -10,7 +10,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderReceivedMessage extends OrderLog {
+public class OrderReceivedMessage extends OrderBookMessage {
     private String orderId;
     private String userId;
     private BigDecimal size;
@@ -22,7 +22,7 @@ public class OrderReceivedMessage extends OrderLog {
     private Date time;
 
     public OrderReceivedMessage() {
-        this.setType(LogType.ORDER_RECEIVED);
+        this.setType(MessageType.ORDER_RECEIVED);
     }
 }
 

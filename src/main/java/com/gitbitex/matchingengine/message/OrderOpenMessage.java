@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderOpenMessage extends OrderLog {
+public class OrderOpenMessage extends OrderBookMessage {
     private String orderId;
     private BigDecimal remainingSize;
     private BigDecimal price;
@@ -16,7 +16,7 @@ public class OrderOpenMessage extends OrderLog {
     private String userId;
 
     public OrderOpenMessage() {
-        this.setType(LogType.ORDER_OPEN);
+        this.setType(MessageType.ORDER_OPEN);
     }
 
 }

@@ -1,29 +1,22 @@
 package com.gitbitex.matchingengine.message;
 
-import java.util.Date;
-
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Date;
+
 @Getter
 @Setter
-public class Log {
+public class OrderBookMessage {
+    private String productId;
     private long sequence;
-    private long offset;
     private Date time;
-    private LogType type;
+    private MessageType type;
 
-    public enum LogType {
-        TICKER,
-        ORDER,
-        ACCOUNT,
-        TRADE,
-        BILL,
-        ORDER_REJECTED,
+    public enum MessageType {
         ORDER_RECEIVED,
         ORDER_OPEN,
         ORDER_MATCH,
-        ORDER_FILLED,
         ORDER_DONE,
     }
 }

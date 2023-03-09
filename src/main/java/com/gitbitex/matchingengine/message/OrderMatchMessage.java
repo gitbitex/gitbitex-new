@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OrderMatchMessage extends OrderLog {
+public class OrderMatchMessage extends OrderBookMessage {
     private String productId;
     private long sequence;
     private long tradeId;
@@ -22,7 +22,7 @@ public class OrderMatchMessage extends OrderLog {
     private BigDecimal funds;
 
     public OrderMatchMessage() {
-        this.setType(LogType.ORDER_MATCH);
+        this.setType(MessageType.ORDER_MATCH);
     }
 
 }
