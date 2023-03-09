@@ -164,10 +164,10 @@ public class MatchingEngine {
         });
     }
 
-    private void takeL2OrderBookSnapshot(SimpleOrderBook simpleOrderBook, long sequenceDiff) {
+    private void takeL2OrderBookSnapshot(SimpleOrderBook simpleOrderBook, long delta) {
         String productId = simpleOrderBook.getProductId();
         long lastL2OrderBookSequence = lastL2OrderBookSequences.getOrDefault(productId, 0L);
-        if (simpleOrderBook.getSequence() - lastL2OrderBookSequence > sequenceDiff) {
+        if (simpleOrderBook.getSequence() - lastL2OrderBookSequence > delta) {
             L2OrderBook l2OrderBook = new L2OrderBook(simpleOrderBook, 25);
             lastL2OrderBookSequences.put(productId, simpleOrderBook.getSequence());
             orderBookManager.saveL2BatchOrderBook(l2OrderBook);
@@ -181,7 +181,9 @@ public class MatchingEngine {
                 savedCounter.incrementAndGet();
                 modifiedObjectSavedCounter.incrementAndGet();
             });
-            accountTopic.publishAsync(data);
+            redisExecutor.execute(account.getUserId(), () -> {
+                accountTopic.publishAsync(data);
+            });
         });
     }
 
@@ -193,7 +195,9 @@ public class MatchingEngine {
                 savedCounter.incrementAndGet();
                 modifiedObjectSavedCounter.incrementAndGet();
             });
-            orderTopic.publishAsync(data);
+            redisExecutor.execute(order.getUserId(), () -> {
+                orderTopic.publishAsync(data);
+            });
         });
     }
 
@@ -211,7 +215,7 @@ public class MatchingEngine {
         savedCounter.incrementAndGet();
         modifiedObjectSavedCounter.incrementAndGet();
         String productId = orderBookMessage.getProductId();
-        kafkaExecutor.execute(productId, () -> {
+        redisExecutor.execute(productId, () -> {
             orderBookLogTopic.publishAsync(JSON.toJSONString(orderBookMessage));
         });
     }
@@ -308,7 +312,7 @@ public class MatchingEngine {
                 modifiedObjectListQueueSizeCounter.decrementAndGet();
                 save(modifiedObjects);
             }
-        }, 0, 1, TimeUnit.SECONDS);
+        }, 0, 500, TimeUnit.MILLISECONDS);
     }
 
     public void startL2OrderBookPublishTask() {
