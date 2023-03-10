@@ -46,11 +46,10 @@ public class OrderBookManager {
     }
 
     public void saveL2BatchOrderBook(L2OrderBook l2OrderBook) {
+        String data=JSON.toJSONString(l2OrderBook);
         redissonClient.getBucket(keyForL2Batch(l2OrderBook.getProductId()), StringCodec.INSTANCE)
-            .setAsync(JSON.toJSONString(l2OrderBook))
-            .onComplete((unused, throwable) -> {
-                l2BatchNotifyTopic.publishAsync(l2OrderBook.getProductId());
-            });
+            .setAsync(data);
+        l2BatchNotifyTopic.publishAsync(data);
     }
 
     public L2OrderBook getL2BatchOrderBook(String productId) {

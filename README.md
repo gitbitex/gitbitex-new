@@ -48,3 +48,13 @@ Probably not. Some customers I know use this project in production, but they all
 If you want to use it in production, you need professional technicians to help you. Like me . 
 (**If you want to build an exchange, you can hire me. I'm looking for a part-time job remotely 
 because I lost a lot of money on the damn digital currency.**)
+### How can I monitor the performance of the matching engine
+Some prometheus metrics for measuring performance have been built into the project. 
+You can visit http://127.0.0.1:7002/actuator/prometheus see.You can use Prometheus and grafana to monitor.
+The metrics are as follows:
+- **gbe_matching_engine_command_processed_total** : The number of commands processed by the matching engine. The greater the value change, the faster the processing.
+- **gbe_matching_engine_modified_object_list_queue_size** : The number of modified object lists that are not consumed. If the value becomes larger, it may block the matching thread
+- **gbe_matching_engine_modified_object_created_total** : This value represents the number of objects that have modified,Wait to save to database.
+- **gbe_matching_engine_modified_object_saved_total** : The number of modified objects that have been saved. If the difference between this value and _gbe_matching_engine_modified_object_created_total_ is too large, it means that saving to disk is too slow.
+- **gbe_matching_engine_state_unsaved_modified_object_map_size** : Objects that have not been written to the snapshot. This value reflects the performance of the snapshot thread.
+

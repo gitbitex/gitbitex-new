@@ -60,7 +60,7 @@ public class Bootstrap {
         startMatchingEngine(1);
         startOrderPersistenceThread(1);
         startTradePersistenceThread(1);
-        startAccountPersistenceThread(appProperties.getAccountantThreadNum());
+        startAccountPersistenceThread(1);
         startCandleMaker(1);
         startTickerThread(1);
     }

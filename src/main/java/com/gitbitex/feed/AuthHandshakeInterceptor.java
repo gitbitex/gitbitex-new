@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServletRequest;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.manager.UserManager;
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -22,8 +23,8 @@ public class AuthHandshakeInterceptor extends HttpSessionHandshakeInterceptor {
     private final SessionManager sessionManager;
 
     @Override
-    public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler wsHandler,
-        Map<String, Object> attributes) throws Exception {
+    public boolean beforeHandshake(@NotNull ServerHttpRequest request, @NotNull ServerHttpResponse response, @NotNull WebSocketHandler wsHandler,
+                                   @NotNull Map<String, Object> attributes) throws Exception {
         HttpServletRequest httpServletRequest = ((ServletServerHttpRequest)request).getServletRequest();
         String accessToken = getAccessToken(httpServletRequest);
         if (accessToken != null) {

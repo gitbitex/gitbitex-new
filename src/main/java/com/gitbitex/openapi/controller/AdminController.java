@@ -7,22 +7,21 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 
 import com.gitbitex.kafka.KafkaMessageProducer;
+import com.gitbitex.marketdata.entity.Order;
 import com.gitbitex.marketdata.entity.Product;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.manager.AccountManager;
 import com.gitbitex.marketdata.manager.UserManager;
 import com.gitbitex.marketdata.repository.ProductRepository;
+import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PutProductCommand;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * For demonstration, do not expose to external users ！！！！！！
@@ -81,6 +80,12 @@ public class AdminController {
         return product;
     }
 
+    public void cancelOrder( String orderId, String productId) {
+        CancelOrderCommand command = new CancelOrderCommand();
+        command.setProductId(productId);
+        command.setOrderId(orderId);
+        producer.sendToMatchingEngine( command, null);
+    }
 
     @Getter
     @Setter

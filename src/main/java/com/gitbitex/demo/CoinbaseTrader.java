@@ -59,8 +59,8 @@ public class CoinbaseTrader {
 
         scheduledExecutor.scheduleAtFixedRate(() -> {
             try {
-                test(user);
-                if (true) {return;}
+                //test(user);
+                //if (true) {return;}
 
                 if (!client.isOpen()) {
                     try {
@@ -159,7 +159,7 @@ public class CoinbaseTrader {
                             }
                             break;
                         case "done":
-                            orderController.cancelOrder(message.getOrderId(), user);
+                            adminController.cancelOrder(message.getOrderId(), productId);
                             break;
                         default:
                     }

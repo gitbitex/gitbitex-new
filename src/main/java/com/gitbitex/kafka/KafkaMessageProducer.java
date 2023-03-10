@@ -23,8 +23,6 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         this.appProperties = appProperties;
     }
 
-    // 35038 3699
-    // 41599 2570
     public void sendToMatchingEngine( Command command, Callback callback) {
         byte[] jsonBytes = JSON.toJSONBytes(command);
         byte[] messageBytes = new byte[jsonBytes.length + 1];

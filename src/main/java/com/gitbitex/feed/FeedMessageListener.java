@@ -6,6 +6,7 @@ import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.matchingengine.message.*;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
+import com.gitbitex.stripexecutor.StripedExecutorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
@@ -21,66 +22,79 @@ public class FeedMessageListener {
     private final RedissonClient redissonClient;
     private final SessionManager sessionManager;
     private final OrderBookManager orderBookManager;
+    private final StripedExecutorService listenerExecutor = new StripedExecutorService(Runtime.getRuntime().availableProcessors());
 
     @PostConstruct
     public void run() {
         redissonClient.getTopic("order", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             OrderMessage orderMessage = JSON.parseObject(msg, OrderMessage.class);
-            String channel = orderMessage.getUserId() + "." + orderMessage.getProductId() + ".order";
-            sessionManager.sendMessageToChannel(channel, orderFeedMessage(orderMessage));
+            listenerExecutor.execute(orderMessage.getUserId(), () -> {
+                String channel = orderMessage.getUserId() + "." + orderMessage.getProductId() + ".order";
+                sessionManager.sendMessageToChannel(channel, orderFeedMessage(orderMessage));
+            });
         });
 
         redissonClient.getTopic("account", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             AccountMessage accountMessage = JSON.parseObject(msg, AccountMessage.class);
-            String channel = accountMessage.getUserId() + "." + accountMessage.getCurrency() + ".funds";
-            sessionManager.sendMessageToChannel(channel, accountFeedMessage(accountMessage));
+            listenerExecutor.execute(accountMessage.getUserId(), () -> {
+                String channel = accountMessage.getUserId() + "." + accountMessage.getCurrency() + ".funds";
+                sessionManager.sendMessageToChannel(channel, accountFeedMessage(accountMessage));
+            });
         });
 
         redissonClient.getTopic("ticker", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             TickerMessage tickerMessage = JSON.parseObject(msg, TickerMessage.class);
-            String channel = tickerMessage.getProductId() + ".ticker";
-            sessionManager.sendMessageToChannel(channel, tickerFeedMessage(tickerMessage));
+            listenerExecutor.execute(tickerMessage.getProductId(), () -> {
+                String channel = tickerMessage.getProductId() + ".ticker";
+                sessionManager.sendMessageToChannel(channel, tickerFeedMessage(tickerMessage));
+            });
         });
 
         redissonClient.getTopic("candle", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            Candle candle = JSON.parseObject(msg, Candle.class);
-            String channel = candle.getProductId() + ".candle_" + candle.getGranularity() * 60;
-            sessionManager.sendMessageToChannel(channel, (candleMessage(candle)));
+            listenerExecutor.execute(() -> {
+                Candle candle = JSON.parseObject(msg, Candle.class);
+                String channel = candle.getProductId() + ".candle_" + candle.getGranularity() * 60;
+                sessionManager.sendMessageToChannel(channel, (candleMessage(candle)));
+            });
         });
 
         redissonClient.getTopic("l2_batch", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            L2OrderBook l2OrderBook = orderBookManager.getL2BatchOrderBook(msg);
-            String channel = l2OrderBook.getProductId() + ".level2";
-            sessionManager.sendMessageToChannel(channel, l2OrderBook);
+            L2OrderBook l2OrderBook = JSON.parseObject(msg, L2OrderBook.class);
+            listenerExecutor.execute(l2OrderBook.getProductId(), () -> {
+                String channel = l2OrderBook.getProductId() + ".level2";
+                sessionManager.sendMessageToChannel(channel, l2OrderBook);
+            });
         });
 
         redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            OrderBookMessage log = JSON.parseObject(msg, OrderBookMessage.class);
-            switch (log.getType()) {
-                case ORDER_RECEIVED:
-                    OrderReceivedMessage orderReceivedMessage = JSON.parseObject(msg, OrderReceivedMessage.class);
-                    sessionManager.sendMessageToChannel(orderReceivedMessage.getProductId() + ".full",
-                            (orderReceivedMessage(orderReceivedMessage)));
-                    break;
-                case ORDER_MATCH:
-                    OrderMatchMessage orderMatchMessage = JSON.parseObject(msg, OrderMatchMessage.class);
-                    String matchChannel = orderMatchMessage.getProductId() + ".match";
-                    sessionManager.sendMessageToChannel(matchChannel, (matchMessage(orderMatchMessage)));
-                    sessionManager.sendMessageToChannel(orderMatchMessage.getProductId() + ".full",
-                            (matchMessage(orderMatchMessage)));
-                    break;
-                case ORDER_OPEN:
-                    OrderOpenMessage orderOpenMessage = JSON.parseObject(msg, OrderOpenMessage.class);
-                    sessionManager.sendMessageToChannel(orderOpenMessage.getProductId() + ".full",
-                            (orderOpenMessage(orderOpenMessage)));
-                    break;
-                case ORDER_DONE:
-                    OrderDoneMessage orderDoneMessage = JSON.parseObject(msg, OrderDoneMessage.class);
-                    sessionManager.sendMessageToChannel(orderDoneMessage.getProductId() + ".full",
-                            (orderDoneMessage(orderDoneMessage)));
-                    break;
-                default:
-            }
+            OrderBookMessage message = JSON.parseObject(msg, OrderBookMessage.class);
+            listenerExecutor.execute(message.getProductId(), () -> {
+                switch (message.getType()) {
+                    case ORDER_RECEIVED:
+                        OrderReceivedMessage orderReceivedMessage = JSON.parseObject(msg, OrderReceivedMessage.class);
+                        sessionManager.sendMessageToChannel(orderReceivedMessage.getProductId() + ".full",
+                                (orderReceivedMessage(orderReceivedMessage)));
+                        break;
+                    case ORDER_MATCH:
+                        OrderMatchMessage orderMatchMessage = JSON.parseObject(msg, OrderMatchMessage.class);
+                        String matchChannel = orderMatchMessage.getProductId() + ".match";
+                        sessionManager.sendMessageToChannel(matchChannel, (matchMessage(orderMatchMessage)));
+                        sessionManager.sendMessageToChannel(orderMatchMessage.getProductId() + ".full",
+                                (matchMessage(orderMatchMessage)));
+                        break;
+                    case ORDER_OPEN:
+                        OrderOpenMessage orderOpenMessage = JSON.parseObject(msg, OrderOpenMessage.class);
+                        sessionManager.sendMessageToChannel(orderOpenMessage.getProductId() + ".full",
+                                (orderOpenMessage(orderOpenMessage)));
+                        break;
+                    case ORDER_DONE:
+                        OrderDoneMessage orderDoneMessage = JSON.parseObject(msg, OrderDoneMessage.class);
+                        sessionManager.sendMessageToChannel(orderDoneMessage.getProductId() + ".full",
+                                (orderDoneMessage(orderDoneMessage)));
+                        break;
+                    default:
+                }
+            });
         });
     }
 

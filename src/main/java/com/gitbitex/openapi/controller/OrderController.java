@@ -110,7 +110,10 @@ public class OrderController {
             orderSide, 1, 20000);
 
         for (Order order : orderPage.getItems()) {
-            //matchingEngineService.handleCancelOrderRequest(order);
+            CancelOrderCommand command = new CancelOrderCommand();
+            command.setProductId(order.getProductId());
+            command.setOrderId(order.getId());
+            producer.sendToMatchingEngine( command, null);
         }
     }
 
