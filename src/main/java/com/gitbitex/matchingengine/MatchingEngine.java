@@ -22,7 +22,6 @@ import org.redisson.client.codec.StringCodec;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
@@ -310,19 +309,11 @@ public class MatchingEngine {
                     new OrderBook(x.getId(), x.getTradeId(), x.getSequence(), accountBook, productBook));
             simpleOrderBooks.put(x.getId(), new SimpleOrderBook(x.getId(), x.getSequence()));
         });
-        String afterOrderId = null;
-        while (true) {
-            List<Order> orders = stateStore.getOrders(afterOrderId, 2);
-            if (orders.isEmpty()) {
-                break;
-            }
-            afterOrderId = orders.get(orders.size() - 1).getId();
-
-            orders.forEach(x -> {
-                orderBooks.get(x.getProductId()).addOrder(x);
-                simpleOrderBooks.get(x.getProductId()).putOrder(x);
-            });
-        }
+        stateStore.getOrders().forEach(x -> {
+            System.out.println(x.getTime() + " " + x.getId());
+            orderBooks.get(x.getProductId()).addOrder(x);
+            simpleOrderBooks.get(x.getProductId()).putOrder(x);
+        });
     }
 
     private void startSateSaveTask() {

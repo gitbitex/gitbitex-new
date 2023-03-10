@@ -1,11 +1,6 @@
 package com.gitbitex.matchingengine;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.gitbitex.enums.OrderStatus;
 import com.mongodb.MongoClientSettings;
@@ -61,15 +56,9 @@ public class EngineStateStore {
         return this.accountCollection.find().into(new ArrayList<>());
     }
 
-    public List<Order> getOrders(String afterId, int limit) {
-        Bson filters = Filters.empty();
-        if (afterId != null) {
-            filters = Filters.and(filters, Filters.lt("_id", afterId));
-        }
-        return this.orderCollection
-            .find(filters)
+    public List<Order> getOrders() {
+        return this.orderCollection.find()
             .sort(Sorts.ascending("time", "_id"))
-            .limit(limit)
             .into(new ArrayList<>());
     }
 
