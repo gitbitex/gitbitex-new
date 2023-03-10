@@ -310,7 +310,6 @@ public class MatchingEngine {
             simpleOrderBooks.put(x.getId(), new SimpleOrderBook(x.getId(), x.getSequence()));
         });
         stateStore.getOrders().forEach(x -> {
-            System.out.println(x.getTime() + " " + x.getId());
             orderBooks.get(x.getProductId()).addOrder(x);
             simpleOrderBooks.get(x.getProductId()).putOrder(x);
         });
