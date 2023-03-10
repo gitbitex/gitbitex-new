@@ -8,7 +8,7 @@ GitBitEx is an open source cryptocurrency exchange.
 ## Features
 - All in memory matching engine
 - Support distributed deployment (standby mode：only one matching engine is running at the same time)
-- Support 100000 orders per second
+- Support 100000 orders per second (Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz   3.79 GHz  32.0 GB RAM 1T SSD)
 - Support the replay of matching engine commands and ensure that each result is completely consistent
 
 
