@@ -53,7 +53,6 @@ public class CoinbaseTrader {
         adminController.saveProduct(putProductRequest);
         adminController.deposit(user.getId(), "BTC", "100000000000");
         adminController.deposit(user.getId(), "USDT", "100000000000");
-        if (true)return;
 
         MyClient client = new MyClient(new URI("wss://ws-feed.exchange.coinbase.com"), user);
 
