@@ -1,18 +1,6 @@
 package com.gitbitex.matchingengine;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicLong;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
@@ -22,6 +10,12 @@ import com.gitbitex.matchingengine.message.OrderOpenMessage;
 import com.gitbitex.matchingengine.message.OrderReceivedMessage;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Getter
 @Slf4j
@@ -36,7 +30,7 @@ public class OrderBook {
     private final LinkedHashMap<String, Order> orderById = new LinkedHashMap<>();
 
     public OrderBook(String productId, Long tradeId, Long sequence, AccountBook accountBook,
-        ProductBook productBook) {
+                     ProductBook productBook) {
         this.productId = productId;
         this.productBook = productBook;
         this.accountBook = accountBook;
@@ -59,10 +53,10 @@ public class OrderBook {
 
         if (takerOrder.getSide() == OrderSide.BUY) {
             accountBook.hold(takerOrder.getUserId(), product.getQuoteCurrency(), takerOrder.getRemainingFunds(),
-                modifiedObjects);
+                    modifiedObjects);
         } else {
             accountBook.hold(takerOrder.getUserId(), product.getBaseCurrency(), takerOrder.getRemainingSize(),
-                modifiedObjects);
+                    modifiedObjects);
         }
         if (modifiedObjects.isEmpty()) {
             logger.warn("order rejected, reason: INSUFFICIENT_FUNDS: {}", JSON.toJSONString(takerOrder));
@@ -79,7 +73,7 @@ public class OrderBook {
 
         // start matching
         Iterator<Entry<BigDecimal, PriceGroupedOrderCollection>> priceItr = (takerOrder.getSide() == OrderSide.BUY
-            ? asks : bids).entrySet().iterator();
+                ? asks : bids).entrySet().iterator();
         MATCHING:
         while (priceItr.hasNext()) {
             Map.Entry<BigDecimal, PriceGroupedOrderCollection> entry = priceItr.next();
@@ -107,8 +101,8 @@ public class OrderBook {
 
                 // exchange account funds
                 accountBook.exchange(takerOrder.getUserId(), makerOrder.getUserId(), product.getBaseCurrency(),
-                    product.getQuoteCurrency(), takerOrder.getSide(), trade.getSize(), trade.getFunds(),
-                    modifiedObjects);
+                        product.getQuoteCurrency(), takerOrder.getSide(), trade.getSize(), trade.getFunds(),
+                        modifiedObjects);
 
                 // if the maker order is filled or cancelled, remove it from the order book.
                 if (makerOrder.getStatus() == OrderStatus.FILLED || makerOrder.getStatus() == OrderStatus.CANCELLED) {
@@ -138,7 +132,11 @@ public class OrderBook {
             modifiedObjects.add(orderOpenMessage(takerOrder.clone()));
             orderBookChanged = true;
         } else {
-            takerOrder.setStatus(OrderStatus.CANCELLED);
+            if (takerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
+                takerOrder.setStatus(OrderStatus.CANCELLED);
+            } else {
+                takerOrder.setStatus(OrderStatus.FILLED);
+            }
             modifiedObjects.add(orderDoneMessage(takerOrder.clone()));
             unholdOrderFunds(takerOrder, product, modifiedObjects);
         }
@@ -223,8 +221,8 @@ public class OrderBook {
 
     public void addOrder(Order order) {
         (order.getSide() == OrderSide.BUY ? bids : asks)
-            .computeIfAbsent(order.getPrice(), k -> new PriceGroupedOrderCollection())
-            .put(order.getId(), order);
+                .computeIfAbsent(order.getPrice(), k -> new PriceGroupedOrderCollection())
+                .put(order.getId(), order);
         orderById.put(order.getId(), order);
     }
 
@@ -243,12 +241,12 @@ public class OrderBook {
         if (makerOrder.getSide() == OrderSide.BUY) {
             if (makerOrder.getRemainingFunds().compareTo(BigDecimal.ZERO) > 0) {
                 accountBook.unhold(makerOrder.getUserId(), product.getQuoteCurrency(), makerOrder.getRemainingFunds(),
-                    modifiedObjects);
+                        modifiedObjects);
             }
         } else {
             if (makerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
                 accountBook.unhold(makerOrder.getUserId(), product.getBaseCurrency(), makerOrder.getRemainingSize(),
-                    modifiedObjects);
+                        modifiedObjects);
             }
         }
     }
