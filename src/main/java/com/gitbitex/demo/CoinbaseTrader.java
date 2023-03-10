@@ -122,7 +122,7 @@ public class CoinbaseTrader {
     }
 
     public class MyClient extends org.java_websocket.client.WebSocketClient {
-        private User user;
+        private final User user;
 
         public MyClient(URI serverUri, User user) {
             super(serverUri, new Draft_6455(), null, 1000);
@@ -138,6 +138,9 @@ public class CoinbaseTrader {
 
         @Override
         public void onMessage(String s) {
+            if (!rateLimiter.tryAcquire()){
+                return;
+            }
             executor.execute(() -> {
                 try {
                     ChannelMessage message = JSON.parseObject(s, ChannelMessage.class);
