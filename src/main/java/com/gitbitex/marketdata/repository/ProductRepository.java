@@ -19,7 +19,7 @@ public class ProductRepository {
     private final MongoCollection<Product> mongoCollection;
 
     public ProductRepository(MongoDatabase database) {
-        this.mongoCollection = database.getCollection(Product.class.getSimpleName(), Product.class);
+        this.mongoCollection = database.getCollection(Product.class.getSimpleName().toLowerCase(), Product.class);
     }
 
     public Product findById(String id) {

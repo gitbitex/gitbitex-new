@@ -36,7 +36,6 @@ public class ProductController {
 
     @GetMapping("/api/admin/addUser")
     public void addUser(@RequestParam String email, @RequestParam String password) {
-        User user = new User();
         userManager.createUser(email, password);
     }
 

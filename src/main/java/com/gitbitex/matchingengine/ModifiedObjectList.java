@@ -17,7 +17,7 @@ public class ModifiedObjectList extends ArrayList<Object> {
         this.productId = productId;
     }
 
-    public boolean isAllSaved() {
+    public boolean allSaved() {
         return savedCounter.get() == size();
     }
 

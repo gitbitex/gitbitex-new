@@ -6,23 +6,45 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
-  mongo:
-    image: mongo
-    container_name: mongo
+  mongo1:
+    image: mongo:5
+    container_name: mongo1
+    command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30001" ]
+    volumes:
+      - ./data/mongo-1:/data/db
     ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: root
+      - 30001:30001
+    healthcheck:
+      test: test $$(echo "rs.initiate({_id:'my-replica-set',members:[{_id:0,host:\"mongo1:30001\"},{_id:1,host:\"mongo2:30002\"},{_id:2,host:\"mongo3:30003\"}]}).ok || rs.status().ok" | mongo --port 30001 --quiet) -eq 1
+      interval: 10s
+  mongo2:
+    image: mongo:5
+    container_name: mongo2
+    command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30002" ]
+    volumes:
+      - ./data/mongo-2:/data/db
+    ports:
+      - 30002:30002
+  mongo3:
+    image: mongo:5
+    container_name: mongo3
+    command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30003" ]
+    volumes:
+      - ./data/mongo-3:/data/db
+    ports:
+      - 30003:30003
   mongo-express:
     image: mongo-express
+    container_name: mongo-express
     restart: always
     ports:
       - 8082:8081
     environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: root
-      ME_CONFIG_MONGODB_URL: mongodb://root:root@mongo:27017/
+      ME_CONFIG_MONGODB_URL: mongodb://mongo1:30001,mongo2:30002,mongo3:30003/?replicaSet=my-replica-set
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
   kafka:
     image: 'bitnami/kafka:3.4.0'
     container_name: kafka

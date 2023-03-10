@@ -14,11 +14,11 @@ public class ProductBook {
     }
 
     public void putProduct(Product product, ModifiedObjectList modifiedObjects) {
-        products.put(product.getProductId(), product);
+        products.put(product.getId(), product);
         modifiedObjects.add(product.clone());
     }
 
     public void addProduct(Product product) {
-        this.products.put(product.getProductId(), product);
+        this.products.put(product.getId(), product);
     }
 }

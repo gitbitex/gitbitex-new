@@ -9,7 +9,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class TickerMessage  {
+public class TickerMessage {
     private String productId;
     private long tradeId;
     private long sequence;

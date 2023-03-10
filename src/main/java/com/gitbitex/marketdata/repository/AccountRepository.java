@@ -5,6 +5,8 @@ import java.util.Collection;
 import java.util.List;
 
 import com.gitbitex.marketdata.entity.Account;
+import com.mongodb.client.ClientSession;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.BulkWriteOptions;
@@ -20,7 +22,7 @@ public class AccountRepository {
     private final MongoCollection<Account> mongoCollection;
 
     public AccountRepository(MongoDatabase database) {
-        this.mongoCollection = database.getCollection(Account.class.getSimpleName(), Account.class);
+        this.mongoCollection = database.getCollection(Account.class.getSimpleName().toLowerCase(), Account.class);
     }
 
     public List<Account> findAccountsByUserId(String userId) {

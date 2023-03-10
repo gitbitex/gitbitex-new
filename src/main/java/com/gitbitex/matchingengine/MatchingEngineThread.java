@@ -17,6 +17,7 @@ import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.redisson.api.RedissonClient;
@@ -25,22 +26,18 @@ import org.redisson.api.RedissonClient;
 public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
     implements CommandHandler, ConsumerRebalanceListener {
     private final AppProperties appProperties;
-    private final MatchingEngineStateStore matchingEngineStateStore;
-    KafkaMessageProducer producer;
-    RedissonClient redissonClient;
-    OrderBookManager orderBookManager;
-    long t1;
-    long t2;
-    int i;
+    private final EngineStateStore engineStateStore;
+    private final KafkaMessageProducer producer;
+    private final RedissonClient redissonClient;
+    private final OrderBookManager orderBookManager;
     private MatchingEngine matchingEngine;
 
-    public MatchingEngineThread(KafkaConsumer<String, Command> messageKafkaConsumer,
-        MatchingEngineStateStore matchingEngineStateStore,
+    public MatchingEngineThread(KafkaConsumer<String, Command> consumer, EngineStateStore engineStateStore,
         KafkaMessageProducer producer, RedissonClient redissonClient, OrderBookManager orderBookManager,
         AppProperties appProperties) {
-        super(messageKafkaConsumer, logger);
+        super(consumer, logger);
         this.appProperties = appProperties;
-        this.matchingEngineStateStore = matchingEngineStateStore;
+        this.engineStateStore = engineStateStore;
         this.producer = producer;
         this.redissonClient = redissonClient;
         this.orderBookManager = orderBookManager;
@@ -60,8 +57,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            matchingEngine = new MatchingEngine(matchingEngineStateStore, producer, redissonClient,
-                orderBookManager, appProperties);
+            matchingEngine = new MatchingEngine(engineStateStore, producer, redissonClient, orderBookManager);
             if (matchingEngine.getStartupCommandOffset() != null) {
                 logger.info("seek to offset: {}", matchingEngine.getStartupCommandOffset() + 1);
                 consumer.seek(partition, matchingEngine.getStartupCommandOffset() + 1);
@@ -76,30 +72,21 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
 
     @Override
     protected void doPoll() {
-        if (t1 == 0) {
-            t1 = System.currentTimeMillis();
+        ConsumerRecords<String, Command> records = consumer.poll(Duration.ofSeconds(5));
+        if (records.isEmpty()) {
+            return;
         }
-        consumer.poll(Duration.ofSeconds(5)).forEach(x -> {
+        records.forEach(x -> {
             Command command = x.value();
             command.setOffset(x.offset());
             //logger.info("{}", JSON.toJSONString(command));
             CommandDispatcher.dispatch(command, this);
-            i++;
             /*try {
                 Thread.sleep(50);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }*/
         });
-
-        //logger.info(i + " " + (System.currentTimeMillis() - t1));
-        System.out.println(i + " " + (System.currentTimeMillis() - t1));
-
-        //matchingEngine.getOrderBooks().keySet().forEach(x -> {
-        //L2OrderBook l2OrderBook = matchingEngine.takeL2OrderBookSnapshot(x, 10);
-        //logger.info(JSON.toJSONString(l2OrderBook, true));
-        //orderBookManager.saveL2BatchOrderBook(l2OrderBook);
-        //});
     }
 
     @Override

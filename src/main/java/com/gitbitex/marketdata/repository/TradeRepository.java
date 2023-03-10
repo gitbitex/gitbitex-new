@@ -22,7 +22,7 @@ public class TradeRepository {
     private final MongoCollection<Trade> mongoCollection;
 
     public TradeRepository(MongoDatabase database) {
-        this.mongoCollection = database.getCollection(Trade.class.getSimpleName(), Trade.class);
+        this.mongoCollection = database.getCollection(Trade.class.getSimpleName().toLowerCase(), Trade.class);
     }
 
     public List<Trade> findTradesByProductId(String productId, int limit) {

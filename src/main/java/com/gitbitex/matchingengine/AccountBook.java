@@ -119,6 +119,7 @@ public class AccountBook {
 
     public Account createAccount(String userId, String currency) {
         Account account = new Account();
+        account.setId(userId + "-" + currency);
         account.setUserId(userId);
         account.setCurrency(currency);
         account.setAvailable(BigDecimal.ZERO);

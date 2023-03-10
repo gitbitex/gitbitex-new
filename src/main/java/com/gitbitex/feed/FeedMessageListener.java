@@ -156,7 +156,7 @@ public class FeedMessageListener {
         OrderFeedMessage message = new OrderFeedMessage();
         message.setUserId(order.getUserId());
         message.setProductId(order.getProductId());
-        message.setId(order.getOrderId());
+        message.setId(order.getId());
         message.setPrice(order.getPrice().stripTrailingZeros().toPlainString());
         message.setSize(order.getSize().stripTrailingZeros().toPlainString());
         message.setFunds(order.getFunds().stripTrailingZeros().toPlainString());

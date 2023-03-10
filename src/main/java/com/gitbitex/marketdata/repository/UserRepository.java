@@ -11,7 +11,7 @@ public class UserRepository {
     private final MongoCollection<User> mongoCollection;
 
     public UserRepository(MongoDatabase database) {
-        this.mongoCollection = database.getCollection(User.class.getSimpleName(), User.class);
+        this.mongoCollection = database.getCollection(User.class.getSimpleName().toLowerCase(), User.class);
     }
 
     public User findByEmail(String email) {

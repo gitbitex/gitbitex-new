@@ -16,16 +16,10 @@ public class OrderDoneMessage extends OrderBookMessage {
     private BigDecimal price;
     private OrderSide side;
     private OrderType orderType;
-    private DoneReason doneReason;
+    private String doneReason;
     private String userId;
 
     public OrderDoneMessage() {
         this.setType(MessageType.ORDER_DONE);
     }
-
-    public enum DoneReason {
-        FILLED,
-        CANCELLED,
-    }
-
 }

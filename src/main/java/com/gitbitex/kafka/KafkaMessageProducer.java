@@ -59,7 +59,7 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
     }
 
     public void sendOrder(Order order, Callback callback) {
-        send(new ProducerRecord<>(appProperties.getOrderMessageTopic(), order.getOrderId(),
+        send(new ProducerRecord<>(appProperties.getOrderMessageTopic(), order.getId(),
             JSON.toJSONString(order)), (m, e) -> {
             if (e != null) {
                 throw new RuntimeException(e);

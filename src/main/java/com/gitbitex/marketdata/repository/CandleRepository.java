@@ -21,7 +21,7 @@ public class CandleRepository {
     private final MongoCollection<Candle> mongoCollection;
 
     public CandleRepository(MongoDatabase database) {
-        this.mongoCollection = database.getCollection(Candle.class.getSimpleName(), Candle.class);
+        this.mongoCollection = database.getCollection(Candle.class.getSimpleName().toLowerCase(), Candle.class);
     }
 
     public Candle findById(String id) {
@@ -31,10 +31,10 @@ public class CandleRepository {
     public PagedList<Candle> findAll(String productId, Integer granularity, int pageIndex, int pageSize) {
         Bson filter = Filters.empty();
         if (productId != null) {
-            filter = Filters.and(Filters.eq("productId", productId));
+            filter = Filters.and(Filters.eq("productId", productId), filter);
         }
         if (granularity != null) {
-            filter = Filters.and(Filters.eq("granularity", granularity));
+            filter = Filters.and(Filters.eq("granularity", granularity), filter);
         }
 
         long count = this.mongoCollection.countDocuments(filter);

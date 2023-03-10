@@ -23,27 +23,27 @@ public class OrderRepository {
     private final MongoCollection<Order> mongoCollection;
 
     public OrderRepository(MongoDatabase database) {
-        this.mongoCollection = database.getCollection(Order.class.getSimpleName(), Order.class);
+        this.mongoCollection = database.getCollection(Order.class.getSimpleName().toLowerCase(), Order.class);
     }
 
     public Order findByOrderId(String orderId) {
-        return this.mongoCollection.find(Filters.eq("orderId", orderId)).first();
+        return this.mongoCollection.find(Filters.eq("_id", orderId)).first();
     }
 
     public PagedList<Order> findAll(String userId, String productId, OrderStatus status, OrderSide side, int pageIndex,
         int pageSize) {
         Bson filter = Filters.empty();
         if (userId != null) {
-            filter = Filters.and(Filters.eq("userId", userId));
+            filter = Filters.and(Filters.eq("userId", userId), filter);
         }
         if (productId != null) {
-            filter = Filters.and(Filters.eq("productId", productId));
+            filter = Filters.and(Filters.eq("productId", productId), filter);
         }
         if (status != null) {
-            filter = Filters.and(Filters.eq("status", status.name()));
+            filter = Filters.and(Filters.eq("status", status.name()), filter);
         }
         if (side != null) {
-            filter = Filters.and(Filters.eq("side", side.name()));
+            filter = Filters.and(Filters.eq("side", side.name()), filter);
         }
 
         long count = this.mongoCollection.countDocuments(filter);

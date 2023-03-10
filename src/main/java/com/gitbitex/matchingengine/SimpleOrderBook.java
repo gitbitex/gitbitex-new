@@ -33,7 +33,7 @@ public class SimpleOrderBook {
             priceGroupedOrders = new PriceGroupedOrderCollection();
             ordersByPrice.put(order.getPrice(), priceGroupedOrders);
         }
-        Order old = priceGroupedOrders.get(order.getOrderId());
+        Order old = priceGroupedOrders.get(order.getId());
         if (old != null) {
             BigDecimal diff = old.getRemainingSize().subtract(order.getRemainingSize());
             priceGroupedOrders.decrRemainingSize(diff);
@@ -48,7 +48,7 @@ public class SimpleOrderBook {
         if (priceGroupedOrders == null) {
             return;
         }
-        priceGroupedOrders.remove(order.getOrderId());
+        priceGroupedOrders.remove(order.getId());
         priceGroupedOrders.decrRemainingSize(order.getRemainingSize());
 
         if (priceGroupedOrders.isEmpty()) {

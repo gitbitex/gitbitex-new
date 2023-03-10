@@ -4,59 +4,47 @@ GitBitEx is an open source cryptocurrency exchange.
 
 ![微信图片_20220417184255](https://user-images.githubusercontent.com/4486680/163711067-8543457a-5b13-4131-bbd7-254860a580dc.png)
 
+
+## Features
+- All in memory matching engine
+- Support distributed deployment (standby mode：only one matching engine is running at the same time)
+- Support 100000 orders per second
+- Support the replay of matching engine commands and ensure that each result is completely consistent
+
+
 ## Quick Start
-
-```shell
-# start zookeeper
-docker run -d --name zookeeper-server \
-  --network host \
-  -e ALLOW_ANONYMOUS_LOGIN=yes \
-  bitnami/zookeeper:latest
-
-# start kafka
-docker run -d --name kafka-server \
-  --network host \
-  -e ALLOW_PLAINTEXT_LISTENER=yes \
-  -e KAFKA_CFG_ZOOKEEPER_CONNECT=127.0.0.1:2181 \
-  bitnami/kafka:latest
-  
-# start redis
-docker run -d --name redis-server \
-  --network=host \
-  redis
-
-# start mysql
-docker run -d --name mysql \
-  --network=host \
-  -e MYSQL_ROOT_PASSWORD=123456 \
-  mysql:5.7
-
-# Please wait for MySQL to start before executing the following orderMessage
-docker exec -it mysql mysql -uroot -p123456 -e "create database gitbitex;"
-
-# start gitbitex
-# open the browser and visit http://127.0.0.1/trade/BTC-USDT
-docker run -d --name gitbitex \
-  --network=host \
-  greensheng/gitbitex
-
+### Prerequisites
+- install docker
+- install jdk
+- update your **/etc/hosts** file. (required for mongodb-replica-set：https://github.com/UpSync-Dev/docker-compose-mongo-replica-set)
+```text
+127.0.0.1       mongo1
+127.0.0.1       mongo2
+127.0.0.1       mongo3
 ```
 
-## Build
-The project uses **jib**(https://cloud.google.com/java/getting-started/jib?hl=en) for docker image construction, so there is no dockerfile file. You can use the following orderMessage to generate an image locally:
-```shell
-mvn clean compile jib:dockerBuild
-```
+### Run
 
-If you don't want to use docker, you can directly build a jar package with the following orderMessage, and then start it with Java orderMessage
 ```shell
+git clone https://github.com/gitbitex/gitbitex-new.git
+cd gitbitex-new
+docker compose up -d
 mvn clean package -Dmaven.test.skip=true
+cd target
+java -jar gitbitex-0.0.1-SNAPSHOT.jar
+#visit http://127.0.0.1/
 ```
 
-
-## Demo
-
-You can view the demo website
-
-http://gitbitex.cloud/trade/BTC-USDT
-
+## FAQ
+### How do i add new product (currency pair)?
+```shell
+curl -X PUT -H "Content-Type:application/json" http://127.0.0.1/api/admin/products -d '{"baseCurrency":"BTC","quoteCurrency":"USDT"}'
+```
+### Does the project include blockchain wallets?
+No, you need to implement it yourself, and then connect to gitbiex.
+For example, after users recharge/withdraw, send **_DepositCommand_**/**_WithdrawalCommand_** to the matching engine
+### Can I use this project for production?
+Probably not. Some customers I know use this project in production, but they all have professional technicians. 
+If you want to use it in production, you need professional technicians to help you. Like me . 
+(**If you want to build an exchange, you can hire me. I'm looking for a part-time job remotely 
+because I lost a lot of money on the damn digital currency.**)

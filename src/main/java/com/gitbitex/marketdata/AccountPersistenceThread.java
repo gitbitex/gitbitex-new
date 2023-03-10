@@ -62,10 +62,9 @@ public class AccountPersistenceThread extends KafkaConsumerThread<String, Accoun
             accounts.put(account.getId(), account);
         });
 
-        long t1 = System.currentTimeMillis();
+        long t1= System.currentTimeMillis();
         accountManager.saveAll(accounts.values());
-        long t2 = System.currentTimeMillis();
-        //logger.info("account size: {} time: {}", accounts.size(), t2 - t1);
+        logger.info("saved {} account(s) ({}ms)",accounts.size(),System.currentTimeMillis()-t1);
 
         consumer.commitSync();
     }

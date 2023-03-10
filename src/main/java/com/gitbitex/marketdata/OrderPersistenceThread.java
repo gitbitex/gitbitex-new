@@ -65,15 +65,14 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderMes
 
         long t1 = System.currentTimeMillis();
         orderManager.saveAll(orders.values());
-        long t2 = System.currentTimeMillis();
-        logger.info("orders size: {} time: {}", orders.size(), t2 - t1);
+        logger.info("saved {} order(s) ({}ms)", orders.size(), System.currentTimeMillis() - t1);
 
         consumer.commitSync();
     }
 
     private Order order(OrderMessage message) {
         Order order = new Order();
-        order.setId(message.getOrderId());
+        order.setId(message.getId());
         order.setProductId(message.getProductId());
         order.setUserId(message.getUserId());
         order.setStatus(message.getStatus());

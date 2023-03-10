@@ -9,6 +9,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Account implements Cloneable {
+    private String id;
     private String userId;
     private String currency;
     private BigDecimal available;

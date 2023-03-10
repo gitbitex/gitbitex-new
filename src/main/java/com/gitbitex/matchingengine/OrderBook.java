@@ -28,14 +28,14 @@ import lombok.extern.slf4j.Slf4j;
 public class OrderBook {
     private final String productId;
     private final AtomicLong tradeId = new AtomicLong();
-    private final AtomicLong logSequence = new AtomicLong();
+    private final AtomicLong sequence = new AtomicLong();
     private final ProductBook productBook;
     private final AccountBook accountBook;
     private final TreeMap<BigDecimal, PriceGroupedOrderCollection> asks = new TreeMap<>(Comparator.naturalOrder());
     private final TreeMap<BigDecimal, PriceGroupedOrderCollection> bids = new TreeMap<>(Comparator.reverseOrder());
     private final LinkedHashMap<String, Order> orderById = new LinkedHashMap<>();
 
-    public OrderBook(String productId, Long tradeId, Long logSequence, AccountBook accountBook,
+    public OrderBook(String productId, Long tradeId, Long sequence, AccountBook accountBook,
         ProductBook productBook) {
         this.productId = productId;
         this.productBook = productBook;
@@ -43,8 +43,8 @@ public class OrderBook {
         if (tradeId != null) {
             this.tradeId.set(tradeId);
         }
-        if (logSequence != null) {
-            this.logSequence.set(logSequence);
+        if (sequence != null) {
+            this.sequence.set(sequence);
         }
     }
 
@@ -113,7 +113,7 @@ public class OrderBook {
                 // if the maker order is filled or cancelled, remove it from the order book.
                 if (makerOrder.getStatus() == OrderStatus.FILLED || makerOrder.getStatus() == OrderStatus.CANCELLED) {
                     orderItr.remove();
-                    orderById.remove(makerOrder.getOrderId());
+                    orderById.remove(makerOrder.getId());
                     modifiedObjects.add(orderDoneMessage(makerOrder.clone()));
                     unholdOrderFunds(makerOrder, product, modifiedObjects);
                 }
@@ -216,16 +216,16 @@ public class OrderBook {
         trade.setPrice(price);
         trade.setSide(makerOrder.getSide());
         trade.setTime(takerOrder.getTime());
-        trade.setTakerOrderId(takerOrder.getOrderId());
-        trade.setMakerOrderId(makerOrder.getOrderId());
+        trade.setTakerOrderId(takerOrder.getId());
+        trade.setMakerOrderId(makerOrder.getId());
         return trade;
     }
 
     public void addOrder(Order order) {
         (order.getSide() == OrderSide.BUY ? bids : asks)
             .computeIfAbsent(order.getPrice(), k -> new PriceGroupedOrderCollection())
-            .put(order.getOrderId(), order);
-        orderById.put(order.getOrderId(), order);
+            .put(order.getId(), order);
+        orderById.put(order.getId(), order);
     }
 
     private boolean isPriceCrossed(Order takerOrder, BigDecimal makerOrderPrice) {
@@ -255,14 +255,14 @@ public class OrderBook {
 
     public OrderReceivedMessage orderReceivedMessage(Order order) {
         OrderReceivedMessage message = new OrderReceivedMessage();
-        message.setSequence(logSequence.incrementAndGet());
+        message.setSequence(sequence.incrementAndGet());
         message.setProductId(order.getProductId());
         message.setUserId(order.getUserId());
         message.setPrice(order.getPrice());
         message.setFunds(order.getRemainingFunds());
         message.setSide(order.getSide());
         message.setSize(order.getRemainingSize());
-        message.setOrderId(order.getOrderId());
+        message.setOrderId(order.getId());
         message.setOrderType(order.getType());
         message.setTime(new Date());
         return message;
@@ -270,12 +270,12 @@ public class OrderBook {
 
     public OrderOpenMessage orderOpenMessage(Order order) {
         OrderOpenMessage message = new OrderOpenMessage();
-        message.setSequence(logSequence.incrementAndGet());
+        message.setSequence(sequence.incrementAndGet());
         message.setProductId(order.getProductId());
         message.setRemainingSize(order.getRemainingSize());
         message.setPrice(order.getPrice());
         message.setSide(order.getSide());
-        message.setOrderId(order.getOrderId());
+        message.setOrderId(order.getId());
         message.setUserId(order.getUserId());
         message.setTime(new Date());
         return message;
@@ -283,11 +283,11 @@ public class OrderBook {
 
     public OrderMatchMessage orderMatchMessage(Order takerOrder, Order makerOrder, Trade trade) {
         OrderMatchMessage message = new OrderMatchMessage();
-        message.setSequence(logSequence.incrementAndGet());
+        message.setSequence(sequence.incrementAndGet());
         message.setTradeId(trade.getTradeId());
         message.setProductId(trade.getProductId());
-        message.setTakerOrderId(takerOrder.getOrderId());
-        message.setMakerOrderId(makerOrder.getOrderId());
+        message.setTakerOrderId(takerOrder.getId());
+        message.setMakerOrderId(makerOrder.getId());
         message.setTakerUserId(takerOrder.getUserId());
         message.setMakerUserId(makerOrder.getUserId());
         message.setPrice(makerOrder.getPrice());
@@ -300,7 +300,7 @@ public class OrderBook {
 
     public OrderDoneMessage orderDoneMessage(Order order) {
         OrderDoneMessage message = new OrderDoneMessage();
-        message.setSequence(logSequence.incrementAndGet());
+        message.setSequence(sequence.incrementAndGet());
         message.setProductId(order.getProductId());
         if (order.getType() != OrderType.MARKET) {
             message.setRemainingSize(order.getRemainingSize());
@@ -309,9 +309,9 @@ public class OrderBook {
         message.setRemainingFunds(order.getRemainingFunds());
         message.setRemainingSize(order.getRemainingSize());
         message.setSide(order.getSide());
-        message.setOrderId(order.getOrderId());
+        message.setOrderId(order.getId());
         message.setUserId(order.getUserId());
-        //log.setDoneReason(doneReason);
+        message.setDoneReason(order.getStatus().toString());
         message.setOrderType(order.getType());
         message.setTime(new Date());
         return message;

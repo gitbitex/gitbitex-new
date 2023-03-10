@@ -20,7 +20,7 @@ import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.matchingengine.MatchingEngineStateStore;
+import com.gitbitex.matchingengine.EngineStateStore;
 import com.gitbitex.matchingengine.MatchingEngineThread;
 import com.gitbitex.matchingengine.command.Command;
 import com.gitbitex.matchingengine.command.CommandDeserializer;
@@ -53,16 +53,16 @@ public class Bootstrap {
     private final KafkaProperties kafkaProperties;
     private final RedissonClient redissonClient;
     private final List<Thread> threads = new ArrayList<>();
-    private final MatchingEngineStateStore matchingEngineStateStore;
+    private final EngineStateStore engineStateStore;
 
     @PostConstruct
     public void init() {
         startMatchingEngine(1);
-        //startOrderPersistenceThread(1);
-        //startTradePersistenceThread(1);
-        //startAccountPersistenceThread(appProperties.getAccountantThreadNum());
-        //startCandleMaker(1);
-        //startTickerThread(1);
+        startOrderPersistenceThread(1);
+        startTradePersistenceThread(1);
+        startAccountPersistenceThread(appProperties.getAccountantThreadNum());
+        startCandleMaker(1);
+        startTickerThread(1);
     }
 
     @PreDestroy
@@ -92,7 +92,7 @@ public class Bootstrap {
             String groupId = "Matchin1gkk";
             KafkaConsumer<String, Command> consumer = new KafkaConsumer<>(getProperties(groupId),
                 new StringDeserializer(), new CommandDeserializer());
-            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, matchingEngineStateStore,
+            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, engineStateStore,
                 messageProducer, redissonClient, orderBookManager, appProperties);
             matchingEngineThread.setName(groupId + "-" + matchingEngineThread.getId());
             matchingEngineThread.start();

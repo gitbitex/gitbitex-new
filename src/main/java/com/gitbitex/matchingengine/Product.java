@@ -9,14 +9,14 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Product implements Cloneable {
-    private String productId;
+    private String id;
     private String baseCurrency;
     private String quoteCurrency;
 
     public Product() {}
 
     public Product(PutProductCommand command) {
-        this.productId = command.getProductId();
+        this.id = command.getProductId();
         this.baseCurrency = command.getBaseCurrency();
         this.quoteCurrency = command.getQuoteCurrency();
     }
@@ -42,13 +42,13 @@ public class Product implements Cloneable {
             return false;
         }
         Product other = (Product)obj;
-        return Objects.equals(this.productId, other.productId);
+        return Objects.equals(this.id, other.id);
     }
 
     @Override
     public int hashCode() {
         int result = 17;
-        result = 31 * result + (productId == null ? 0 : productId.hashCode());
+        result = 31 * result + (id == null ? 0 : id.hashCode());
         return result;
     }
 }

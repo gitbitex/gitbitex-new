@@ -1,13 +1,18 @@
 package com.gitbitex.openapi.controller;
 
+import java.math.BigDecimal;
+import java.util.UUID;
+
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 
+import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.manager.UserManager;
 import com.gitbitex.marketdata.repository.UserRepository;
+import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.openapi.model.SignInRequest;
 import com.gitbitex.openapi.model.SignUpRequest;
 import com.gitbitex.openapi.model.TokenDto;
@@ -31,6 +36,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class UserController {
     private final UserManager userManager;
     private final UserRepository userRepository;
+    private final KafkaMessageProducer producer;
 
     @GetMapping("/users/self")
     public UserDto getCurrentUser(@RequestAttribute(required = false) User currentUser) {
@@ -89,6 +95,12 @@ public class UserController {
     @PostMapping("/users")
     public UserDto signUp(@RequestBody @Valid SignUpRequest signUpRequest) {
         User user = userManager.createUser(signUpRequest.getEmail(), signUpRequest.getPassword());
+
+        //TODO: Recharge each user for demonstration
+        deposit(user.getId(), "BTC", BigDecimal.valueOf(1000000000));
+        deposit(user.getId(), "ETH", BigDecimal.valueOf(1000000000));
+        deposit(user.getId(), "USDT", BigDecimal.valueOf(1000000000));
+
         return userDto(user);
     }
 
@@ -110,5 +122,14 @@ public class UserController {
         userDto.setName(user.getNickName());
         userDto.setTwoStepVerificationType(user.getTwoStepVerificationType());
         return userDto;
+    }
+
+    private void deposit(String userId, String currency, BigDecimal amount) {
+        DepositCommand command = new DepositCommand();
+        command.setUserId(userId);
+        command.setCurrency(currency);
+        command.setAmount(amount);
+        command.setTransactionId(UUID.randomUUID().toString());
+        producer.sendToMatchingEngine(command, null);
     }
 }

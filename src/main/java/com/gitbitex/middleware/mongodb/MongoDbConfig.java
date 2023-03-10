@@ -17,13 +17,12 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 @Configuration
 @RequiredArgsConstructor
-@EnableConfigurationProperties(RedisProperties.class)
+@EnableConfigurationProperties(MongoProperties.class)
 public class MongoDbConfig {
 
     @Bean(destroyMethod = "close")
-    public MongoClient mongoClient(RedisProperties redisProperties) {
-        String uri = "mongodb://root:root@localhost/ex?authSource=admin";
-        return MongoClients.create(uri);
+    public MongoClient mongoClient(MongoProperties mongoProperties) {
+        return MongoClients.create(mongoProperties.getUri());
     }
 
     @Bean
@@ -31,7 +30,7 @@ public class MongoDbConfig {
         CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
             fromProviders(PojoCodecProvider.builder().automatic(true).build()));
 
-        return mongoClient.getDatabase("ex").withCodecRegistry(pojoCodecRegistry);
+        return mongoClient.getDatabase("gitbitex").withCodecRegistry(pojoCodecRegistry);
     }
 }
 

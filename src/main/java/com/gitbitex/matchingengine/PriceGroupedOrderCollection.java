@@ -10,7 +10,7 @@ public class PriceGroupedOrderCollection extends LinkedHashMap<String, Order> {
     //public BigDecimal remainingSize = BigDecimal.ZERO;
 
     public void addOrder(Order order) {
-        put(order.getOrderId(), order);
+        put(order.getId(), order);
         //remainingSize = remainingSize.add(order.getRemainingSize());
     }
 

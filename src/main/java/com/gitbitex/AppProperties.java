@@ -37,6 +37,4 @@ public class AppProperties {
     private int fullOrderBookPersistenceInterval = 30000;
 
     private int fullOrderBookPersistenceThreshold = 10000;
-
-    private Set<String> liquidityTraderUserIds;
 }

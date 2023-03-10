@@ -1,4 +1,4 @@
-package com.gitbitex.liquidity;
+package com.gitbitex.demo;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -17,6 +17,7 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.openapi.controller.AdminController;
+import com.gitbitex.openapi.controller.AdminController.PutProductRequest;
 import com.gitbitex.openapi.controller.OrderController;
 import com.gitbitex.openapi.model.PlaceOrderRequest;
 import com.google.common.util.concurrent.RateLimiter;
@@ -24,6 +25,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.mbeans.SparseUserDatabaseMBean;
 import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
@@ -40,23 +42,25 @@ public class CoinbaseTrader {
     private final AppProperties appProperties;
     private final AdminController adminController;
 
-    //@PostConstruct
+    @PostConstruct
     public void init() throws URISyntaxException {
-        if (appProperties.getLiquidityTraderUserIds().isEmpty()) {
-            return;
-        }
         logger.info("start");
 
-        adminController.saveProduct("BTC", "USDT");
-        adminController.deposit("test", "BTC", "10000000000");
-        adminController.deposit("test", "USDT", "10000000000");
+        User user = adminController.createUser("test@test.com", "12345678");
+        PutProductRequest putProductRequest=new PutProductRequest();
+        putProductRequest.setBaseCurrency("BTC");
+        putProductRequest.setQuoteCurrency("USDT");
+        adminController.saveProduct(putProductRequest);
+        adminController.deposit(user.getId(), "BTC", "100000000000");
+        adminController.deposit(user.getId(), "USDT", "100000000000");
+        if (true)return;
 
-        MyClient client = new MyClient(new URI("wss://ws-feed.exchange.coinbase.com"));
+        MyClient client = new MyClient(new URI("wss://ws-feed.exchange.coinbase.com"), user);
 
         scheduledExecutor.scheduleAtFixedRate(() -> {
             try {
-                //test();
-                //if (true) {return;}
+                test(user);
+                if (true) {return;}
 
                 if (!client.isOpen()) {
                     try {
@@ -86,10 +90,7 @@ public class CoinbaseTrader {
         scheduledExecutor.shutdown();
     }
 
-    public void test() {
-        User user = new User();
-        user.setId("test");
-
+    public void test(User user) {
         PlaceOrderRequest order = new PlaceOrderRequest();
         order.setProductId("BTC-USDT");
         order.setClientOid(UUID.randomUUID().toString());
@@ -122,10 +123,11 @@ public class CoinbaseTrader {
     }
 
     public class MyClient extends org.java_websocket.client.WebSocketClient {
-        String userId = "test";
+        private User user;
 
-        public MyClient(URI serverUri) {
+        public MyClient(URI serverUri, User user) {
             super(serverUri, new Draft_6455(), null, 1000);
+            this.user = user;
         }
 
         @Override
@@ -137,8 +139,6 @@ public class CoinbaseTrader {
 
         @Override
         public void onMessage(String s) {
-            User user = new User();
-            user.setId(userId);
             executor.execute(() -> {
                 try {
                     ChannelMessage message = JSON.parseObject(s, ChannelMessage.class);
@@ -146,7 +146,6 @@ public class CoinbaseTrader {
                     switch (message.getType()) {
                         case "received":
                             //logger.info(JSON.toJSONString(message));
-
                             if (message.getPrice() != null) {
                                 PlaceOrderRequest order = new PlaceOrderRequest();
                                 order.setProductId(productId);
@@ -160,7 +159,7 @@ public class CoinbaseTrader {
                             }
                             break;
                         case "done":
-                            //orderManager.cancelOrder(message.getOrderId(), userId, productId);
+                            orderController.cancelOrder(message.getOrderId(), user);
                             break;
                         default:
                     }

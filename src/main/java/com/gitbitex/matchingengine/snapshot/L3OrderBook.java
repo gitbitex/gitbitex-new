@@ -24,7 +24,7 @@ public class L3OrderBook {
 
     public L3OrderBook(OrderBook orderBook) {
         this.productId = orderBook.getProductId();
-        this.sequence = orderBook.getLogSequence().get();
+        this.sequence = orderBook.getSequence().get();
         this.tradeId = orderBook.getTradeId().get();
         this.time = System.currentTimeMillis();
         this.asks = orderBook.getAsks().values().stream()
@@ -42,7 +42,7 @@ public class L3OrderBook {
         }
 
         public Line(Order order) {
-            this.add(order.getOrderId());
+            this.add(order.getId());
             this.add(order.getPrice().stripTrailingZeros().toPlainString());
             this.add(order.getRemainingSize().stripTrailingZeros().toPlainString());
         }
