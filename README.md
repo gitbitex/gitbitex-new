@@ -16,6 +16,7 @@ GitBitEx is an open source cryptocurrency exchange.
 ### Prerequisites
 - install docker
 - install jdk
+- install maven
 - update your **/etc/hosts** file. (required for mongodb-replica-set：https://github.com/UpSync-Dev/docker-compose-mongo-replica-set)
 ```text
 127.0.0.1       mongo1
