@@ -1,41 +1,59 @@
 package com.gitbitex.marketdata.repository;
 
-import com.gitbitex.marketdata.entity.Candle;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.repository.CrudRepository;
-
-import javax.persistence.criteria.Predicate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-public interface CandleRepository extends JpaRepository<Candle, Long>, CrudRepository<Candle, Long>,
-        JpaSpecificationExecutor<Candle> {
+import com.gitbitex.marketdata.entity.Candle;
+import com.gitbitex.openapi.model.PagedList;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.ReplaceOptions;
+import com.mongodb.client.model.Sorts;
+import com.mongodb.client.model.WriteModel;
+import org.bson.conversions.Bson;
+import org.springframework.stereotype.Component;
 
-    Candle findTopByProductIdAndGranularityOrderByTimeDesc(String productId, int granularity);
+@Component
+public class CandleRepository {
+    private final MongoCollection<Candle> mongoCollection;
 
-    default Page<Candle> findAll(String productId, Integer granularity, int pageIndex, int pageSize) {
-        Specification<Candle> specification = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            if (granularity != null) {
-                predicates.add(cb.equal(root.get("granularity"), granularity));
-            }
-            if (productId != null) {
-                predicates.add(cb.equal(root.get("productId"), productId));
-            }
-            return cb.and(predicates.toArray(new Predicate[]{}));
-        };
-
-        Pageable pager = PageRequest.of(pageIndex - 1, pageSize, Sort.by("time").descending());
-
-        return this.findAll(specification, pager);
+    public CandleRepository(MongoDatabase database) {
+        this.mongoCollection = database.getCollection(Candle.class.getSimpleName().toLowerCase(), Candle.class);
     }
 
+    public Candle findById(String id) {
+        return this.mongoCollection.find(Filters.eq("_id", id)).first();
+    }
+
+    public PagedList<Candle> findAll(String productId, Integer granularity, int pageIndex, int pageSize) {
+        Bson filter = Filters.empty();
+        if (productId != null) {
+            filter = Filters.and(Filters.eq("productId", productId), filter);
+        }
+        if (granularity != null) {
+            filter = Filters.and(Filters.eq("granularity", granularity), filter);
+        }
+
+        long count = this.mongoCollection.countDocuments(filter);
+        List<Candle> candles = this.mongoCollection.find(filter)
+            .sort(Sorts.descending("time"))
+            .skip(pageIndex - 1)
+            .limit(pageSize)
+            .into(new ArrayList<>());
+        return new PagedList<>(candles, count);
+    }
+
+    public void saveAll(Collection<Candle> candles) {
+        List<WriteModel<Candle>> writeModels = new ArrayList<>();
+        for (Candle item : candles) {
+            Bson filter = Filters.eq("_id", item.getId());
+            WriteModel<Candle> writeModel = new ReplaceOneModel<>(filter, item, new ReplaceOptions().upsert(true));
+            writeModels.add(writeModel);
+        }
+        this.mongoCollection.bulkWrite(writeModels);
+    }
 }
 

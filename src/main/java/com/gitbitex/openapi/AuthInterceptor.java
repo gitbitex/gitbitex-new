@@ -1,14 +1,14 @@
 package com.gitbitex.openapi;
 
-import com.gitbitex.user.UserManager;
-import com.gitbitex.user.entity.User;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import org.springframework.web.servlet.HandlerInterceptor;
-
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.gitbitex.marketdata.entity.User;
+import com.gitbitex.marketdata.manager.UserManager;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
 @RequiredArgsConstructor

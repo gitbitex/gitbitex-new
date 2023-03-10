@@ -1,44 +1,55 @@
 package com.gitbitex.openapi.controller;
 
-import com.gitbitex.account.entity.Account;
-import com.gitbitex.account.repository.AccountRepository;
-import com.gitbitex.openapi.model.AccountDto;
-import com.gitbitex.user.entity.User;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import com.gitbitex.kafka.KafkaMessageProducer;
+import com.gitbitex.marketdata.entity.Account;
+import com.gitbitex.marketdata.entity.User;
+import com.gitbitex.marketdata.manager.AccountManager;
+import com.gitbitex.openapi.model.AccountDto;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class AccountController {
-    private final AccountRepository accountRepository;
+    private final KafkaMessageProducer producer;
+    private final AccountManager accountManager;
 
     @GetMapping("/accounts")
     public List<AccountDto> getAccounts(@RequestParam(name = "currency") List<String> currencies,
-                                        @RequestAttribute(required = false) User currentUser) {
+        @RequestAttribute(required = false) User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        List<AccountDto> accounts = new ArrayList<>();
+        List<Account> accounts = accountManager.getAccounts(currentUser.getId());
+        Map<String, Account> accountSet = accounts.stream().collect(Collectors.toMap(Account::getCurrency, x -> x));
+
+        List<AccountDto> accountDtoList = new ArrayList<>();
         for (String currency : currencies) {
-            Account account = accountRepository.findAccountByUserIdAndCurrency(currentUser.getUserId(), currency);
+            Account account = accountSet.get(currency);
             if (account != null) {
-                accounts.add(accountDto(account));
+                accountDtoList.add(accountDto(account));
             } else {
                 AccountDto accountDto = new AccountDto();
                 accountDto.setCurrency(currency);
                 accountDto.setAvailable("0");
                 accountDto.setHold("0");
-                accounts.add(accountDto);
+                accountDtoList.add(accountDto);
             }
         }
-        return accounts;
+        return accountDtoList;
     }
 
     private AccountDto accountDto(Account account) {

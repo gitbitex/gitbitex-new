@@ -5,9 +5,9 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class CancelOrderCommand extends OrderBookCommand {
-    private String userId;
+public class CancelOrderCommand extends Command {
     private String orderId;
+    private String productId;
 
     public CancelOrderCommand() {
         this.setType(CommandType.CANCEL_ORDER);

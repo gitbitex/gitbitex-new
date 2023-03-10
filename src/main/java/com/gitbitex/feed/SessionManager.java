@@ -1,12 +1,19 @@
 package com.gitbitex.feed;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+
 import com.alibaba.fastjson.JSON;
-import com.gitbitex.feed.message.L2SnapshotMessage;
-import com.gitbitex.feed.message.L2UpdateMessage;
-import com.gitbitex.feed.message.PongMessage;
-import com.gitbitex.feed.message.TickerMessage;
-import com.gitbitex.marketdata.TickerManager;
+
+import com.gitbitex.feed.message.L2SnapshotFeedMessage;
+import com.gitbitex.feed.message.L2UpdateFeedMessage;
+import com.gitbitex.feed.message.PongFeedMessage;
+import com.gitbitex.feed.message.TickerFeedMessage;
 import com.gitbitex.marketdata.entity.Ticker;
+import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.L2OrderBookChange;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
@@ -17,27 +24,21 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class SessionManager {
     private final ConcurrentHashMap<String, ConcurrentSkipListSet<String>> sessionIdsByChannel
-            = new ConcurrentHashMap<>();
+        = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ConcurrentSkipListSet<String>> channelsBySessionId
-            = new ConcurrentHashMap<>();
+        = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, WebSocketSession> sessionById = new ConcurrentHashMap<>();
     private final OrderBookManager orderBookManager;
     private final TickerManager tickerManager;
 
     @SneakyThrows
     public void subOrUnSub(WebSocketSession session, List<String> productIds, List<String> currencies,
-                           List<String> channels, boolean isSub) {
+        List<String> channels, boolean isSub) {
         for (String channel : channels) {
             switch (channel) {
                 case "level2":
@@ -72,7 +73,7 @@ public class SessionManager {
                             try {
                                 Ticker ticker = tickerManager.getTicker(productId);
                                 if (ticker != null) {
-                                    sendJson(session, new TickerMessage(ticker));
+                                    sendJson(session, new TickerFeedMessage(ticker));
                                 }
                             } catch (Exception e) {
                                 logger.error("send ticker error: {}", e.getMessage(), e);
@@ -144,14 +145,14 @@ public class SessionManager {
                 if (session != null) {
                     synchronized (session) {
                         if (message instanceof L2OrderBook) {
-                            sendL2OrderBook(session, (L2OrderBook) message);
+                            sendL2OrderBook(session, (L2OrderBook)message);
                         } else {
                             sendJson(session, message);
                         }
                     }
                 }
             } catch (Exception e) {
-                logger.error("send error: {}", e.getMessage(), e);
+                logger.error("send error: {}", e.getMessage());
             }
         });
     }
@@ -160,15 +161,15 @@ public class SessionManager {
         String key = "LAST_L2_ORDER_BOOK:" + l2OrderBook.getProductId();
 
         if (!session.getAttributes().containsKey(key)) {
-            sendJson(session, new L2SnapshotMessage(l2OrderBook));
+            sendJson(session, new L2SnapshotFeedMessage(l2OrderBook));
             session.getAttributes().put(key, l2OrderBook);
             return;
         }
 
-        L2OrderBook lastL2OrderBook = (L2OrderBook) session.getAttributes().get(key);
+        L2OrderBook lastL2OrderBook = (L2OrderBook)session.getAttributes().get(key);
         if (lastL2OrderBook.getSequence() >= l2OrderBook.getSequence()) {
             logger.warn("discard l2 order book, too old: last={} new={}", lastL2OrderBook.getSequence(),
-                    l2OrderBook.getSequence());
+                l2OrderBook.getSequence());
             return;
         }
 
@@ -176,37 +177,39 @@ public class SessionManager {
         if (changes == null || changes.isEmpty()) {
             return;
         }
-        L2UpdateMessage l2UpdateMessage = new L2UpdateMessage(l2OrderBook.getProductId(), changes);
-        sendJson(session, l2UpdateMessage);
+        L2UpdateFeedMessage l2UpdateFeedMessage = new L2UpdateFeedMessage(l2OrderBook.getProductId(), changes);
+        sendJson(session, l2UpdateFeedMessage);
         session.getAttributes().put(key, l2OrderBook);
     }
 
     public void sendPong(WebSocketSession session) {
         try {
-            PongMessage pongMessage = new PongMessage();
-            pongMessage.setType("pong");
-            session.sendMessage(new TextMessage(JSON.toJSONString(pongMessage)));
+            PongFeedMessage pongFeedMessage = new PongFeedMessage();
+            pongFeedMessage.setType("pong");
+            session.sendMessage(new TextMessage(JSON.toJSONString(pongFeedMessage)));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("send pong error: {}", e.getMessage());
         }
     }
 
-    private void sendJson(WebSocketSession session, Object msg) throws IOException {
-        session.sendMessage(new TextMessage(JSON.toJSONString(msg)));
+    private void sendJson(WebSocketSession session, Object msg) {
+        try {
+            session.sendMessage(new TextMessage(JSON.toJSONString(msg)));
+        } catch (Exception e) {
+            logger.error("send websocket message error: {}", e.getMessage());
+        }
     }
 
     private void subscribeChannel(WebSocketSession session, String channel) {
-        logger.info("sub: {} {}", session.getId(), channel);
         sessionIdsByChannel
-                .computeIfAbsent(channel, k -> new ConcurrentSkipListSet<>())
-                .add(session.getId());
+            .computeIfAbsent(channel, k -> new ConcurrentSkipListSet<>())
+            .add(session.getId());
         channelsBySessionId.computeIfAbsent(session.getId(), k -> new ConcurrentSkipListSet<>())
-                .add(channel);
+            .add(channel);
         sessionById.put(session.getId(), session);
     }
 
     public void unsubscribeChannel(WebSocketSession session, String channel) {
-        logger.info("unsub: {} {}", session.getId(), channel);
         if (sessionIdsByChannel.containsKey(channel)) {
             sessionIdsByChannel.get(channel).remove(session.getId());
         }
@@ -215,7 +218,7 @@ public class SessionManager {
             return v;
         });
         if (channelsBySessionId.containsKey(session.getId())) {
-            logger.info("now: {} {}", session.getId(), JSON.toJSONString(channelsBySessionId.get(session.getId())));
+
         }
     }
 

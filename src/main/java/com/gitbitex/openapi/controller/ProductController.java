@@ -1,25 +1,28 @@
 package com.gitbitex.openapi.controller;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Candle;
+import com.gitbitex.marketdata.entity.Product;
 import com.gitbitex.marketdata.entity.Trade;
+import com.gitbitex.marketdata.entity.User;
+import com.gitbitex.marketdata.manager.UserManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
+import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
+import com.gitbitex.openapi.model.PagedList;
 import com.gitbitex.openapi.model.ProductDto;
 import com.gitbitex.openapi.model.TradeDto;
-import com.gitbitex.product.entity.Product;
-import com.gitbitex.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
-import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController()
 @RequiredArgsConstructor
@@ -28,6 +31,13 @@ public class ProductController {
     private final ProductRepository productRepository;
     private final TradeRepository tradeRepository;
     private final CandleRepository candleRepository;
+    private final UserManager userManager;
+    private final KafkaMessageProducer producer;
+
+    @GetMapping("/api/admin/addUser")
+    public void addUser(@RequestParam String email, @RequestParam String password) {
+        userManager.createUser(email, password);
+    }
 
     @GetMapping("/api/products")
     public List<ProductDto> getProducts() {
@@ -37,21 +47,21 @@ public class ProductController {
 
     @GetMapping("/api/products/{productId}/trades")
     public List<TradeDto> getProductTrades(@PathVariable String productId) {
-        List<Trade> trades = tradeRepository.findFirst50ByProductIdOrderByTimeDesc(productId);
+        List<Trade> trades = tradeRepository.findTradesByProductId(productId, 50);
         return trades.stream().map(this::tradeDto).collect(Collectors.toList());
     }
 
     @GetMapping("/api/products/{productId}/candles")
     public List<List<Object>> getProductCandles(@PathVariable String productId, @RequestParam int granularity,
-                                                @RequestParam(defaultValue = "1000") int limit) {
-        Page<Candle> candlePage = candleRepository.findAll(productId, granularity / 60, 1, limit);
+        @RequestParam(defaultValue = "1000") int limit) {
+        PagedList<Candle> candlePage = candleRepository.findAll(productId, granularity / 60, 1, limit);
 
         //[
         //    [ time, low, high, open, close, volume ],
         //    [ 1415398768, 0.32, 4.2, 0.35, 4.2, 12.3 ],
         //]
         List<List<Object>> lines = new ArrayList<>();
-        candlePage.getContent().forEach(x -> {
+        candlePage.getItems().forEach(x -> {
             List<Object> line = new ArrayList<>();
             line.add(x.getTime());
             line.add(x.getLow().stripTrailingZeros());
@@ -81,7 +91,7 @@ public class ProductController {
     private ProductDto productDto(Product product) {
         ProductDto productDto = new ProductDto();
         BeanUtils.copyProperties(product, productDto);
-        productDto.setId(product.getProductId());
+        productDto.setId(product.getId());
         productDto.setQuoteIncrement(String.valueOf(product.getQuoteIncrement()));
         return productDto;
     }

@@ -1,5 +1,8 @@
 package com.gitbitex.openapi;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import com.gitbitex.exception.ServiceException;
 import com.gitbitex.openapi.model.ErrorMessage;
 import lombok.extern.slf4j.Slf4j;
@@ -10,8 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.server.ResponseStatusException;
-
-import javax.servlet.http.HttpServletResponse;
+import org.springframework.web.servlet.support.RequestContext;
 
 /**
  * @author lingqingwan
@@ -31,8 +33,8 @@ public class ExceptionAdvise {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(ServiceException.class)
     @ResponseBody
-    public ErrorMessage handleException(ServiceException e) {
-        logger.error("http error: {} {}", e.getCode(), e.getMessage(), e);
+    public ErrorMessage handleException(ServiceException e, RequestContext request) {
+        logger.error("http error: {} {} {}", e.getCode(), e.getMessage(), request.getRequestUri());
 
         return new ErrorMessage(e.getCode().name());
     }
@@ -53,8 +55,9 @@ public class ExceptionAdvise {
 
     @ExceptionHandler(ResponseStatusException.class)
     @ResponseBody
-    public ErrorMessage handleException(ResponseStatusException e, HttpServletResponse response) {
-        logger.error("http error", e);
+    public ErrorMessage handleException(ResponseStatusException e, HttpServletRequest request,
+        HttpServletResponse response) {
+        logger.error("http error: {} {}", e.getMessage(), request.getRequestURI());
 
         response.setStatus(e.getStatus().value());
         return new ErrorMessage(e.getMessage());

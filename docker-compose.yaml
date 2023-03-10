@@ -1,0 +1,56 @@
+version: '3'
+
+services:
+  redis:
+    image: redis:7.0-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+  mongo1:
+    image: mongo:5
+    container_name: mongo1
+    command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30001" ]
+    ports:
+      - 30001:30001
+    healthcheck:
+      test: test $$(echo "rs.initiate({_id:'my-replica-set',members:[{_id:0,host:\"mongo1:30001\"},{_id:1,host:\"mongo2:30002\"},{_id:2,host:\"mongo3:30003\"}]}).ok || rs.status().ok" | mongo --port 30001 --quiet) -eq 1
+      interval: 10s
+  mongo2:
+    image: mongo:5
+    container_name: mongo2
+    command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30002" ]
+    ports:
+      - 30002:30002
+  mongo3:
+    image: mongo:5
+    container_name: mongo3
+    command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30003" ]
+    ports:
+      - 30003:30003
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    restart: always
+    ports:
+      - 8082:8081
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo1:30001,mongo2:30002,mongo3:30003/?replicaSet=my-replica-set
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+  kafka:
+    image: 'bitnami/kafka:3.4.0'
+    container_name: kafka
+    ports:
+      - '19092:19092'
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:19092,CONTROLLER://:2181
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:19092
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@127.0.0.1:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes

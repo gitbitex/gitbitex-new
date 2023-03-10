@@ -1,14 +1,12 @@
 package com.gitbitex.feed;
 
 import com.alibaba.fastjson.JSON;
-import com.gitbitex.account.entity.Account;
 import com.gitbitex.feed.message.*;
 import com.gitbitex.marketdata.entity.Candle;
-import com.gitbitex.marketdata.entity.Ticker;
-import com.gitbitex.matchingengine.log.*;
+import com.gitbitex.matchingengine.message.*;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.OrderBookManager;
-import com.gitbitex.order.entity.Order;
+import com.gitbitex.stripexecutor.StripedExecutorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
@@ -24,87 +22,98 @@ public class FeedMessageListener {
     private final RedissonClient redissonClient;
     private final SessionManager sessionManager;
     private final OrderBookManager orderBookManager;
+    private final StripedExecutorService listenerExecutor = new StripedExecutorService(Runtime.getRuntime().availableProcessors());
 
     @PostConstruct
     public void run() {
         redissonClient.getTopic("order", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            Order order = JSON.parseObject(msg, Order.class);
-            String channel = order.getUserId() + "." + order.getProductId() + ".order";
-            sessionManager.sendMessageToChannel(channel, (orderMessage(order)));
+            OrderMessage orderMessage = JSON.parseObject(msg, OrderMessage.class);
+            listenerExecutor.execute(orderMessage.getUserId(), () -> {
+                String channel = orderMessage.getUserId() + "." + orderMessage.getProductId() + ".order";
+                sessionManager.sendMessageToChannel(channel, orderFeedMessage(orderMessage));
+            });
         });
 
         redissonClient.getTopic("account", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            Account account = JSON.parseObject(msg, Account.class);
-            String channel = account.getUserId() + "." + account.getCurrency() + ".funds";
-            sessionManager.sendMessageToChannel(channel, (accountMessage(account)));
+            AccountMessage accountMessage = JSON.parseObject(msg, AccountMessage.class);
+            listenerExecutor.execute(accountMessage.getUserId(), () -> {
+                String channel = accountMessage.getUserId() + "." + accountMessage.getCurrency() + ".funds";
+                sessionManager.sendMessageToChannel(channel, accountFeedMessage(accountMessage));
+            });
         });
 
         redissonClient.getTopic("ticker", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            Ticker ticker = JSON.parseObject(msg, Ticker.class);
-            String channel = ticker.getProductId() + ".ticker";
-            sessionManager.sendMessageToChannel(channel, (new TickerMessage(ticker)));
+            TickerMessage tickerMessage = JSON.parseObject(msg, TickerMessage.class);
+            listenerExecutor.execute(tickerMessage.getProductId(), () -> {
+                String channel = tickerMessage.getProductId() + ".ticker";
+                sessionManager.sendMessageToChannel(channel, tickerFeedMessage(tickerMessage));
+            });
         });
 
         redissonClient.getTopic("candle", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            Candle candle = JSON.parseObject(msg, Candle.class);
-            String channel = candle.getProductId() + ".candle_" + candle.getGranularity() * 60;
-            sessionManager.sendMessageToChannel(channel, (candleMessage(candle)));
+            listenerExecutor.execute(() -> {
+                Candle candle = JSON.parseObject(msg, Candle.class);
+                String channel = candle.getProductId() + ".candle_" + candle.getGranularity() * 60;
+                sessionManager.sendMessageToChannel(channel, (candleMessage(candle)));
+            });
         });
 
         redissonClient.getTopic("l2_batch", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            L2OrderBook l2OrderBook = orderBookManager.getL2BatchOrderBook(msg);
-            String channel = l2OrderBook.getProductId() + ".level2";
-            sessionManager.sendMessageToChannel(channel, l2OrderBook);
+            L2OrderBook l2OrderBook = JSON.parseObject(msg, L2OrderBook.class);
+            listenerExecutor.execute(l2OrderBook.getProductId(), () -> {
+                String channel = l2OrderBook.getProductId() + ".level2";
+                sessionManager.sendMessageToChannel(channel, l2OrderBook);
+            });
         });
 
         redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            OrderBookLog log = JSON.parseObject(msg, OrderBookLog.class);
-            String fullChannel = log.getProductId() + ".full";
-            switch (log.getType()) {
-                case RECEIVED:
-                    OrderReceivedLog orderReceivedLog = JSON.parseObject(msg, OrderReceivedLog.class);
-                    sessionManager.sendMessageToChannel(fullChannel,
-                            (orderReceivedMessage(orderReceivedLog)));
-                    break;
-                case MATCH:
-                    OrderMatchLog orderMatchLog = JSON.parseObject(msg, OrderMatchLog.class);
-                    String matchChannel = log.getProductId() + ".match";
-                    sessionManager.sendMessageToChannel(matchChannel, (matchMessage(orderMatchLog)));
-                    sessionManager.sendMessageToChannel(fullChannel, (matchMessage(orderMatchLog)));
-                    break;
-                case OPEN:
-                    OrderOpenLog orderOpenLog = JSON.parseObject(msg, OrderOpenLog.class);
-                    sessionManager.sendMessageToChannel(fullChannel, (orderOpenMessage(orderOpenLog)));
-                    break;
-                case DONE:
-                    OrderDoneLog orderDoneLog = JSON.parseObject(msg, OrderDoneLog.class);
-                    sessionManager.sendMessageToChannel(fullChannel, (orderDoneMessage(orderDoneLog)));
-                    break;
-                default:
-            }
+            OrderBookMessage message = JSON.parseObject(msg, OrderBookMessage.class);
+            listenerExecutor.execute(message.getProductId(), () -> {
+                switch (message.getType()) {
+                    case ORDER_RECEIVED:
+                        OrderReceivedMessage orderReceivedMessage = JSON.parseObject(msg, OrderReceivedMessage.class);
+                        sessionManager.sendMessageToChannel(orderReceivedMessage.getProductId() + ".full",
+                                (orderReceivedMessage(orderReceivedMessage)));
+                        break;
+                    case ORDER_MATCH:
+                        OrderMatchMessage orderMatchMessage = JSON.parseObject(msg, OrderMatchMessage.class);
+                        String matchChannel = orderMatchMessage.getProductId() + ".match";
+                        sessionManager.sendMessageToChannel(matchChannel, (matchMessage(orderMatchMessage)));
+                        sessionManager.sendMessageToChannel(orderMatchMessage.getProductId() + ".full",
+                                (matchMessage(orderMatchMessage)));
+                        break;
+                    case ORDER_OPEN:
+                        OrderOpenMessage orderOpenMessage = JSON.parseObject(msg, OrderOpenMessage.class);
+                        sessionManager.sendMessageToChannel(orderOpenMessage.getProductId() + ".full",
+                                (orderOpenMessage(orderOpenMessage)));
+                        break;
+                    case ORDER_DONE:
+                        OrderDoneMessage orderDoneMessage = JSON.parseObject(msg, OrderDoneMessage.class);
+                        sessionManager.sendMessageToChannel(orderDoneMessage.getProductId() + ".full",
+                                (orderDoneMessage(orderDoneMessage)));
+                        break;
+                    default:
+                }
+            });
         });
     }
 
-    private OrderReceivedMessage orderReceivedMessage(OrderReceivedLog log) {
-        OrderReceivedMessage message = new OrderReceivedMessage();
+    private OrderReceivedFeedMessage orderReceivedMessage(OrderReceivedMessage log) {
+        OrderReceivedFeedMessage message = new OrderReceivedFeedMessage();
         message.setProductId(log.getProductId());
         message.setTime(log.getTime().toInstant().toString());
         message.setSequence(log.getSequence());
-        message.setOrderId(log.getOrder().getOrderId());
-        message.setSize(log.getOrder().getSize().stripTrailingZeros().toPlainString());
-        message.setPrice(
-                log.getOrder().getPrice() != null ? log.getOrder().getPrice().stripTrailingZeros().toPlainString() :
-                        null);
-        message.setFunds(
-                log.getOrder().getFunds() != null ? log.getOrder().getFunds().stripTrailingZeros().toPlainString() :
-                        null);
-        message.setSide(log.getOrder().getSide().name().toUpperCase());
-        message.setOrderType(log.getOrder().getType().name().toUpperCase());
+        message.setOrderId(log.getOrderId());
+        message.setSize(log.getSize().stripTrailingZeros().toPlainString());
+        message.setPrice(log.getPrice() != null ? log.getPrice().stripTrailingZeros().toPlainString() : null);
+        message.setFunds(log.getFunds() != null ? log.getFunds().stripTrailingZeros().toPlainString() : null);
+        message.setSide(log.getSide().name().toUpperCase());
+        message.setOrderType(log.getType().name().toUpperCase());
         return message;
     }
 
-    private OrderMatchMessage matchMessage(OrderMatchLog log) {
-        OrderMatchMessage message = new OrderMatchMessage();
+    private OrderMatchFeedMessage matchMessage(OrderMatchMessage log) {
+        OrderMatchFeedMessage message = new OrderMatchFeedMessage();
         message.setTradeId(log.getTradeId());
         message.setSequence(log.getSequence());
         message.setTakerOrderId(log.getTakerOrderId());
@@ -117,8 +126,8 @@ public class FeedMessageListener {
         return message;
     }
 
-    private OrderOpenMessage orderOpenMessage(OrderOpenLog log) {
-        OrderOpenMessage message = new OrderOpenMessage();
+    private OrderOpenFeedMessage orderOpenMessage(OrderOpenMessage log) {
+        OrderOpenFeedMessage message = new OrderOpenFeedMessage();
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());
         message.setProductId(log.getProductId());
@@ -128,8 +137,8 @@ public class FeedMessageListener {
         return message;
     }
 
-    private OrderDoneMessage orderDoneMessage(OrderDoneLog log) {
-        OrderDoneMessage message = new OrderDoneMessage();
+    private OrderDoneFeedMessage orderDoneMessage(OrderDoneMessage log) {
+        OrderDoneFeedMessage message = new OrderDoneFeedMessage();
         message.setSequence(log.getSequence());
         message.setTime(log.getTime().toInstant().toString());
         message.setProductId(log.getProductId());
@@ -137,15 +146,15 @@ public class FeedMessageListener {
             message.setPrice(log.getPrice().stripTrailingZeros().toPlainString());
         }
         message.setSide(log.getSide().name().toLowerCase());
-        message.setReason(log.getDoneReason().name().toUpperCase());
+        //message.setReason(log.getDoneReason().name().toUpperCase());
         if (log.getRemainingSize() != null) {
             message.setRemainingSize(log.getRemainingSize().stripTrailingZeros().toPlainString());
         }
         return message;
     }
 
-    private CandleMessage candleMessage(Candle candle) {
-        CandleMessage message = new CandleMessage();
+    private CandleFeedMessage candleMessage(Candle candle) {
+        CandleFeedMessage message = new CandleFeedMessage();
         message.setProductId(candle.getProductId());
         message.setGranularity(candle.getGranularity());
         message.setTime(candle.getTime());
@@ -157,35 +166,50 @@ public class FeedMessageListener {
         return message;
     }
 
-    private OrderMessage orderMessage(Order order) {
-        OrderMessage message = new OrderMessage();
+    private OrderFeedMessage orderFeedMessage(OrderMessage order) {
+        OrderFeedMessage message = new OrderFeedMessage();
         message.setUserId(order.getUserId());
         message.setProductId(order.getProductId());
-        message.setId(order.getOrderId());
+        message.setId(order.getId());
         message.setPrice(order.getPrice().stripTrailingZeros().toPlainString());
         message.setSize(order.getSize().stripTrailingZeros().toPlainString());
         message.setFunds(order.getFunds().stripTrailingZeros().toPlainString());
         message.setSide(order.getSide().name().toLowerCase());
         message.setOrderType(order.getType().name().toLowerCase());
-        message.setCreatedAt(order.getCreatedAt().toInstant().toString());
+        message.setCreatedAt(order.getTime().toInstant().toString());
         message.setFillFees(
                 order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
-        message.setFilledSize(
-                order.getFilledSize() != null ? order.getFilledSize().stripTrailingZeros().toPlainString() : "0");
-        message.setExecutedValue(
-                order.getExecutedValue() != null ? order.getExecutedValue().stripTrailingZeros().toPlainString() : "0");
+        message.setFilledSize(order.getSize().subtract(order.getRemainingSize()).stripTrailingZeros().toPlainString());
+        message.setExecutedValue(order.getFunds().subtract(order.getRemainingFunds()).stripTrailingZeros().toPlainString());
         message.setStatus(order.getStatus().name().toLowerCase());
         return message;
     }
 
-    private AccountMessage accountMessage(Account account) {
-        AccountMessage message = new AccountMessage();
-        message.setUserId(account.getUserId());
-        message.setCurrencyCode(account.getCurrency());
-        message.setAvailable(
-                account.getAvailable() != null ? account.getAvailable().stripTrailingZeros().toPlainString() : "0");
-        message.setHold(account.getHold() != null ? account.getHold().stripTrailingZeros().toPlainString() : "0");
-        return message;
+    private AccountFeedMessage accountFeedMessage(AccountMessage message) {
+        AccountFeedMessage accountFeedMessage = new AccountFeedMessage();
+        accountFeedMessage.setUserId(message.getUserId());
+        accountFeedMessage.setCurrencyCode(message.getCurrency());
+        accountFeedMessage.setAvailable(message.getAvailable().stripTrailingZeros().toPlainString());
+        accountFeedMessage.setHold(message.getHold().stripTrailingZeros().toPlainString());
+        return accountFeedMessage;
+    }
+
+    private TickerFeedMessage tickerFeedMessage(TickerMessage ticker) {
+        TickerFeedMessage tickerFeedMessage = new TickerFeedMessage();
+        tickerFeedMessage.setProductId(ticker.getProductId());
+        tickerFeedMessage.setTradeId(ticker.getTradeId());
+        tickerFeedMessage.setSequence(ticker.getSequence());
+        tickerFeedMessage.setTime(ticker.getTime().toInstant().toString());
+        tickerFeedMessage.setPrice(ticker.getPrice().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setSide(ticker.getSide().name().toLowerCase());
+        tickerFeedMessage.setLastSize(ticker.getLastSize().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setClose24h(ticker.getClose24h().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setOpen24h(ticker.getOpen24h().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setHigh24h(ticker.getHigh24h().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setLow24h(ticker.getLow24h().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setVolume24h(ticker.getVolume24h().stripTrailingZeros().toPlainString());
+        tickerFeedMessage.setVolume30d(ticker.getVolume30d().stripTrailingZeros().toPlainString());
+        return tickerFeedMessage;
     }
 
 }

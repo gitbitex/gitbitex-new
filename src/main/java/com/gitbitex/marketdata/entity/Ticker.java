@@ -1,11 +1,11 @@
 package com.gitbitex.marketdata.entity;
 
-import com.gitbitex.order.entity.Order.OrderSide;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.math.BigDecimal;
 import java.util.Date;
+
+import com.gitbitex.enums.OrderSide;
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -13,7 +13,6 @@ public class Ticker {
     private String productId;
     private long tradeId;
     private long sequence;
-    private long orderBookLogOffset;
     private Date time;
     private BigDecimal price;
     private OrderSide side;
