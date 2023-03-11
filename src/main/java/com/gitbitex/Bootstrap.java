@@ -47,9 +47,9 @@ public class Bootstrap {
     private final KafkaProperties kafkaProperties;
     private final RedissonClient redissonClient;
     private final List<Thread> threads = new ArrayList<>();
-    private final EngineStateStore engineStateStore;
+    private final EngineSnapshotStore engineSnapshotStore;
     private final ModifiedObjectWriter modifiedObjectWriter;
-    private final EngineStateWriter engineStateWriter;
+    private final EngineSnapshotWriter engineSnapshotWriter;
     private final OrderBookSnapshotPublisher orderBookSnapshotPublisher;
 
     @PostConstruct
@@ -89,8 +89,8 @@ public class Bootstrap {
             String groupId = "Matchin1gkk1";
             KafkaConsumer<String, Command> consumer = new KafkaConsumer<>(getProperties(groupId),
                     new StringDeserializer(), new CommandDeserializer());
-            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, engineStateStore,
-                    modifiedObjectWriter, engineStateWriter, orderBookSnapshotPublisher, appProperties);
+            MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, engineSnapshotStore,
+                    modifiedObjectWriter, engineSnapshotWriter, orderBookSnapshotPublisher, appProperties);
             matchingEngineThread.setName(groupId + "-" + matchingEngineThread.getId());
             matchingEngineThread.start();
             threads.add(matchingEngineThread);

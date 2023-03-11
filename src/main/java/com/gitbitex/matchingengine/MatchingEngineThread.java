@@ -17,20 +17,20 @@ import java.util.Collections;
 public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
         implements CommandHandler, ConsumerRebalanceListener {
     private final AppProperties appProperties;
-    private final EngineStateStore engineStateStore;
+    private final EngineSnapshotStore engineSnapshotStore;
     private final ModifiedObjectWriter modifiedObjectWriter;
-    private final EngineStateWriter engineStateWriter;
+    private final EngineSnapshotWriter engineSnapshotWriter;
     private final OrderBookSnapshotPublisher orderBookSnapshotPublisher;
     private MatchingEngine matchingEngine;
 
-    public MatchingEngineThread(KafkaConsumer<String, Command> consumer, EngineStateStore engineStateStore,
-                                ModifiedObjectWriter modifiedObjectWriter, EngineStateWriter engineStateWriter,
+    public MatchingEngineThread(KafkaConsumer<String, Command> consumer, EngineSnapshotStore engineSnapshotStore,
+                                ModifiedObjectWriter modifiedObjectWriter, EngineSnapshotWriter engineSnapshotWriter,
                                 OrderBookSnapshotPublisher orderBookSnapshotPublisher, AppProperties appProperties) {
         super(consumer, logger);
         this.appProperties = appProperties;
-        this.engineStateStore = engineStateStore;
+        this.engineSnapshotStore = engineSnapshotStore;
         this.modifiedObjectWriter = modifiedObjectWriter;
-        this.engineStateWriter = engineStateWriter;
+        this.engineSnapshotWriter = engineSnapshotWriter;
         this.orderBookSnapshotPublisher = orderBookSnapshotPublisher;
     }
 
@@ -48,7 +48,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            matchingEngine = new MatchingEngine(engineStateStore, modifiedObjectWriter, engineStateWriter,
+            matchingEngine = new MatchingEngine(engineSnapshotStore, modifiedObjectWriter, engineSnapshotWriter,
                     orderBookSnapshotPublisher);
             if (matchingEngine.getStartupCommandOffset() != null) {
                 logger.info("seek to offset: {}", matchingEngine.getStartupCommandOffset() + 1);

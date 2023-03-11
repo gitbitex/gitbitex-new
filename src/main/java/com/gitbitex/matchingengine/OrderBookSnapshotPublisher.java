@@ -21,10 +21,10 @@ public class OrderBookSnapshotPublisher {
                     new ThreadFactoryBuilder().setNameFormat("OrderBookSnapshot-%s").build());
     private final ConcurrentHashMap<String, Long> lastL2OrderBookSequences = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
-    private final EngineStateStore stateStore;
+    private final EngineSnapshotStore stateStore;
 
-    public OrderBookSnapshotPublisher(EngineStateStore engineStateStore, OrderBookManager orderBookManager) {
-        this.stateStore = engineStateStore;
+    public OrderBookSnapshotPublisher(EngineSnapshotStore engineSnapshotStore, OrderBookManager orderBookManager) {
+        this.stateStore = engineSnapshotStore;
         this.orderBookManager = orderBookManager;
         startL2OrderBookPublishTask();
         restoreState();

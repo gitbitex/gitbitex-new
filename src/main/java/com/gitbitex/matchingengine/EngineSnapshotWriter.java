@@ -15,14 +15,14 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
-public class EngineStateWriter {
-    private final EngineStateStore engineStateStore;
+public class EngineSnapshotWriter {
+    private final EngineSnapshotStore engineSnapshotStore;
     private final ConcurrentSkipListMap<Long, ModifiedObjectList> modifiedObjects =
             new ConcurrentSkipListMap<>();
     private final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
 
-    public EngineStateWriter(EngineStateStore engineStateStore) {
-        this.engineStateStore = engineStateStore;
+    public EngineSnapshotWriter(EngineSnapshotStore engineSnapshotStore) {
+        this.engineSnapshotStore = engineSnapshotStore;
         Gauge.builder("gbe.matching-engine.state-unsaved-modified-object-map.size", modifiedObjects::size)
                 .register(Metrics.globalRegistry);
         startSateSaveTask();
@@ -67,12 +67,12 @@ public class EngineStateWriter {
         if (commandOffset == null) {
             return;
         }
-        Long savedCommandOffset = engineStateStore.getCommandOffset();
+        Long savedCommandOffset = engineSnapshotStore.getCommandOffset();
         if (savedCommandOffset != null && commandOffset <= savedCommandOffset) {
             logger.warn("ignore outdated commandOffset: ignored={} saved={}", commandOffset, savedCommandOffset);
             return;
         }
-        engineStateStore.save(commandOffset, orderBookState, accounts.values(), orders.values(), products.values());
+        engineSnapshotStore.save(commandOffset, orderBookState, accounts.values(), orders.values(), products.values());
         logger.info("state saved: commandOffset={}, {} account(s), {} order(s), {} product(s)", commandOffset,
                 accounts.size(), orders.size(), products.size());
 

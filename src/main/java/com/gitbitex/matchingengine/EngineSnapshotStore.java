@@ -16,7 +16,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-public class EngineStateStore {
+public class EngineSnapshotStore {
     private final MongoCollection<EngineState> engineStateCollection;
     private final MongoCollection<Account> accountCollection;
     private final MongoCollection<Order> orderCollection;
@@ -24,7 +24,7 @@ public class EngineStateStore {
     private final MongoCollection<OrderBookState> orderBookStateCollection;
     private final MongoClient mongoClient;
 
-    public EngineStateStore(MongoClient mongoClient, MongoDatabase database) {
+    public EngineSnapshotStore(MongoClient mongoClient, MongoDatabase database) {
         this.mongoClient = mongoClient;
         this.engineStateCollection = database.getCollection("snapshot_engine", EngineState.class);
         this.accountCollection = database.getCollection("snapshot_account", Account.class);

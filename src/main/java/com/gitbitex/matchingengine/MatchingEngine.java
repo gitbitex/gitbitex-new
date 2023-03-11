@@ -25,21 +25,21 @@ public class MatchingEngine {
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
     private final ScheduledExecutorService scheduledExecutor =
             Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
-    private final EngineStateStore stateStore;
+    private final EngineSnapshotStore stateStore;
     private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectsQueue = new ConcurrentLinkedQueue<>();
     private final AtomicLong modifiedObjectsQueueSizeCounter = new AtomicLong();
     private final Counter commandProcessedCounter;
     private final ModifiedObjectWriter modifiedObjectWriter;
-    private final EngineStateWriter engineStateWriter;
+    private final EngineSnapshotWriter engineSnapshotWriter;
     private final OrderBookSnapshotPublisher orderBookSnapshotPublisher;
     @Getter
     private Long startupCommandOffset;
 
-    public MatchingEngine(EngineStateStore stateStore, ModifiedObjectWriter modifiedObjectWriter,
-                          EngineStateWriter engineStateWriter, OrderBookSnapshotPublisher orderBookSnapshotPublisher) {
+    public MatchingEngine(EngineSnapshotStore stateStore, ModifiedObjectWriter modifiedObjectWriter,
+                          EngineSnapshotWriter engineSnapshotWriter, OrderBookSnapshotPublisher orderBookSnapshotPublisher) {
         this.stateStore = stateStore;
         this.modifiedObjectWriter = modifiedObjectWriter;
-        this.engineStateWriter = engineStateWriter;
+        this.engineSnapshotWriter = engineSnapshotWriter;
         this.orderBookSnapshotPublisher = orderBookSnapshotPublisher;
         this.commandProcessedCounter = Counter.builder("gbe.matching-engine.command.processed")
                 .register(Metrics.globalRegistry);
@@ -107,7 +107,7 @@ public class MatchingEngine {
     private void dispatch(ModifiedObjectList modifiedObjects) {
         modifiedObjectWriter.saveAsync(modifiedObjects);
         orderBookSnapshotPublisher.refresh(modifiedObjects);
-        engineStateWriter.append(modifiedObjects);
+        engineSnapshotWriter.append(modifiedObjects);
     }
 
     private void restoreState() {
