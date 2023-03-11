@@ -1,4 +1,4 @@
-package com.gitbitex.matchingengine.snapshot;
+package com.gitbitex.matchingengine;
 
 import com.gitbitex.matchingengine.Order;
 import com.gitbitex.matchingengine.OrderBook;

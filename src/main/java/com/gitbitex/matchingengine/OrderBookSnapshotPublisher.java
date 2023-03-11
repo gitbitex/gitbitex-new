@@ -1,7 +1,6 @@
 package com.gitbitex.matchingengine;
 
 import com.gitbitex.enums.OrderStatus;
-import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.springframework.stereotype.Component;
