@@ -16,7 +16,7 @@ GitBitEx is an open source cryptocurrency exchange.
 ### Prerequisites
 - Install docker
 - Install jdk
-- Istall maven
+- Install maven
 - Update your **/etc/hosts** file. (required for mongodb-replica-set：https://github.com/UpSync-Dev/docker-compose-mongo-replica-set)
 ```text
 127.0.0.1       mongo1
@@ -48,7 +48,7 @@ For example, after users recharge/withdraw, send **_DepositCommand_**/**_Withdra
 Probably not. Some customers I know use this project in production, but they all have professional technicians. 
 If you want to use it in production, you need professional technicians to help you. Like me . 
 (**If you want to build an exchange, you can hire me. I'm looking for a part-time job remotely 
-because I lost a lot of money on the damn digital currency.**)
+because I lost a lot of money on the damn digital currency.😂**)
 ### How can I monitor the performance of the matching engine
 Some prometheus metrics for measuring performance have been built into the project. 
 You can visit http://127.0.0.1:7002/actuator/prometheus see.You can use Prometheus and grafana to monitor.
