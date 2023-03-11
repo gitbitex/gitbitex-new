@@ -16,14 +16,17 @@ import java.util.List;
 
 @Component
 public class OrderRepository {
-    private final MongoCollection<Order> mongoCollection;
+    private final MongoCollection<Order> collection;
 
     public OrderRepository(MongoDatabase database) {
-        this.mongoCollection = database.getCollection(Order.class.getSimpleName().toLowerCase(), Order.class);
+        this.collection = database.getCollection(Order.class.getSimpleName().toLowerCase(), Order.class);
+        this.collection.createIndex(Indexes.descending("userId", "productId", "sequence"));
     }
 
     public Order findByOrderId(String orderId) {
-        return this.mongoCollection.find(Filters.eq("_id", orderId)).first();
+        return this.collection
+                .find(Filters.eq("_id", orderId))
+                .first();
     }
 
     public PagedList<Order> findAll(String userId, String productId, OrderStatus status, OrderSide side, int pageIndex,
@@ -42,8 +45,10 @@ public class OrderRepository {
             filter = Filters.and(Filters.eq("side", side.name()), filter);
         }
 
-        long count = this.mongoCollection.countDocuments(filter);
-        List<Order> orders = this.mongoCollection.find(filter)
+        long count = this.collection.countDocuments(filter);
+        List<Order> orders = this.collection
+                .find(filter)
+                .sort(Sorts.descending("sequence"))
                 .skip(pageIndex - 1)
                 .limit(pageSize)
                 .into(new ArrayList<>());
@@ -57,6 +62,6 @@ public class OrderRepository {
             WriteModel<Order> writeModel = new ReplaceOneModel<>(filter, item, new ReplaceOptions().upsert(true));
             writeModels.add(writeModel);
         }
-        mongoCollection.bulkWrite(writeModels, new BulkWriteOptions().ordered(false));
+        collection.bulkWrite(writeModels, new BulkWriteOptions().ordered(false));
     }
 }

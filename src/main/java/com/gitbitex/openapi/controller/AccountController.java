@@ -1,10 +1,5 @@
 package com.gitbitex.openapi.controller;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Account;
 import com.gitbitex.marketdata.entity.User;
@@ -12,23 +7,23 @@ import com.gitbitex.marketdata.manager.AccountManager;
 import com.gitbitex.openapi.model.AccountDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestAttribute;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class AccountController {
-    private final KafkaMessageProducer producer;
     private final AccountManager accountManager;
 
     @GetMapping("/accounts")
     public List<AccountDto> getAccounts(@RequestParam(name = "currency") List<String> currencies,
-        @RequestAttribute(required = false) User currentUser) {
+                                        @RequestAttribute(required = false) User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
@@ -54,7 +49,7 @@ public class AccountController {
 
     private AccountDto accountDto(Account account) {
         AccountDto accountDto = new AccountDto();
-        accountDto.setId(account.getUserId());
+        accountDto.setId(account.getId());
         accountDto.setCurrency(account.getCurrency());
         accountDto.setAvailable(account.getAvailable() != null ? account.getAvailable().toPlainString() : "0");
         accountDto.setHold(account.getHold() != null ? account.getHold().toPlainString() : "0");

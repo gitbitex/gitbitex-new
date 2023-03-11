@@ -37,7 +37,7 @@ public class ProductController {
 
     @GetMapping("/api/products/{productId}/trades")
     public List<TradeDto> getProductTrades(@PathVariable String productId) {
-        List<Trade> trades = tradeRepository.findTradesByProductId(productId, 50);
+        List<Trade> trades = tradeRepository.findByProductId(productId, 50);
         return trades.stream().map(this::tradeDto).collect(Collectors.toList());
     }
 

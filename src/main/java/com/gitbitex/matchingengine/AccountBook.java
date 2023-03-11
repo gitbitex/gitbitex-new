@@ -1,15 +1,14 @@
 package com.gitbitex.matchingengine;
 
-import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.Map;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.enums.OrderSide;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.Nullable;
+
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -18,7 +17,7 @@ public class AccountBook {
 
     public void add(Account account) {
         this.accounts.computeIfAbsent(account.getUserId(), x -> new HashMap<>())
-            .put(account.getCurrency(), account);
+                .put(account.getCurrency(), account);
     }
 
     @Nullable
@@ -31,7 +30,7 @@ public class AccountBook {
     }
 
     public void deposit(String userId, String currency, BigDecimal amount, String transactionId,
-        ModifiedObjectList modifiedObjects) {
+                        ModifiedObjectList modifiedObjects) {
         Account account = getAccount(userId, currency);
         if (account == null) {
             account = createAccount(userId, currency);
@@ -68,8 +67,8 @@ public class AccountBook {
     }
 
     public void exchange(String takerUserId, String makerUserId,
-        String baseCurrency, String quoteCurrency,
-        OrderSide takerSide, BigDecimal size, BigDecimal funds, ModifiedObjectList modifiedObjects) {
+                         String baseCurrency, String quoteCurrency,
+                         OrderSide takerSide, BigDecimal size, BigDecimal funds, ModifiedObjectList modifiedObjects) {
         Account takerBaseAccount = getAccount(takerUserId, baseCurrency);
         Account takerQuoteAccount = getAccount(takerUserId, quoteCurrency);
         Account makerBaseAccount = getAccount(makerUserId, baseCurrency);
