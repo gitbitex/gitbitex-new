@@ -15,7 +15,7 @@ import com.gitbitex.matchingengine.command.CommandDeserializer;
 import com.gitbitex.matchingengine.message.AccountMessageDeserializer;
 import com.gitbitex.matchingengine.message.OrderMessageDeserializer;
 import com.gitbitex.matchingengine.message.TradeMessageDeserializer;
-import com.gitbitex.matchingengine.snapshot.OrderBookManager;
+import com.gitbitex.matchingengine.OrderBookSnapshotStore;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import com.gitbitex.middleware.kafka.KafkaProperties;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +36,7 @@ import java.util.Properties;
 public class Bootstrap {
     private final OrderManager orderManager;
     private final AccountManager accountManager;
-    private final OrderBookManager orderBookManager;
+    private final OrderBookSnapshotStore orderBookSnapshotStore;
     private final TradeRepository tradeRepository;
     private final ProductRepository productRepository;
     private final ProductManager productManager;

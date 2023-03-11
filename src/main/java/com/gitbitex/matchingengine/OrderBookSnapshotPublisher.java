@@ -2,7 +2,6 @@ package com.gitbitex.matchingengine;
 
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
-import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.springframework.stereotype.Component;
@@ -14,18 +13,18 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 public class OrderBookSnapshotPublisher {
-    private final OrderBookManager orderBookManager;
+    private final OrderBookSnapshotStore orderBookSnapshotStore;
     private final ConcurrentHashMap<String, SimpleOrderBook> simpleOrderBooks = new ConcurrentHashMap<>();
     private final StripedExecutorService orderBookSnapshotExecutor =
             new StripedExecutorService(Runtime.getRuntime().availableProcessors(),
                     new ThreadFactoryBuilder().setNameFormat("OrderBookSnapshot-%s").build());
     private final ConcurrentHashMap<String, Long> lastL2OrderBookSequences = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
-    private final EngineSnapshotStore stateStore;
+    private final EngineSnapshotStore engineSnapshotStore;
 
-    public OrderBookSnapshotPublisher(EngineSnapshotStore engineSnapshotStore, OrderBookManager orderBookManager) {
-        this.stateStore = engineSnapshotStore;
-        this.orderBookManager = orderBookManager;
+    public OrderBookSnapshotPublisher(EngineSnapshotStore engineSnapshotStore, OrderBookSnapshotStore orderBookSnapshotStore) {
+        this.engineSnapshotStore = engineSnapshotStore;
+        this.orderBookSnapshotStore = orderBookSnapshotStore;
         startL2OrderBookPublishTask();
         restoreState();
     }
@@ -62,7 +61,7 @@ public class OrderBookSnapshotPublisher {
         if (simpleOrderBook.getMessageSequence() - lastL2OrderBookSequence > delta) {
             L2OrderBook l2OrderBook = new L2OrderBook(simpleOrderBook, 25);
             lastL2OrderBookSequences.put(productId, simpleOrderBook.getMessageSequence());
-            orderBookManager.saveL2BatchOrderBook(l2OrderBook);
+            orderBookSnapshotStore.saveL2BatchOrderBook(l2OrderBook);
         }
     }
 
@@ -77,13 +76,13 @@ public class OrderBookSnapshotPublisher {
     }
 
     private void restoreState() {
-        if (stateStore.getCommandOffset() == null) {
+        if (engineSnapshotStore.getCommandOffset() == null) {
             return;
         }
-        stateStore.getOrderBookStates().forEach(x -> {
+        engineSnapshotStore.getOrderBookStates().forEach(x -> {
             SimpleOrderBook simpleOrderBook = new SimpleOrderBook(x.getProductId(), x.getMessageSequence());
             simpleOrderBooks.put(x.getProductId(), simpleOrderBook);
-            stateStore.getOrders(x.getProductId()).forEach(simpleOrderBook::addOrder);
+            engineSnapshotStore.getOrders(x.getProductId()).forEach(simpleOrderBook::addOrder);
         });
     }
 }

@@ -9,7 +9,7 @@ import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.matchingengine.snapshot.L2OrderBook;
 import com.gitbitex.matchingengine.snapshot.L2OrderBookChange;
-import com.gitbitex.matchingengine.snapshot.OrderBookManager;
+import com.gitbitex.matchingengine.OrderBookSnapshotStore;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ public class SessionManager {
     private final ConcurrentHashMap<String, ConcurrentSkipListSet<String>> channelsBySessionId
             = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, WebSocketSession> sessionById = new ConcurrentHashMap<>();
-    private final OrderBookManager orderBookManager;
+    private final OrderBookSnapshotStore orderBookSnapshotStore;
     private final TickerManager tickerManager;
 
     @SneakyThrows
@@ -48,7 +48,7 @@ public class SessionManager {
                             subscribeChannel(session, productChannel);
 
                             try {
-                                L2OrderBook l2OrderBook = orderBookManager.getL2BatchOrderBook(productId);
+                                L2OrderBook l2OrderBook = orderBookSnapshotStore.getL2BatchOrderBook(productId);
                                 if (l2OrderBook != null) {
                                     sendL2OrderBook(session, l2OrderBook);
                                 }
