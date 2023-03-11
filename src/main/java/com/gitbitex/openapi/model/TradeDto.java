@@ -6,7 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class TradeDto {
-    private long tradeId;
+    private long sequence;
     private String time;
     private String price;
     private String size;

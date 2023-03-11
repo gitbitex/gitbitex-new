@@ -4,11 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Product;
 import com.gitbitex.marketdata.entity.Trade;
-import com.gitbitex.marketdata.manager.UserManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
@@ -30,13 +28,6 @@ public class ProductController {
     private final ProductRepository productRepository;
     private final TradeRepository tradeRepository;
     private final CandleRepository candleRepository;
-    private final UserManager userManager;
-    private final KafkaMessageProducer producer;
-
-    @GetMapping("/api/admin/addUser")
-    public void addUser(@RequestParam String email, @RequestParam String password) {
-        userManager.createUser(email, password);
-    }
 
     @GetMapping("/api/products")
     public List<ProductDto> getProducts() {
@@ -97,7 +88,7 @@ public class ProductController {
 
     private TradeDto tradeDto(Trade trade) {
         TradeDto tradeDto = new TradeDto();
-        tradeDto.setTradeId(trade.getSequence());
+        tradeDto.setSequence(trade.getSequence());
         tradeDto.setTime(trade.getTime().toInstant().toString());
         tradeDto.setPrice(trade.getPrice().toPlainString());
         tradeDto.setSize(trade.getSize().toPlainString());
