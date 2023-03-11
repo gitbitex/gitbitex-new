@@ -29,11 +29,12 @@ public class AccountController {
         }
 
         List<Account> accounts = accountManager.getAccounts(currentUser.getId());
-        Map<String, Account> accountSet = accounts.stream().collect(Collectors.toMap(Account::getCurrency, x -> x));
+        Map<String, Account> accountByCurrency = accounts.stream()
+                .collect(Collectors.toMap(Account::getCurrency, x -> x));
 
         List<AccountDto> accountDtoList = new ArrayList<>();
         for (String currency : currencies) {
-            Account account = accountSet.get(currency);
+            Account account = accountByCurrency.get(currency);
             if (account != null) {
                 accountDtoList.add(accountDto(account));
             } else {

@@ -22,7 +22,6 @@ import org.redisson.client.codec.StringCodec;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
@@ -178,9 +177,9 @@ public class MatchingEngine {
                     } else {
                         simpleOrderBook.removeOrder(order);
                     }
-                } else if (obj instanceof OrderBookMessage) {
-                    OrderBookMessage orderBookMessage = (OrderBookMessage) obj;
-                    simpleOrderBook.setSequence(orderBookMessage.getSequence());
+                } else if (obj instanceof OrderBookState) {
+                    OrderBookState orderBookState = (OrderBookState) obj;
+                    simpleOrderBook.setMessageSequence(orderBookState.getMessageSequence());
                 } else if (obj instanceof OrderBookCompleteNotify) {
                     takeL2OrderBookSnapshot(simpleOrderBook, 200);
                 }
@@ -191,9 +190,9 @@ public class MatchingEngine {
     private void takeL2OrderBookSnapshot(SimpleOrderBook simpleOrderBook, long delta) {
         String productId = simpleOrderBook.getProductId();
         long lastL2OrderBookSequence = lastL2OrderBookSequences.getOrDefault(productId, 0L);
-        if (simpleOrderBook.getSequence() - lastL2OrderBookSequence > delta) {
+        if (simpleOrderBook.getMessageSequence() - lastL2OrderBookSequence > delta) {
             L2OrderBook l2OrderBook = new L2OrderBook(simpleOrderBook, 25);
-            lastL2OrderBookSequences.put(productId, simpleOrderBook.getSequence());
+            lastL2OrderBookSequences.put(productId, simpleOrderBook.getMessageSequence());
             orderBookManager.saveL2BatchOrderBook(l2OrderBook);
         }
     }
@@ -308,10 +307,8 @@ public class MatchingEngine {
             OrderBook orderBook = new OrderBook(x.getProductId(), x.getOrderSequence(), x.getTradeSequence(),
                     x.getMessageSequence(), accountBook, productBook);
             orderBooks.put(x.getProductId(), orderBook);
-
             SimpleOrderBook simpleOrderBook = new SimpleOrderBook(x.getProductId(), x.getMessageSequence());
             simpleOrderBooks.put(x.getProductId(), simpleOrderBook);
-
             stateStore.getOrders(x.getProductId()).forEach(o -> {
                 orderBook.addOrder(o);
                 simpleOrderBook.addOrder(o);
