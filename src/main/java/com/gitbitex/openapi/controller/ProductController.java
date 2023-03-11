@@ -8,7 +8,6 @@ import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Product;
 import com.gitbitex.marketdata.entity.Trade;
-import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.manager.UserManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.ProductRepository;
@@ -98,7 +97,7 @@ public class ProductController {
 
     private TradeDto tradeDto(Trade trade) {
         TradeDto tradeDto = new TradeDto();
-        tradeDto.setTradeId(trade.getTradeId());
+        tradeDto.setTradeId(trade.getSequence());
         tradeDto.setTime(trade.getTime().toInstant().toString());
         tradeDto.setPrice(trade.getPrice().toPlainString());
         tradeDto.setSize(trade.getSize().toPlainString());

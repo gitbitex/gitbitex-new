@@ -1,11 +1,5 @@
 package com.gitbitex.marketdata;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Trade;
 import com.gitbitex.marketdata.repository.TradeRepository;
@@ -17,14 +11,20 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 @Slf4j
 public class TradePersistenceThread extends KafkaConsumerThread<String, TradeMessage>
-    implements ConsumerRebalanceListener {
+        implements ConsumerRebalanceListener {
     private final TradeRepository tradeRepository;
     private final AppProperties appProperties;
 
     public TradePersistenceThread(KafkaConsumer<String, TradeMessage> consumer, TradeRepository tradeRepository,
-        AppProperties appProperties) {
+                                  AppProperties appProperties) {
         super(consumer, logger);
         this.tradeRepository = tradeRepository;
         this.appProperties = appProperties;
@@ -71,8 +71,8 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, TradeMes
 
     private Trade order(TradeMessage message) {
         Trade trade = new Trade();
-        trade.setId(message.getProductId() + "-" + message.getTradeId());
-        trade.setTradeId(message.getTradeId());
+        trade.setId(message.getProductId() + "-" + message.getSequence());
+        trade.setSequence(message.getSequence());
         trade.setTime(message.getTime());
         trade.setSize(message.getSize());
         trade.setPrice(message.getPrice());

@@ -89,7 +89,7 @@ public class Bootstrap {
 
     private void startMatchingEngine(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "Matchin1gkk";
+            String groupId = "Matchin1gkk1";
             KafkaConsumer<String, Command> consumer = new KafkaConsumer<>(getProperties(groupId),
                 new StringDeserializer(), new CommandDeserializer());
             MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, engineStateStore,
@@ -102,7 +102,7 @@ public class Bootstrap {
 
     private void startTickerThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "Ticker111111111111";
+            String groupId = "Ticker1111111111111";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
                 new TradeMessageDeserializer());
             TickerThread tickerThread = new TickerThread(consumer, tickerManager, appProperties);
@@ -126,7 +126,7 @@ public class Bootstrap {
 
     private void startCandleMaker(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "CandlerMaker11";
+            String groupId = "CandlerMaker111111";
             CandleMakerThread candleMakerThread = new CandleMakerThread(candleRepository,
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
                     new TradeMessageDeserializer()), appProperties);
@@ -138,7 +138,7 @@ public class Bootstrap {
 
     private void startTradePersistenceThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "Trade";
+            String groupId = "Trade1";
             TradePersistenceThread tradePersistenceThread = new TradePersistenceThread(
                 new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new TradeMessageDeserializer()),
                 tradeRepository, appProperties);

@@ -22,6 +22,7 @@ import org.redisson.client.codec.StringCodec;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
@@ -121,7 +122,7 @@ public class MatchingEngine {
     private OrderBook createOrderBook(String productId) {
         OrderBook orderBook = orderBooks.get(productId);
         if (orderBook == null) {
-            orderBook = new OrderBook(productId, null, null, accountBook, productBook);
+            orderBook = new OrderBook(productId, null, null, null, accountBook, productBook);
             orderBooks.put(productId, orderBook);
         }
         return orderBook;
@@ -173,7 +174,7 @@ public class MatchingEngine {
                 if (obj instanceof Order) {
                     Order order = (Order) obj;
                     if (order.getStatus() == OrderStatus.OPEN) {
-                        simpleOrderBook.putOrder(order);
+                        simpleOrderBook.addOrder(order);
                     } else {
                         simpleOrderBook.removeOrder(order);
                     }
@@ -248,52 +249,51 @@ public class MatchingEngine {
         }
 
         Long commandOffset = null;
+        OrderBookState orderBookState = null;
         Map<String, Account> accounts = new HashMap<>();
         Map<String, Order> orders = new HashMap<>();
         Map<String, Product> products = new HashMap<>();
-        Map<String, Long> tradeIds = new HashMap<>();
-        Map<String, Long> sequences = new HashMap<>();
-
-        Iterator<Entry<Long, ModifiedObjectList>> itr = stateUnsavedModifiedObjects.entrySet().iterator();
-        while (itr.hasNext()) {
-            Entry<Long, ModifiedObjectList> entry = itr.next();
+        for (Entry<Long, ModifiedObjectList> entry : stateUnsavedModifiedObjects.entrySet()) {
             ModifiedObjectList modifiedObjects = entry.getValue();
             if (!modifiedObjects.allSaved()) {
                 break;
             }
             for (Object obj : modifiedObjects) {
-                if (obj instanceof Account) {
+                if (obj instanceof OrderBookState) {
+                    orderBookState = (OrderBookState) obj;
+                } else if (obj instanceof Account) {
                     Account account = (Account) obj;
                     accounts.put(account.getId(), account);
                 } else if (obj instanceof Order) {
                     Order order = (Order) obj;
                     orders.put(order.getId(), order);
-                } else if (obj instanceof Trade) {
-                    Trade trade = (Trade) obj;
-                    tradeIds.put(trade.getProductId(), trade.getTradeId());
-                } else if (obj instanceof OrderBookMessage) {
-                    OrderBookMessage orderBookMessage = (OrderBookMessage) obj;
-                    sequences.put(orderBookMessage.getProductId(), orderBookMessage.getSequence());
                 } else if (obj instanceof Product) {
                     Product product = (Product) obj;
                     products.put(product.getId(), product);
                 }
             }
             commandOffset = entry.getKey();
-            itr.remove();
         }
 
-        if (commandOffset != null) {
-            Long savedCommandOffset = stateStore.getCommandOffset();
-            if (savedCommandOffset != null && commandOffset <= savedCommandOffset) {
-                logger.warn("ignore outdated commandOffset: ignored={} saved={}", commandOffset, savedCommandOffset);
-                return;
+        if (commandOffset == null) {
+            return;
+        }
+        Long savedCommandOffset = stateStore.getCommandOffset();
+        if (savedCommandOffset != null && commandOffset <= savedCommandOffset) {
+            logger.warn("ignore outdated commandOffset: ignored={} saved={}", commandOffset, savedCommandOffset);
+            return;
+        }
+        stateStore.save(commandOffset, orderBookState, accounts.values(), orders.values(), products.values());
+        logger.info(
+                "state saved: commandOffset={}, {} account(s), {} order(s), {} product(s)",
+                commandOffset, accounts.size(), orders.size(), products.size());
+
+
+        Iterator<Entry<Long, ModifiedObjectList>> itr = stateUnsavedModifiedObjects.entrySet().iterator();
+        while (itr.hasNext()) {
+            if (itr.next().getKey() <= commandOffset) {
+                itr.remove();
             }
-            stateStore.save(commandOffset, accounts.values(), orders.values(), products.values(), tradeIds, sequences);
-            logger.info(
-                    "state saved: commandOffset={}, {} account(s), {} order(s), {} product(s), {} tradeId(s), {} sequence"
-                            + "(s)",
-                    commandOffset, accounts.size(), orders.size(), products.size(), tradeIds.size(), sequences.size());
         }
     }
 
@@ -302,16 +302,20 @@ public class MatchingEngine {
         if (startupCommandOffset == null) {
             return;
         }
-        stateStore.getProducts().forEach(productBook::addProduct);
         stateStore.getAccounts().forEach(accountBook::add);
+        stateStore.getProducts().forEach(productBook::addProduct);
         stateStore.getOrderBookStates().forEach(x -> {
-            orderBooks.put(x.getId(),
-                    new OrderBook(x.getId(), x.getTradeId(), x.getSequence(), accountBook, productBook));
-            simpleOrderBooks.put(x.getId(), new SimpleOrderBook(x.getId(), x.getSequence()));
-        });
-        stateStore.getOrders().forEach(x -> {
-            orderBooks.get(x.getProductId()).addOrder(x);
-            simpleOrderBooks.get(x.getProductId()).putOrder(x);
+            OrderBook orderBook = new OrderBook(x.getProductId(), x.getOrderSequence(), x.getTradeSequence(),
+                    x.getMessageSequence(), accountBook, productBook);
+            orderBooks.put(x.getProductId(), orderBook);
+
+            SimpleOrderBook simpleOrderBook = new SimpleOrderBook(x.getProductId(), x.getMessageSequence());
+            simpleOrderBooks.put(x.getProductId(), simpleOrderBook);
+
+            stateStore.getOrders(x.getProductId()).forEach(o -> {
+                orderBook.addOrder(o);
+                simpleOrderBook.addOrder(o);
+            });
         });
     }
 

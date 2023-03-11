@@ -74,7 +74,7 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
             ticker = tickerManager.getTicker(trade.getProductId());
         }
         if (ticker != null) {
-            long diff = trade.getTradeId() - ticker.getTradeId();
+            long diff = trade.getSequence() - ticker.getTradeId();
             if (diff <= 0) {
                 return;
             } else if (diff > 1) {
@@ -120,7 +120,7 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
         ticker.setTime(trade.getTime());
         ticker.setPrice(trade.getPrice());
         ticker.setSide(trade.getSide());
-        ticker.setTradeId(trade.getTradeId());
+        ticker.setTradeId(trade.getSequence());
         tickerByProductId.put(trade.getProductId(), ticker);
 
         tickerManager.saveTicker(ticker);

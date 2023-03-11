@@ -24,8 +24,8 @@ public class L3OrderBook {
 
     public L3OrderBook(OrderBook orderBook) {
         this.productId = orderBook.getProductId();
-        this.sequence = orderBook.getSequence().get();
-        this.tradeId = orderBook.getTradeId().get();
+        this.sequence = orderBook.getMessageSequence().get();
+        this.tradeId = orderBook.getTradeSequence().get();
         this.time = System.currentTimeMillis();
         this.asks = orderBook.getAsks().values().stream()
             .flatMap(x -> x.values().stream())

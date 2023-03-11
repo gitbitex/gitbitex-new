@@ -13,7 +13,7 @@ public class Trade {
     private String id;
     private Date createdAt;
     private Date updatedAt;
-    private long tradeId;
+    private long sequence;
     private String productId;
     private String takerOrderId;
     private String makerOrderId;

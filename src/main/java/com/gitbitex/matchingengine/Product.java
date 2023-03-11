@@ -29,26 +29,4 @@ public class Product implements Cloneable {
             throw new AssertionError();
         }
     }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (!(obj instanceof Product)) {
-            return false;
-        }
-        Product other = (Product)obj;
-        return Objects.equals(this.id, other.id);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = 17;
-        result = 31 * result + (id == null ? 0 : id.hashCode());
-        return result;
-    }
 }

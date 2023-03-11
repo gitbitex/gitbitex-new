@@ -89,20 +89,20 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
                     candle.setLow(trade.getPrice());
                     candle.setHigh(trade.getPrice());
                     candle.setVolume(trade.getSize());
-                    candle.setTradeId(trade.getTradeId());
+                    candle.setTradeId(trade.getSequence());
                 } else {
-                    if (candle.getTradeId() >= trade.getTradeId()) {
+                    if (candle.getTradeId() >= trade.getSequence()) {
                         //logger.warn("ignore trade: {}",trade.getTradeId());
                         continue;
-                    } else if (candle.getTradeId() + 1 != trade.getTradeId()) {
+                    } else if (candle.getTradeId() + 1 != trade.getSequence()) {
                         throw new RuntimeException(
-                            "bad trade: " + " " + (candle.getTradeId()) + " " + trade.getTradeId());
+                            "bad trade: " + " " + (candle.getTradeId()) + " " + trade.getSequence());
                     }
                     candle.setClose(trade.getPrice());
                     candle.setLow(candle.getLow().min(trade.getPrice()));
                     candle.setHigh(candle.getLow().max(trade.getPrice()));
                     candle.setVolume(candle.getVolume().add(trade.getSize()));
-                    candle.setTradeId(trade.getTradeId());
+                    candle.setTradeId(trade.getSequence());
                 }
 
                 candles.put(candle.getId(), candle);

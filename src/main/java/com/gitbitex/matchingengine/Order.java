@@ -15,6 +15,7 @@ import lombok.Setter;
 @Setter
 public class Order implements Cloneable {
     private String id;
+    private long sequence;
     private String userId;
     private OrderType type;
     private OrderSide side;
@@ -70,27 +71,5 @@ public class Order implements Cloneable {
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (!(obj instanceof Account)) {
-            return false;
-        }
-        Order other = (Order)obj;
-        return Objects.equals(this.id, other.id);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = 17;
-        result = 31 * result + (id == null ? 0 : id.hashCode());
-        return result;
     }
 }

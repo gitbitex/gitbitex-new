@@ -6,7 +6,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class OrderBookState {
-    private String id;
-    private Long tradeId;
-    private Long sequence;
+    private String productId;
+    private Long orderSequence;
+    private Long tradeSequence;
+    private Long messageSequence;
 }

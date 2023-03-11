@@ -25,7 +25,7 @@ public class SimpleOrderBook {
         this.sequence = sequence;
     }
 
-    public void putOrder(Order order) {
+    public void addOrder(Order order) {
         TreeMap<BigDecimal, PriceGroupedOrderCollection> ordersByPrice = (order.getSide() == OrderSide.BUY ? bids
             : asks);
         PriceGroupedOrderCollection priceGroupedOrders = ordersByPrice.get(order.getPrice());
