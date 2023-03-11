@@ -49,8 +49,8 @@ public class Bootstrap {
     private final List<Thread> threads = new ArrayList<>();
     private final EngineSnapshotStore engineSnapshotStore;
     private final ModifiedObjectWriter modifiedObjectWriter;
-    private final EngineSnapshotWriter engineSnapshotWriter;
-    private final OrderBookSnapshotPublisher orderBookSnapshotPublisher;
+    private final EngineSnapshotTaker engineSnapshotTaker;
+    private final OrderBookSnapshotTaker orderBookSnapshotTaker;
 
     @PostConstruct
     public void init() {
@@ -90,7 +90,7 @@ public class Bootstrap {
             KafkaConsumer<String, Command> consumer = new KafkaConsumer<>(getProperties(groupId),
                     new StringDeserializer(), new CommandDeserializer());
             MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, engineSnapshotStore,
-                    modifiedObjectWriter, engineSnapshotWriter, orderBookSnapshotPublisher, appProperties);
+                    modifiedObjectWriter, engineSnapshotTaker, orderBookSnapshotTaker, appProperties);
             matchingEngineThread.setName(groupId + "-" + matchingEngineThread.getId());
             matchingEngineThread.start();
             threads.add(matchingEngineThread);

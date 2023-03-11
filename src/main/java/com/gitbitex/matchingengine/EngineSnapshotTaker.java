@@ -15,13 +15,13 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
-public class EngineSnapshotWriter {
+public class EngineSnapshotTaker {
     private final EngineSnapshotStore engineSnapshotStore;
     private final ConcurrentSkipListMap<Long, ModifiedObjectList> modifiedObjects =
             new ConcurrentSkipListMap<>();
     private final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
 
-    public EngineSnapshotWriter(EngineSnapshotStore engineSnapshotStore) {
+    public EngineSnapshotTaker(EngineSnapshotStore engineSnapshotStore) {
         this.engineSnapshotStore = engineSnapshotStore;
         Gauge.builder("gbe.matching-engine.state-unsaved-modified-object-map.size", modifiedObjects::size)
                 .register(Metrics.globalRegistry);

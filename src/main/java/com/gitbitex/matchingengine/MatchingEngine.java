@@ -30,17 +30,17 @@ public class MatchingEngine {
     private final AtomicLong modifiedObjectsQueueSizeCounter = new AtomicLong();
     private final Counter commandProcessedCounter;
     private final ModifiedObjectWriter modifiedObjectWriter;
-    private final EngineSnapshotWriter engineSnapshotWriter;
-    private final OrderBookSnapshotPublisher orderBookSnapshotPublisher;
+    private final EngineSnapshotTaker engineSnapshotTaker;
+    private final OrderBookSnapshotTaker orderBookSnapshotTaker;
     @Getter
     private Long startupCommandOffset;
 
     public MatchingEngine(EngineSnapshotStore stateStore, ModifiedObjectWriter modifiedObjectWriter,
-                          EngineSnapshotWriter engineSnapshotWriter, OrderBookSnapshotPublisher orderBookSnapshotPublisher) {
+                          EngineSnapshotTaker engineSnapshotTaker, OrderBookSnapshotTaker orderBookSnapshotTaker) {
         this.stateStore = stateStore;
         this.modifiedObjectWriter = modifiedObjectWriter;
-        this.engineSnapshotWriter = engineSnapshotWriter;
-        this.orderBookSnapshotPublisher = orderBookSnapshotPublisher;
+        this.engineSnapshotTaker = engineSnapshotTaker;
+        this.orderBookSnapshotTaker = orderBookSnapshotTaker;
         this.commandProcessedCounter = Counter.builder("gbe.matching-engine.command.processed")
                 .register(Metrics.globalRegistry);
         Gauge.builder("gbe.matching-engine.modified-objects-queue.size", modifiedObjectsQueueSizeCounter::get)
@@ -106,8 +106,8 @@ public class MatchingEngine {
 
     private void dispatch(ModifiedObjectList modifiedObjects) {
         modifiedObjectWriter.saveAsync(modifiedObjects);
-        orderBookSnapshotPublisher.refresh(modifiedObjects);
-        engineSnapshotWriter.append(modifiedObjects);
+        orderBookSnapshotTaker.refresh(modifiedObjects);
+        engineSnapshotTaker.append(modifiedObjects);
     }
 
     private void restoreState() {

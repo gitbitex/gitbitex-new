@@ -11,7 +11,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class OrderBookSnapshotPublisher {
+public class OrderBookSnapshotTaker {
     private final OrderBookSnapshotStore orderBookSnapshotStore;
     private final ConcurrentHashMap<String, SimpleOrderBook> simpleOrderBooks = new ConcurrentHashMap<>();
     private final StripedExecutorService orderBookSnapshotExecutor =
@@ -21,7 +21,7 @@ public class OrderBookSnapshotPublisher {
     private final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
     private final EngineSnapshotStore engineSnapshotStore;
 
-    public OrderBookSnapshotPublisher(EngineSnapshotStore engineSnapshotStore, OrderBookSnapshotStore orderBookSnapshotStore) {
+    public OrderBookSnapshotTaker(EngineSnapshotStore engineSnapshotStore, OrderBookSnapshotStore orderBookSnapshotStore) {
         this.engineSnapshotStore = engineSnapshotStore;
         this.orderBookSnapshotStore = orderBookSnapshotStore;
         startL2OrderBookPublishTask();
