@@ -35,11 +35,8 @@ public class EngineStateStore {
     private final MongoCollection<OrderBookState> orderBookStateCollection;
     private final MongoClient mongoClient;
 
-    public EngineStateStore(MongoClient mongoClient) {
+    public EngineStateStore(MongoClient mongoClient,MongoDatabase database) {
         this.mongoClient = mongoClient;
-        CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
-            fromProviders(PojoCodecProvider.builder().automatic(true).build()));
-        MongoDatabase database = mongoClient.getDatabase("gitbitex").withCodecRegistry(pojoCodecRegistry);
         this.engineStateCollection = database.getCollection("engine_state_engine", EngineState.class);
         this.accountCollection = database.getCollection("engine_state_account", Account.class);
         this.orderCollection = database.getCollection("engine_state_order", Order.class);
