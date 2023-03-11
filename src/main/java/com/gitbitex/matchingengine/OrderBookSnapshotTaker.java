@@ -21,7 +21,8 @@ public class OrderBookSnapshotTaker {
     private final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
     private final EngineSnapshotStore engineSnapshotStore;
 
-    public OrderBookSnapshotTaker(EngineSnapshotStore engineSnapshotStore, OrderBookSnapshotStore orderBookSnapshotStore) {
+    public OrderBookSnapshotTaker(EngineSnapshotStore engineSnapshotStore,
+                                  OrderBookSnapshotStore orderBookSnapshotStore) {
         this.engineSnapshotStore = engineSnapshotStore;
         this.orderBookSnapshotStore = orderBookSnapshotStore;
         startL2OrderBookPublishTask();

@@ -1,7 +1,5 @@
 package com.gitbitex.matchingengine;
 
-import com.gitbitex.matchingengine.Order;
-import com.gitbitex.matchingengine.OrderBook;
 import lombok.Getter;
 import lombok.Setter;
 
