@@ -48,7 +48,6 @@ public class OrderBookSnapshotTaker {
                 } else if (obj instanceof OrderBookState) {
                     OrderBookState orderBookState = (OrderBookState) obj;
                     simpleOrderBook.setMessageSequence(orderBookState.getMessageSequence());
-                } else if (obj instanceof OrderBookCompleteNotify) {
                     takeL2OrderBookSnapshot(simpleOrderBook, 200);
                 }
             });

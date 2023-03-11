@@ -74,8 +74,6 @@ public class OrderBook {
         takerOrder.setStatus(OrderStatus.RECEIVED);
         modifiedObjects.add(orderReceivedMessage(takerOrder));
 
-        boolean orderBookChanged = false;
-
         // start matching
         Iterator<Entry<BigDecimal, PriceGroupedOrderCollection>> priceItr = (takerOrder.getSide() == OrderSide.BUY
                 ? asks : bids).entrySet().iterator();
@@ -117,7 +115,6 @@ public class OrderBook {
                     unholdOrderFunds(makerOrder, product, modifiedObjects);
                 }
 
-                orderBookChanged = true;
                 modifiedObjects.add(makerOrder.clone());
                 modifiedObjects.add(trade);
             }
@@ -135,7 +132,6 @@ public class OrderBook {
             addOrder(takerOrder);
             takerOrder.setStatus(OrderStatus.OPEN);
             modifiedObjects.add(orderOpenMessage(takerOrder));
-            orderBookChanged = true;
         } else {
             if (takerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
                 takerOrder.setStatus(OrderStatus.CANCELLED);
@@ -146,13 +142,6 @@ public class OrderBook {
             unholdOrderFunds(takerOrder, product, modifiedObjects);
         }
         modifiedObjects.add(takerOrder.clone());
-
-        if (orderBookChanged) {
-            OrderBookCompleteNotify orderBookCompleteNotify = new OrderBookCompleteNotify();
-            orderBookCompleteNotify.setProductId(productId);
-            modifiedObjects.add(orderBookCompleteNotify);
-        }
-
         modifiedObjects.add(orderBookState());
     }
 
