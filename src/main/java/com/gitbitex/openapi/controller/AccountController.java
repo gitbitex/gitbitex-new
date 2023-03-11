@@ -1,6 +1,5 @@
 package com.gitbitex.openapi.controller;
 
-import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Account;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.manager.AccountManager;

@@ -35,7 +35,7 @@ public class OrderBook {
         this.productId = productId;
         this.productBook = productBook;
         this.accountBook = accountBook;
-        if (orderSequence!=null){
+        if (orderSequence != null) {
             this.orderSequence.set(orderSequence);
         }
         if (tradeSequence != null) {
@@ -323,8 +323,8 @@ public class OrderBook {
         return message;
     }
 
-    public OrderBookState orderBookState(){
-        OrderBookState orderBookState=new OrderBookState();
+    public OrderBookState orderBookState() {
+        OrderBookState orderBookState = new OrderBookState();
         orderBookState.setProductId(this.productId);
         orderBookState.setOrderSequence(this.orderSequence.get());
         orderBookState.setTradeSequence(this.tradeSequence.get());

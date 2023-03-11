@@ -22,7 +22,8 @@ public class FeedMessageListener {
     private final RedissonClient redissonClient;
     private final SessionManager sessionManager;
     private final OrderBookManager orderBookManager;
-    private final StripedExecutorService listenerExecutor = new StripedExecutorService(Runtime.getRuntime().availableProcessors());
+    private final StripedExecutorService listenerExecutor =
+            new StripedExecutorService(Runtime.getRuntime().availableProcessors());
 
     @PostConstruct
     public void run() {

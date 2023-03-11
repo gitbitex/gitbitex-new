@@ -1,46 +1,37 @@
 package com.gitbitex.matchingengine;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-
 import com.gitbitex.AppProperties;
-import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.matchingengine.command.CancelOrderCommand;
-import com.gitbitex.matchingengine.command.Command;
-import com.gitbitex.matchingengine.command.CommandDispatcher;
-import com.gitbitex.matchingengine.command.CommandHandler;
-import com.gitbitex.matchingengine.command.DepositCommand;
-import com.gitbitex.matchingengine.command.PlaceOrderCommand;
-import com.gitbitex.matchingengine.command.PutProductCommand;
-import com.gitbitex.matchingengine.snapshot.OrderBookManager;
+import com.gitbitex.matchingengine.command.*;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.redisson.api.RedissonClient;
+
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
 
 @Slf4j
 public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
-    implements CommandHandler, ConsumerRebalanceListener {
+        implements CommandHandler, ConsumerRebalanceListener {
     private final AppProperties appProperties;
     private final EngineStateStore engineStateStore;
-    private final KafkaMessageProducer producer;
-    private final RedissonClient redissonClient;
-    private final OrderBookManager orderBookManager;
+    private final ModifiedObjectWriter modifiedObjectWriter;
+    private final EngineStateWriter engineStateWriter;
+    private final OrderBookSnapshotPublisher orderBookSnapshotPublisher;
     private MatchingEngine matchingEngine;
 
     public MatchingEngineThread(KafkaConsumer<String, Command> consumer, EngineStateStore engineStateStore,
-        KafkaMessageProducer producer, RedissonClient redissonClient, OrderBookManager orderBookManager,
-        AppProperties appProperties) {
+                                ModifiedObjectWriter modifiedObjectWriter, EngineStateWriter engineStateWriter,
+                                OrderBookSnapshotPublisher orderBookSnapshotPublisher, AppProperties appProperties) {
         super(consumer, logger);
         this.appProperties = appProperties;
         this.engineStateStore = engineStateStore;
-        this.producer = producer;
-        this.redissonClient = redissonClient;
-        this.orderBookManager = orderBookManager;
+        this.modifiedObjectWriter = modifiedObjectWriter;
+        this.engineStateWriter = engineStateWriter;
+        this.orderBookSnapshotPublisher = orderBookSnapshotPublisher;
     }
 
     @Override
@@ -57,7 +48,8 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            matchingEngine = new MatchingEngine(engineStateStore, producer, redissonClient, orderBookManager);
+            matchingEngine = new MatchingEngine(engineStateStore, modifiedObjectWriter, engineStateWriter,
+                    orderBookSnapshotPublisher);
             if (matchingEngine.getStartupCommandOffset() != null) {
                 logger.info("seek to offset: {}", matchingEngine.getStartupCommandOffset() + 1);
                 consumer.seek(partition, matchingEngine.getStartupCommandOffset() + 1);

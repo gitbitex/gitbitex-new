@@ -1,9 +1,9 @@
 package com.gitbitex.matchingengine;
 
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
-
-import lombok.Getter;
 
 @Getter
 public class ModifiedObjectList extends ArrayList<Object> {

@@ -1,15 +1,14 @@
 package com.gitbitex.matchingengine;
 
-import java.math.BigDecimal;
-import java.util.Date;
-import java.util.Objects;
-
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.util.Date;
 
 @Getter
 @Setter
@@ -67,7 +66,7 @@ public class Order implements Cloneable {
     @Override
     public Order clone() {
         try {
-            return (Order)super.clone();
+            return (Order) super.clone();
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }

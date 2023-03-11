@@ -1,7 +1,5 @@
 package com.gitbitex;
 
-import java.util.Set;
-
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;

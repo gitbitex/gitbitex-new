@@ -1,7 +1,6 @@
 package com.gitbitex.matchingengine.snapshot;
 
 import com.alibaba.fastjson.JSON;
-
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
@@ -21,7 +20,7 @@ public class OrderBookManager {
 
     public void saveL3OrderBook(L3OrderBook l3OrderBook) {
         redissonClient.getBucket(keyForL3(l3OrderBook.getProductId()), StringCodec.INSTANCE).set(
-            JSON.toJSONString(l3OrderBook));
+                JSON.toJSONString(l3OrderBook));
     }
 
     public L3OrderBook getL3OrderBook(String productId) {
@@ -34,7 +33,7 @@ public class OrderBookManager {
 
     public void saveL2OrderBook(L2OrderBook l2OrderBook) {
         redissonClient.getBucket(keyForL2(l2OrderBook.getProductId()), StringCodec.INSTANCE).setAsync(
-            JSON.toJSONString(l2OrderBook));
+                JSON.toJSONString(l2OrderBook));
     }
 
     public L2OrderBook getL2OrderBook(String productId) {
@@ -46,9 +45,9 @@ public class OrderBookManager {
     }
 
     public void saveL2BatchOrderBook(L2OrderBook l2OrderBook) {
-        String data=JSON.toJSONString(l2OrderBook);
+        String data = JSON.toJSONString(l2OrderBook);
         redissonClient.getBucket(keyForL2Batch(l2OrderBook.getProductId()), StringCodec.INSTANCE)
-            .setAsync(data);
+                .setAsync(data);
         l2BatchNotifyTopic.publishAsync(data);
     }
 

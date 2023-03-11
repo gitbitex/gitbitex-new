@@ -4,11 +4,11 @@ import lombok.Getter;
 
 @Getter
 public enum CommandType {
-    PLACE_ORDER((byte)1),
-    CANCEL_ORDER((byte)2),
-    DEPOSIT((byte)3),
-    WITHDRAWAL((byte)4),
-    PUT_PRODUCT((byte)5);
+    PLACE_ORDER((byte) 1),
+    CANCEL_ORDER((byte) 2),
+    DEPOSIT((byte) 3),
+    WITHDRAWAL((byte) 4),
+    PUT_PRODUCT((byte) 5);
 
     private final byte byteValue;
 

@@ -1,13 +1,5 @@
 package com.gitbitex.openapi.controller;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.Date;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import javax.validation.Valid;
-
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
@@ -25,16 +17,15 @@ import com.gitbitex.openapi.model.PlaceOrderRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestAttribute;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+
+import javax.validation.Valid;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Date;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -45,7 +36,7 @@ public class OrderController {
 
     @PostMapping(value = "/orders")
     public OrderDto placeOrder(@RequestBody @Valid PlaceOrderRequest request,
-        @RequestAttribute(required = false) User currentUser) {
+                               @RequestAttribute(required = false) User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
@@ -56,8 +47,8 @@ public class OrderController {
         BigDecimal price = request.getPrice() != null ? new BigDecimal(request.getPrice()) : null;
         BigDecimal funds = request.getFunds() != null ? new BigDecimal(request.getFunds()) : null;
         TimeInForce timeInForce = request.getTimeInForce() != null
-            ? TimeInForce.valueOf(request.getTimeInForce().toUpperCase())
-            : null;
+                ? TimeInForce.valueOf(request.getTimeInForce().toUpperCase())
+                : null;
 
         PlaceOrderCommand command = new PlaceOrderCommand();
         command.setProductId(request.getProductId());
@@ -69,7 +60,7 @@ public class OrderController {
         command.setPrice(price);
         command.setFunds(funds);
         command.setTime(new Date());
-        producer.sendToMatchingEngine( command, null);
+        producer.sendToMatchingEngine(command, null);
 
         OrderDto orderDto = new OrderDto();
         orderDto.setId(command.getOrderId());
@@ -94,7 +85,7 @@ public class OrderController {
         CancelOrderCommand command = new CancelOrderCommand();
         command.setProductId(order.getProductId());
         command.setOrderId(order.getId());
-        producer.sendToMatchingEngine( command, null);
+        producer.sendToMatchingEngine(command, null);
     }
 
     @DeleteMapping("/orders")
@@ -107,22 +98,22 @@ public class OrderController {
         OrderSide orderSide = side != null ? OrderSide.valueOf(side.toUpperCase()) : null;
 
         PagedList<Order> orderPage = orderRepository.findAll(currentUser.getId(), productId, OrderStatus.OPEN,
-            orderSide, 1, 20000);
+                orderSide, 1, 20000);
 
         for (Order order : orderPage.getItems()) {
             CancelOrderCommand command = new CancelOrderCommand();
             command.setProductId(order.getProductId());
             command.setOrderId(order.getId());
-            producer.sendToMatchingEngine( command, null);
+            producer.sendToMatchingEngine(command, null);
         }
     }
 
     @GetMapping("/orders")
     public PagedList<OrderDto> listOrders(@RequestParam(required = false) String productId,
-        @RequestParam(required = false) String status,
-        @RequestParam(defaultValue = "1") int page,
-        @RequestParam(defaultValue = "50") int pageSize,
-        @RequestAttribute(required = false) User currentUser) {
+                                          @RequestParam(required = false) String status,
+                                          @RequestParam(defaultValue = "1") int page,
+                                          @RequestParam(defaultValue = "50") int pageSize,
+                                          @RequestAttribute(required = false) User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
@@ -130,11 +121,11 @@ public class OrderController {
         OrderStatus orderStatus = status != null ? OrderStatus.valueOf(status.toUpperCase()) : null;
 
         PagedList<Order> orderPage = orderRepository.findAll(currentUser.getId(), productId, orderStatus, null,
-            page,
-            pageSize);
+                page,
+                pageSize);
         return new PagedList<>(
-            orderPage.getItems().stream().map(this::orderDto).collect(Collectors.toList()),
-            orderPage.getCount());
+                orderPage.getItems().stream().map(this::orderDto).collect(Collectors.toList()),
+                orderPage.getCount());
     }
 
     private OrderDto orderDto(Order order) {

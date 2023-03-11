@@ -1,20 +1,16 @@
 package com.gitbitex.marketdata.repository;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.openapi.model.PagedList;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.ReplaceOneModel;
-import com.mongodb.client.model.ReplaceOptions;
-import com.mongodb.client.model.Sorts;
-import com.mongodb.client.model.WriteModel;
+import com.mongodb.client.model.*;
 import org.bson.conversions.Bson;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 @Component
 public class CandleRepository {
@@ -39,10 +35,10 @@ public class CandleRepository {
 
         long count = this.mongoCollection.countDocuments(filter);
         List<Candle> candles = this.mongoCollection.find(filter)
-            .sort(Sorts.descending("time"))
-            .skip(pageIndex - 1)
-            .limit(pageSize)
-            .into(new ArrayList<>());
+                .sort(Sorts.descending("time"))
+                .skip(pageIndex - 1)
+                .limit(pageSize)
+                .into(new ArrayList<>());
         return new PagedList<>(candles, count);
     }
 

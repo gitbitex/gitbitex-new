@@ -1,10 +1,9 @@
 package com.gitbitex.matchingengine;
 
-import java.math.BigDecimal;
-import java.util.Objects;
-
 import lombok.Getter;
 import lombok.Setter;
+
+import java.math.BigDecimal;
 
 @Getter
 @Setter
@@ -18,7 +17,7 @@ public class Account implements Cloneable {
     @Override
     public Account clone() {
         try {
-            return (Account)super.clone();
+            return (Account) super.clone();
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }

@@ -1,30 +1,21 @@
 package com.gitbitex.matchingengine;
 
-import com.alibaba.fastjson.JSON;
-import com.gitbitex.enums.OrderStatus;
-import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import com.gitbitex.matchingengine.command.PutProductCommand;
-import com.gitbitex.matchingengine.message.OrderBookMessage;
-import com.gitbitex.matchingengine.snapshot.L2OrderBook;
-import com.gitbitex.matchingengine.snapshot.OrderBookManager;
-import com.gitbitex.stripexecutor.StripedExecutorService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RTopic;
-import org.redisson.api.RedissonClient;
-import org.redisson.client.codec.StringCodec;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
@@ -32,63 +23,40 @@ public class MatchingEngine {
     private final ProductBook productBook = new ProductBook();
     private final AccountBook accountBook = new AccountBook();
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
-    private final ConcurrentHashMap<String, SimpleOrderBook> simpleOrderBooks = new ConcurrentHashMap<>();
-    private final ConcurrentSkipListMap<Long, ModifiedObjectList> stateUnsavedModifiedObjects
-            = new ConcurrentSkipListMap<>();
-    private final StripedExecutorService simpleOrderBookExecutor = new StripedExecutorService(1);
-    private final StripedExecutorService kafkaExecutor = new StripedExecutorService(20);
-    private final StripedExecutorService redisExecutor = new StripedExecutorService(20);
-    private final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(3);
-    private final OrderBookManager orderBookManager;
-    private final KafkaMessageProducer producer;
+    private final ScheduledExecutorService scheduledExecutor =
+            Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
     private final EngineStateStore stateStore;
-    private final RTopic accountTopic;
-    private final RTopic orderTopic;
-    private final RTopic orderBookMessageTopic;
-    private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectListQueue = new ConcurrentLinkedQueue<>();
-    private final AtomicLong modifiedObjectListQueueSizeCounter = new AtomicLong();
-    private final ConcurrentHashMap<String, Long> lastL2OrderBookSequences = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectsQueue = new ConcurrentLinkedQueue<>();
+    private final AtomicLong modifiedObjectsQueueSizeCounter = new AtomicLong();
     private final Counter commandProcessedCounter;
-    private final Counter modifiedObjectCreatedCounter;
-    private final Counter modifiedObjectSavedCounter;
+    private final ModifiedObjectWriter modifiedObjectWriter;
+    private final EngineStateWriter engineStateWriter;
+    private final OrderBookSnapshotPublisher orderBookSnapshotPublisher;
     @Getter
     private Long startupCommandOffset;
 
-    public MatchingEngine(EngineStateStore stateStore, KafkaMessageProducer producer,
-                          RedissonClient redissonClient, OrderBookManager orderBookManager) {
-        this.producer = producer;
+    public MatchingEngine(EngineStateStore stateStore, ModifiedObjectWriter modifiedObjectWriter,
+                          EngineStateWriter engineStateWriter, OrderBookSnapshotPublisher orderBookSnapshotPublisher) {
         this.stateStore = stateStore;
-        this.orderBookManager = orderBookManager;
-        this.accountTopic = redissonClient.getTopic("account", StringCodec.INSTANCE);
-        this.orderTopic = redissonClient.getTopic("order", StringCodec.INSTANCE);
-        this.orderBookMessageTopic = redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE);
+        this.modifiedObjectWriter = modifiedObjectWriter;
+        this.engineStateWriter = engineStateWriter;
+        this.orderBookSnapshotPublisher = orderBookSnapshotPublisher;
         this.commandProcessedCounter = Counter.builder("gbe.matching-engine.command.processed")
                 .register(Metrics.globalRegistry);
-        this.modifiedObjectCreatedCounter = Counter.builder("gbe.matching-engine.modified-object.created")
-                .register(Metrics.globalRegistry);
-        this.modifiedObjectSavedCounter = Counter.builder("gbe.matching-engine.modified-object.saved")
-                .register(Metrics.globalRegistry);
-        Gauge.builder("gbe.matching-engine.state-unsaved-modified-object-map.size",
-                stateUnsavedModifiedObjects::size).register(Metrics.globalRegistry);
-        Gauge.builder("gbe.matching-engine.modified-object-list-queue.size", modifiedObjectListQueueSizeCounter::get)
+        Gauge.builder("gbe.matching-engine.modified-objects-queue.size", modifiedObjectsQueueSizeCounter::get)
                 .register(Metrics.globalRegistry);
         restoreState();
-        startSateSaveTask();
         startModifiedObjectSaveTask();
-        startL2OrderBookPublishTask();
     }
 
     public void shutdown() {
-        simpleOrderBookExecutor.shutdown();
-        kafkaExecutor.shutdown();
-        redisExecutor.shutdown();
         scheduledExecutor.shutdown();
     }
 
     public void executeCommand(DepositCommand command) {
         ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), null);
-        accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(), command.getTransactionId(),
-                modifiedObjects);
+        accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
+                command.getTransactionId(), modifiedObjects);
         enqueue(modifiedObjects);
         commandProcessedCounter.increment();
     }
@@ -128,172 +96,18 @@ public class MatchingEngine {
     }
 
     private void enqueue(ModifiedObjectList modifiedObjects) {
-        modifiedObjectCreatedCounter.increment(modifiedObjects.size());
-
-        while (modifiedObjectListQueueSizeCounter.get() >= 1000000) {
-            logger.warn("modified object queue is full");
+        while (modifiedObjectsQueueSizeCounter.get() >= 1000000) {
+            logger.warn("modified objects queue is full");
             Thread.yield();
         }
-
-        modifiedObjectListQueue.offer(modifiedObjects);
-        modifiedObjectListQueueSizeCounter.incrementAndGet();
+        modifiedObjectsQueue.offer(modifiedObjects);
+        modifiedObjectsQueueSizeCounter.incrementAndGet();
     }
 
-    private void save(ModifiedObjectList modifiedObjects) {
-        stateUnsavedModifiedObjects.put(modifiedObjects.getCommandOffset(), modifiedObjects);
-
-        modifiedObjects.forEach(obj -> {
-            if (obj instanceof Order) {
-                save(modifiedObjects.getSavedCounter(), (Order) obj);
-            } else if (obj instanceof Account) {
-                save(modifiedObjects.getSavedCounter(), (Account) obj);
-            } else if (obj instanceof Trade) {
-                save(modifiedObjects.getSavedCounter(), (Trade) obj);
-            } else if (obj instanceof OrderBookMessage) {
-                save(modifiedObjects.getSavedCounter(), (OrderBookMessage) obj);
-            } else {
-                modifiedObjects.getSavedCounter().incrementAndGet();
-                modifiedObjectSavedCounter.increment();
-            }
-        });
-
-        updateSimpleOrderBook(modifiedObjects);
-    }
-
-    private void updateSimpleOrderBook(ModifiedObjectList modifiedObjects) {
-        String productId = modifiedObjects.getProductId();
-        if (productId == null) {
-            return;
-        }
-
-        simpleOrderBookExecutor.execute(productId, () -> {
-            simpleOrderBooks.putIfAbsent(productId, new SimpleOrderBook(productId));
-            SimpleOrderBook simpleOrderBook = simpleOrderBooks.get(productId);
-            modifiedObjects.forEach(obj -> {
-                if (obj instanceof Order) {
-                    Order order = (Order) obj;
-                    if (order.getStatus() == OrderStatus.OPEN) {
-                        simpleOrderBook.addOrder(order);
-                    } else {
-                        simpleOrderBook.removeOrder(order);
-                    }
-                } else if (obj instanceof OrderBookState) {
-                    OrderBookState orderBookState = (OrderBookState) obj;
-                    simpleOrderBook.setMessageSequence(orderBookState.getMessageSequence());
-                } else if (obj instanceof OrderBookCompleteNotify) {
-                    takeL2OrderBookSnapshot(simpleOrderBook, 200);
-                }
-            });
-        });
-    }
-
-    private void takeL2OrderBookSnapshot(SimpleOrderBook simpleOrderBook, long delta) {
-        String productId = simpleOrderBook.getProductId();
-        long lastL2OrderBookSequence = lastL2OrderBookSequences.getOrDefault(productId, 0L);
-        if (simpleOrderBook.getMessageSequence() - lastL2OrderBookSequence > delta) {
-            L2OrderBook l2OrderBook = new L2OrderBook(simpleOrderBook, 25);
-            lastL2OrderBookSequences.put(productId, simpleOrderBook.getMessageSequence());
-            orderBookManager.saveL2BatchOrderBook(l2OrderBook);
-        }
-    }
-
-    private void save(AtomicLong savedCounter, Account account) {
-        kafkaExecutor.execute(account.getUserId(), () -> {
-            String data = JSON.toJSONString(account);
-            producer.sendAccount(account, (m, e) -> {
-                savedCounter.incrementAndGet();
-                modifiedObjectSavedCounter.increment();
-            });
-            redisExecutor.execute(account.getUserId(), () -> {
-                accountTopic.publishAsync(data);
-            });
-        });
-    }
-
-    private void save(AtomicLong savedCounter, Order order) {
-        String productId = order.getProductId();
-        kafkaExecutor.execute(productId, () -> {
-            String data = JSON.toJSONString(order);
-            producer.sendOrder(order, (m, e) -> {
-                savedCounter.incrementAndGet();
-                modifiedObjectSavedCounter.increment();
-            });
-            redisExecutor.execute(order.getUserId(), () -> {
-                orderTopic.publishAsync(data);
-            });
-        });
-    }
-
-    private void save(AtomicLong savedCounter, Trade trade) {
-        kafkaExecutor.execute(trade.getProductId(), () -> {
-            producer.sendTrade(trade, (m, e) -> {
-                savedCounter.incrementAndGet();
-                modifiedObjectSavedCounter.increment();
-            });
-        });
-    }
-
-    private void save(AtomicLong savedCounter, OrderBookMessage orderBookMessage) {
-        savedCounter.incrementAndGet();
-        modifiedObjectSavedCounter.increment();
-        String productId = orderBookMessage.getProductId();
-        redisExecutor.execute(productId, () -> {
-            orderBookMessageTopic.publishAsync(JSON.toJSONString(orderBookMessage));
-        });
-    }
-
-    private void saveState() {
-        if (stateUnsavedModifiedObjects.isEmpty()) {
-            return;
-        }
-
-        Long commandOffset = null;
-        OrderBookState orderBookState = null;
-        Map<String, Account> accounts = new HashMap<>();
-        Map<String, Order> orders = new HashMap<>();
-        Map<String, Product> products = new HashMap<>();
-        for (Entry<Long, ModifiedObjectList> entry : stateUnsavedModifiedObjects.entrySet()) {
-            ModifiedObjectList modifiedObjects = entry.getValue();
-            if (!modifiedObjects.allSaved()) {
-                break;
-            }
-            for (Object obj : modifiedObjects) {
-                if (obj instanceof OrderBookState) {
-                    orderBookState = (OrderBookState) obj;
-                } else if (obj instanceof Account) {
-                    Account account = (Account) obj;
-                    accounts.put(account.getId(), account);
-                } else if (obj instanceof Order) {
-                    Order order = (Order) obj;
-                    orders.put(order.getId(), order);
-                } else if (obj instanceof Product) {
-                    Product product = (Product) obj;
-                    products.put(product.getId(), product);
-                }
-            }
-            commandOffset = entry.getKey();
-        }
-
-        if (commandOffset == null) {
-            return;
-        }
-        Long savedCommandOffset = stateStore.getCommandOffset();
-        if (savedCommandOffset != null && commandOffset <= savedCommandOffset) {
-            logger.warn("ignore outdated commandOffset: ignored={} saved={}", commandOffset, savedCommandOffset);
-            return;
-        }
-        stateStore.save(commandOffset, orderBookState, accounts.values(), orders.values(), products.values());
-        logger.info(
-                "state saved: commandOffset={}, {} account(s), {} order(s), {} product(s)",
-                commandOffset, accounts.size(), orders.size(), products.size());
-
-
-        Iterator<Entry<Long, ModifiedObjectList>> itr = stateUnsavedModifiedObjects.entrySet().iterator();
-        while (itr.hasNext()) {
-            if (itr.next().getKey() <= commandOffset) {
-                itr.remove();
-            }
-        }
+    private void dispatch(ModifiedObjectList modifiedObjects) {
+        modifiedObjectWriter.saveAsync(modifiedObjects);
+        orderBookSnapshotPublisher.refresh(modifiedObjects);
+        engineStateWriter.append(modifiedObjects);
     }
 
     private void restoreState() {
@@ -307,46 +121,22 @@ public class MatchingEngine {
             OrderBook orderBook = new OrderBook(x.getProductId(), x.getOrderSequence(), x.getTradeSequence(),
                     x.getMessageSequence(), accountBook, productBook);
             orderBooks.put(x.getProductId(), orderBook);
-            SimpleOrderBook simpleOrderBook = new SimpleOrderBook(x.getProductId(), x.getMessageSequence());
-            simpleOrderBooks.put(x.getProductId(), simpleOrderBook);
-            stateStore.getOrders(x.getProductId()).forEach(o -> {
-                orderBook.addOrder(o);
-                simpleOrderBook.addOrder(o);
-            });
+            stateStore.getOrders(x.getProductId()).forEach(orderBook::addOrder);
         });
-    }
-
-    private void startSateSaveTask() {
-        scheduledExecutor.scheduleWithFixedDelay(() -> {
-            try {
-                saveState();
-            } catch (Exception e) {
-                logger.error("save state error: {}", e.getMessage(), e);
-            }
-        }, 0, 5, TimeUnit.SECONDS);
     }
 
     private void startModifiedObjectSaveTask() {
         scheduledExecutor.scheduleWithFixedDelay(() -> {
             while (true) {
-                ModifiedObjectList modifiedObjects = modifiedObjectListQueue.poll();
+                ModifiedObjectList modifiedObjects = modifiedObjectsQueue.poll();
                 if (modifiedObjects == null) {
                     break;
                 }
-                modifiedObjectListQueueSizeCounter.decrementAndGet();
-                save(modifiedObjects);
+                modifiedObjectsQueueSizeCounter.decrementAndGet();
+                dispatch(modifiedObjects);
             }
         }, 0, 500, TimeUnit.MILLISECONDS);
     }
 
-    public void startL2OrderBookPublishTask() {
-        scheduledExecutor.scheduleWithFixedDelay(() -> {
-            simpleOrderBooks.forEach((productId, simpleOrderBook) -> {
-                simpleOrderBookExecutor.execute(productId, () -> {
-                    takeL2OrderBookSnapshot(simpleOrderBook, 0);
-                });
-            });
-        }, 0, 1, TimeUnit.SECONDS);
-    }
 
 }

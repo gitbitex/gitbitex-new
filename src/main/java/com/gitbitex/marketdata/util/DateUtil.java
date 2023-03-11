@@ -22,7 +22,7 @@ public class DateUtil {
 
         /* Find floor and ceiling. Truncate values to base unit of field. */
         ZonedDateTime ceiling = input.plus(roundIncrement - r, roundTo.getBaseUnit()).truncatedTo(
-            roundTo.getBaseUnit());
+                roundTo.getBaseUnit());
 
         return input.plus(-r, roundTo.getBaseUnit()).truncatedTo(roundTo.getBaseUnit());
 

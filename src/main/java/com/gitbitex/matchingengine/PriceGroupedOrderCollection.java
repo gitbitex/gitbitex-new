@@ -1,9 +1,9 @@
 package com.gitbitex.matchingengine;
 
+import lombok.Getter;
+
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
-
-import lombok.Getter;
 
 @Getter
 public class PriceGroupedOrderCollection extends LinkedHashMap<String, Order> {
@@ -20,8 +20,8 @@ public class PriceGroupedOrderCollection extends LinkedHashMap<String, Order> {
 
     public BigDecimal getRemainingSize() {
         return values().stream()
-            .map(x -> x.getRemainingSize())
-            .reduce((x, y) -> x.add(y))
-            .get();
+                .map(x -> x.getRemainingSize())
+                .reduce((x, y) -> x.add(y))
+                .get();
     }
 }
