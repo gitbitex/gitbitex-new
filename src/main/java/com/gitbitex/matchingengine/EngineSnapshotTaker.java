@@ -26,7 +26,7 @@ public class EngineSnapshotTaker implements EngineListener {
 
     public EngineSnapshotTaker(EngineSnapshotStore engineSnapshotStore) {
         this.engineSnapshotStore = engineSnapshotStore;
-        Gauge.builder("gbe.matching-engine.snapshot-taker.modified-objects-queue.size", modifiedObjectsQueue::size)
+        Gauge.builder("gbe_matching_engine_snapshot_taker_modified_objects_queue_size", modifiedObjectsQueue::size)
                 .register(Metrics.globalRegistry);
         startMainTask();
     }
