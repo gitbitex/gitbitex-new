@@ -5,18 +5,15 @@ import com.gitbitex.matchingengine.command.DepositCommand;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import com.gitbitex.matchingengine.command.PutProductCommand;
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 public class MatchingEngine {
@@ -26,27 +23,18 @@ public class MatchingEngine {
     private final ScheduledExecutorService scheduledExecutor =
             Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
     private final EngineSnapshotStore stateStore;
-    private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectsQueue = new ConcurrentLinkedQueue<>();
-    private final AtomicLong modifiedObjectsQueueSizeCounter = new AtomicLong();
     private final Counter commandProcessedCounter;
-    private final ModifiedObjectWriter modifiedObjectWriter;
-    private final EngineSnapshotTaker engineSnapshotTaker;
-    private final OrderBookSnapshotTaker orderBookSnapshotTaker;
+    List<EngineListener> engineListeners;
     @Getter
     private Long startupCommandOffset;
 
-    public MatchingEngine(EngineSnapshotStore stateStore, ModifiedObjectWriter modifiedObjectWriter,
-                          EngineSnapshotTaker engineSnapshotTaker, OrderBookSnapshotTaker orderBookSnapshotTaker) {
+    public MatchingEngine(EngineSnapshotStore stateStore, List<EngineListener> engineListeners) {
         this.stateStore = stateStore;
-        this.modifiedObjectWriter = modifiedObjectWriter;
-        this.engineSnapshotTaker = engineSnapshotTaker;
-        this.orderBookSnapshotTaker = orderBookSnapshotTaker;
+        this.engineListeners = engineListeners;
         this.commandProcessedCounter = Counter.builder("gbe.matching-engine.command.processed")
                 .register(Metrics.globalRegistry);
-        Gauge.builder("gbe.matching-engine.modified-objects-queue.size", modifiedObjectsQueueSizeCounter::get)
-                .register(Metrics.globalRegistry);
         restoreState();
-        startModifiedObjectSaveTask();
+        //startModifiedObjectSaveTask();
     }
 
     public void shutdown() {
@@ -54,60 +42,56 @@ public class MatchingEngine {
     }
 
     public void executeCommand(DepositCommand command) {
+        commandProcessedCounter.increment();
         ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), null);
         accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
                 command.getTransactionId(), modifiedObjects);
-        enqueue(modifiedObjects);
-        commandProcessedCounter.increment();
+        //engineListener.onCommandExecuted(modifiedObjects);
+        engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
     }
 
     public void executeCommand(PutProductCommand command) {
+        commandProcessedCounter.increment();
         ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), null);
         productBook.putProduct(new Product(command), modifiedObjects);
-        enqueue(modifiedObjects);
-        commandProcessedCounter.increment();
+        createOrderBook(command.getProductId());
+        //engineListener.onCommandExecuted(modifiedObjects);
+        engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
     }
 
     public void executeCommand(PlaceOrderCommand command) {
-        OrderBook orderBook = createOrderBook(command.getProductId());
+        commandProcessedCounter.increment();
+        OrderBook orderBook = orderBooks.get(command.getProductId());
+        if (orderBook == null) {
+            logger.warn("no such order book: {}", command.getProductId());
+            return;
+        }
         ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), command.getProductId());
         orderBook.placeOrder(new Order(command), modifiedObjects);
-        enqueue(modifiedObjects);
-        commandProcessedCounter.increment();
+        //engineListener.onCommandExecuted(modifiedObjects);
+        engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
     }
 
     public void executeCommand(CancelOrderCommand command) {
-        OrderBook orderBook = orderBooks.get(command.getProductId());
-        if (orderBook != null) {
-            ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), command.getProductId());
-            orderBook.cancelOrder(command.getOrderId(), modifiedObjects);
-            enqueue(modifiedObjects);
-        }
         commandProcessedCounter.increment();
-    }
-
-    private OrderBook createOrderBook(String productId) {
-        OrderBook orderBook = orderBooks.get(productId);
+        OrderBook orderBook = orderBooks.get(command.getProductId());
         if (orderBook == null) {
-            orderBook = new OrderBook(productId, null, null, null, accountBook, productBook);
-            orderBooks.put(productId, orderBook);
+            logger.warn("no such order book: {}", command.getProductId());
+            return;
         }
-        return orderBook;
+        ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), command.getProductId());
+        orderBook.cancelOrder(command.getOrderId(), modifiedObjects);
+        //engineListener.onCommandExecuted(modifiedObjects);
+        engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
     }
 
-    private void enqueue(ModifiedObjectList modifiedObjects) {
-        while (modifiedObjectsQueueSizeCounter.get() >= 1000000) {
-            logger.warn("modified objects queue is full");
-            Thread.yield();
+    private void createOrderBook(String productId) {
+        OrderBook orderBook = orderBooks.get(productId);
+        if (orderBook != null) {
+            return;
         }
-        modifiedObjectsQueue.offer(modifiedObjects);
-        modifiedObjectsQueueSizeCounter.incrementAndGet();
-    }
-
-    private void dispatch(ModifiedObjectList modifiedObjects) {
-        modifiedObjectWriter.saveAsync(modifiedObjects);
-        orderBookSnapshotTaker.refresh(modifiedObjects);
-        engineSnapshotTaker.append(modifiedObjects);
+        orderBook = new OrderBook(productId, null, null, null, accountBook, productBook);
+        orderBooks.put(productId, orderBook);
     }
 
     private void restoreState() {
@@ -125,18 +109,24 @@ public class MatchingEngine {
         });
     }
 
+   /*
+   private void dispatch(ModifiedObjectList modifiedObjects) {
+        modifiedObjectWriter.saveAsync(modifiedObjects);
+        orderBookSnapshotTaker.refresh(modifiedObjects);
+        engineSnapshotTaker.append(modifiedObjects);
+    }
+
     private void startModifiedObjectSaveTask() {
         scheduledExecutor.scheduleWithFixedDelay(() -> {
             while (true) {
-                ModifiedObjectList modifiedObjects = modifiedObjectsQueue.poll();
+                ModifiedObjectList modifiedObjects = modifiedObjectListQueue.poll();
                 if (modifiedObjects == null) {
                     break;
                 }
-                modifiedObjectsQueueSizeCounter.decrementAndGet();
                 dispatch(modifiedObjects);
             }
         }, 0, 500, TimeUnit.MILLISECONDS);
     }
-
+*/
 
 }

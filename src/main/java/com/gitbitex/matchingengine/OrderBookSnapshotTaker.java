@@ -1,6 +1,7 @@
 package com.gitbitex.matchingengine;
 
 import com.gitbitex.enums.OrderStatus;
+import com.gitbitex.matchingengine.command.Command;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.springframework.stereotype.Component;
@@ -11,7 +12,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class OrderBookSnapshotTaker {
+public class OrderBookSnapshotTaker implements EngineListener {
     private final OrderBookSnapshotStore orderBookSnapshotStore;
     private final ConcurrentHashMap<String, SimpleOrderBook> simpleOrderBooks = new ConcurrentHashMap<>();
     private final StripedExecutorService orderBookSnapshotExecutor =
@@ -27,6 +28,11 @@ public class OrderBookSnapshotTaker {
         this.orderBookSnapshotStore = orderBookSnapshotStore;
         startL2OrderBookPublishTask();
         restoreState();
+    }
+
+    @Override
+    public void onCommandExecuted(Command command, ModifiedObjectList modifiedObjects) {
+
     }
 
     public void refresh(ModifiedObjectList modifiedObjects) {
@@ -84,4 +90,6 @@ public class OrderBookSnapshotTaker {
             engineSnapshotStore.getOrders(x.getProductId()).forEach(simpleOrderBook::addOrder);
         });
     }
+
+
 }

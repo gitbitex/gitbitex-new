@@ -12,26 +12,24 @@ import org.apache.kafka.common.TopicPartition;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 @Slf4j
 public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
         implements CommandHandler, ConsumerRebalanceListener {
     private final AppProperties appProperties;
     private final EngineSnapshotStore engineSnapshotStore;
-    private final ModifiedObjectWriter modifiedObjectWriter;
-    private final EngineSnapshotTaker engineSnapshotTaker;
-    private final OrderBookSnapshotTaker orderBookSnapshotTaker;
+    private final List<EngineListener> engineListeners;
+    long t1 = System.currentTimeMillis();
+    long total = 0;
     private MatchingEngine matchingEngine;
 
     public MatchingEngineThread(KafkaConsumer<String, Command> consumer, EngineSnapshotStore engineSnapshotStore,
-                                ModifiedObjectWriter modifiedObjectWriter, EngineSnapshotTaker engineSnapshotTaker,
-                                OrderBookSnapshotTaker orderBookSnapshotTaker, AppProperties appProperties) {
+                                List<EngineListener> engineListeners, AppProperties appProperties) {
         super(consumer, logger);
         this.appProperties = appProperties;
         this.engineSnapshotStore = engineSnapshotStore;
-        this.modifiedObjectWriter = modifiedObjectWriter;
-        this.engineSnapshotTaker = engineSnapshotTaker;
-        this.orderBookSnapshotTaker = orderBookSnapshotTaker;
+        this.engineListeners = engineListeners;
     }
 
     @Override
@@ -48,11 +46,10 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            matchingEngine = new MatchingEngine(engineSnapshotStore, modifiedObjectWriter, engineSnapshotTaker,
-                    orderBookSnapshotTaker);
+            matchingEngine = new MatchingEngine(engineSnapshotStore, engineListeners);
             if (matchingEngine.getStartupCommandOffset() != null) {
                 logger.info("seek to offset: {}", matchingEngine.getStartupCommandOffset() + 1);
-                consumer.seek(partition, matchingEngine.getStartupCommandOffset() + 1);
+                //consumer.seek(partition, matchingEngine.getStartupCommandOffset() + 1);
             }
         }
     }
@@ -78,7 +75,9 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }*/
+            total++;
         });
+        System.out.println(total + " " + (System.currentTimeMillis() - t1));
     }
 
     @Override

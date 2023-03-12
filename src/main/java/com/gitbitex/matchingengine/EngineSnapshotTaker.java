@@ -1,5 +1,6 @@
 package com.gitbitex.matchingengine;
 
+import com.gitbitex.matchingengine.command.Command;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
-public class EngineSnapshotTaker {
+public class EngineSnapshotTaker implements EngineListener {
     private final EngineSnapshotStore engineSnapshotStore;
     private final ConcurrentSkipListMap<Long, ModifiedObjectList> modifiedObjects =
             new ConcurrentSkipListMap<>();
@@ -28,7 +29,8 @@ public class EngineSnapshotTaker {
         startSateSaveTask();
     }
 
-    public void append(ModifiedObjectList modifiedObjects) {
+    @Override
+    public void onCommandExecuted(Command command, ModifiedObjectList modifiedObjects) {
         this.modifiedObjects.put(modifiedObjects.getCommandOffset(), modifiedObjects);
     }
 

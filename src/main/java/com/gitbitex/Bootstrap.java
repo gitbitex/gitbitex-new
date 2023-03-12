@@ -85,16 +85,18 @@ public class Bootstrap {
 
     private void startMatchingEngine(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
-            String groupId = "Matchin1gkk1";
+            String groupId = "Matchin1gkk11";
             KafkaConsumer<String, Command> consumer = new KafkaConsumer<>(getProperties(groupId),
                     new StringDeserializer(), new CommandDeserializer());
             MatchingEngineThread matchingEngineThread = new MatchingEngineThread(consumer, engineSnapshotStore,
-                    modifiedObjectWriter, engineSnapshotTaker, orderBookSnapshotTaker, appProperties);
+                    engineListeners, appProperties);
             matchingEngineThread.setName(groupId + "-" + matchingEngineThread.getId());
             matchingEngineThread.start();
             threads.add(matchingEngineThread);
         }
     }
+
+    private final List<EngineListener> engineListeners;
 
     private void startTickerThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {

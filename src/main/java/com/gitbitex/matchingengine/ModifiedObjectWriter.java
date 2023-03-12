@@ -2,6 +2,7 @@ package com.gitbitex.matchingengine;
 
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.kafka.KafkaMessageProducer;
+import com.gitbitex.matchingengine.command.Command;
 import com.gitbitex.matchingengine.message.OrderBookMessage;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import io.micrometer.core.instrument.Counter;
@@ -11,10 +12,11 @@ import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
-public class ModifiedObjectWriter {
+public class ModifiedObjectWriter implements EngineListener {
     private final KafkaMessageProducer producer;
     private final StripedExecutorService kafkaExecutor = new StripedExecutorService(20);
     private final StripedExecutorService redisExecutor = new StripedExecutorService(20);
@@ -27,12 +29,18 @@ public class ModifiedObjectWriter {
     private final RTopic accountTopic;
     private final RTopic orderTopic;
     private final RTopic orderBookMessageTopic;
+    private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectLists = new ConcurrentLinkedQueue<>();
 
     public ModifiedObjectWriter(KafkaMessageProducer producer, RedissonClient redissonClient) {
         this.producer = producer;
         this.accountTopic = redissonClient.getTopic("account", StringCodec.INSTANCE);
         this.orderTopic = redissonClient.getTopic("order", StringCodec.INSTANCE);
         this.orderBookMessageTopic = redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE);
+    }
+
+    @Override
+    public void onCommandExecuted(Command command, ModifiedObjectList modifiedObjects) {
+        modifiedObjectLists.offer(modifiedObjects);
     }
 
     public void saveAsync(ModifiedObjectList modifiedObjects) {
@@ -96,5 +104,6 @@ public class ModifiedObjectWriter {
             orderBookMessageTopic.publishAsync(JSON.toJSONString(orderBookMessage));
         });
     }
+
 
 }
