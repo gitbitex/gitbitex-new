@@ -1,9 +1,5 @@
 package com.gitbitex.matchingengine;
 
-import java.math.BigDecimal;
-import java.util.Date;
-import java.util.Objects;
-
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
@@ -11,10 +7,14 @@ import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+import java.util.Date;
+
 @Getter
 @Setter
 public class Order implements Cloneable {
     private String id;
+    private long sequence;
     private String userId;
     private OrderType type;
     private OrderSide side;
@@ -66,31 +66,9 @@ public class Order implements Cloneable {
     @Override
     public Order clone() {
         try {
-            return (Order)super.clone();
+            return (Order) super.clone();
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (!(obj instanceof Account)) {
-            return false;
-        }
-        Order other = (Order)obj;
-        return Objects.equals(this.id, other.id);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = 17;
-        result = 31 * result + (id == null ? 0 : id.hashCode());
-        return result;
     }
 }

@@ -1,13 +1,5 @@
 package com.gitbitex.marketdata;
 
-import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoField;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.repository.CandleRepository;
@@ -22,17 +14,25 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
+import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+
 /**
  * My job is to produce candles
  */
 @Slf4j
 public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage> implements ConsumerRebalanceListener {
-    private static final int[] GRANULARITY_ARR = new int[] {1, 5, 15, 30, 60, 360, 1440};
+    private static final int[] GRANULARITY_ARR = new int[]{1, 5, 15, 30, 60, 360, 1440};
     private final CandleRepository candleRepository;
     private final AppProperties appProperties;
 
     public CandleMakerThread(CandleRepository candleRepository, KafkaConsumer<String, TradeMessage> consumer,
-        AppProperties appProperties) {
+                             AppProperties appProperties) {
         super(consumer, logger);
         this.candleRepository = candleRepository;
         this.appProperties = appProperties;
@@ -70,7 +70,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
             Trade trade = x.value();
             for (int granularity : GRANULARITY_ARR) {
                 long time = DateUtil.round(ZonedDateTime.ofInstant(trade.getTime().toInstant(), ZoneId.systemDefault()),
-                    ChronoField.MINUTE_OF_DAY, granularity).toEpochSecond();
+                        ChronoField.MINUTE_OF_DAY, granularity).toEpochSecond();
                 String candleId = trade.getProductId() + "-" + time + "-" + granularity;
                 Candle candle = candles.get(candleId);
                 if (candle == null) {
@@ -89,20 +89,20 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
                     candle.setLow(trade.getPrice());
                     candle.setHigh(trade.getPrice());
                     candle.setVolume(trade.getSize());
-                    candle.setTradeId(trade.getTradeId());
+                    candle.setTradeId(trade.getSequence());
                 } else {
-                    if (candle.getTradeId() >= trade.getTradeId()) {
+                    if (candle.getTradeId() >= trade.getSequence()) {
                         //logger.warn("ignore trade: {}",trade.getTradeId());
                         continue;
-                    } else if (candle.getTradeId() + 1 != trade.getTradeId()) {
+                    } else if (candle.getTradeId() + 1 != trade.getSequence()) {
                         throw new RuntimeException(
-                            "bad trade: " + " " + (candle.getTradeId()) + " " + trade.getTradeId());
+                                "bad trade: " + " " + (candle.getTradeId()) + " " + trade.getSequence());
                     }
                     candle.setClose(trade.getPrice());
                     candle.setLow(candle.getLow().min(trade.getPrice()));
                     candle.setHigh(candle.getLow().max(trade.getPrice()));
                     candle.setVolume(candle.getVolume().add(trade.getSize()));
-                    candle.setTradeId(trade.getTradeId());
+                    candle.setTradeId(trade.getSequence());
                 }
 
                 candles.put(candle.getId(), candle);

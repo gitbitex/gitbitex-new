@@ -1,9 +1,9 @@
 package com.gitbitex.marketdata.repository;
 
-import java.util.List;
-
 import com.gitbitex.marketdata.entity.App;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 public class AppRepository {

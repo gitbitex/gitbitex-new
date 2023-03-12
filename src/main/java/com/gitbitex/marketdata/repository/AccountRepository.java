@@ -1,41 +1,39 @@
 package com.gitbitex.marketdata.repository;
 
+import com.gitbitex.marketdata.entity.Account;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.*;
+import org.bson.conversions.Bson;
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import com.gitbitex.marketdata.entity.Account;
-import com.mongodb.client.ClientSession;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.BulkWriteOptions;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.ReplaceOneModel;
-import com.mongodb.client.model.ReplaceOptions;
-import com.mongodb.client.model.WriteModel;
-import org.bson.conversions.Bson;
-import org.springframework.stereotype.Component;
-
 @Component
 public class AccountRepository {
-    private final MongoCollection<Account> mongoCollection;
+    private final MongoCollection<Account> collection;
 
     public AccountRepository(MongoDatabase database) {
-        this.mongoCollection = database.getCollection(Account.class.getSimpleName().toLowerCase(), Account.class);
+        this.collection = database.getCollection(Account.class.getSimpleName().toLowerCase(), Account.class);
+        this.collection.createIndex(Indexes.descending("userId", "currency"), new IndexOptions().unique(true));
     }
 
     public List<Account> findAccountsByUserId(String userId) {
-        return mongoCollection.find(Filters.eq("userId", userId)).into(new ArrayList<>());
+        return collection
+                .find(Filters.eq("userId", userId))
+                .into(new ArrayList<>());
     }
 
     public void saveAll(Collection<Account> accounts) {
         List<WriteModel<Account>> writeModels = new ArrayList<>();
         for (Account item : accounts) {
-            Bson filter = Filters.eq("_id", item.getId());
+            Bson filter = Filters.eq("userId", item.getUserId());
+            filter = Filters.and(filter, Filters.eq("currency", item.getCurrency()));
             WriteModel<Account> writeModel = new ReplaceOneModel<>(filter, item, new ReplaceOptions().upsert(true));
             writeModels.add(writeModel);
         }
-        mongoCollection.bulkWrite(writeModels,new BulkWriteOptions().ordered(false));
+        collection.bulkWrite(writeModels, new BulkWriteOptions().ordered(false));
     }
 }

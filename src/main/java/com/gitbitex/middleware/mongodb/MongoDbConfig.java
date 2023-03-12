@@ -1,6 +1,5 @@
 package com.gitbitex.middleware.mongodb;
 
-import com.gitbitex.middleware.redis.RedisProperties;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -28,7 +27,7 @@ public class MongoDbConfig {
     @Bean
     public MongoDatabase database(MongoClient mongoClient) {
         CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
-            fromProviders(PojoCodecProvider.builder().automatic(true).build()));
+                fromProviders(PojoCodecProvider.builder().automatic(true).build()));
 
         return mongoClient.getDatabase("gitbitex").withCodecRegistry(pojoCodecRegistry);
     }

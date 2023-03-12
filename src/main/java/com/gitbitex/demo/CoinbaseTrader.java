@@ -1,19 +1,6 @@
 package com.gitbitex.demo;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Random;
-import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-
 import com.alibaba.fastjson.JSON;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.openapi.controller.AdminController;
@@ -25,11 +12,21 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.catalina.mbeans.SparseUserDatabaseMBean;
 import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Component;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @Slf4j
@@ -47,7 +44,7 @@ public class CoinbaseTrader {
         logger.info("start");
 
         User user = adminController.createUser("test@test.com", "12345678");
-        PutProductRequest putProductRequest=new PutProductRequest();
+        PutProductRequest putProductRequest = new PutProductRequest();
         putProductRequest.setBaseCurrency("BTC");
         putProductRequest.setQuoteCurrency("USDT");
         adminController.saveProduct(putProductRequest);
@@ -67,7 +64,7 @@ public class CoinbaseTrader {
                             logger.info("connecting...: {}", client.getURI());
                             client.connectBlocking();
                         } else if (client.getReadyState().equals(ReadyState.CLOSING) || client.getReadyState().equals(
-                            ReadyState.CLOSED)) {
+                                ReadyState.CLOSED)) {
                             logger.info("reconnecting...: {}", client.getURI());
                             client.reconnectBlocking();
                         }
@@ -138,7 +135,7 @@ public class CoinbaseTrader {
 
         @Override
         public void onMessage(String s) {
-            if (!rateLimiter.tryAcquire()){
+            if (!rateLimiter.tryAcquire()) {
                 return;
             }
             executor.execute(() -> {

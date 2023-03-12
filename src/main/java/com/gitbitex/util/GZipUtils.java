@@ -1,11 +1,11 @@
 package com.gitbitex.util;
 
+import lombok.SneakyThrows;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
-
-import lombok.SneakyThrows;
 
 public class GZipUtils {
     @SneakyThrows

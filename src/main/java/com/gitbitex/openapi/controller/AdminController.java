@@ -1,13 +1,6 @@
 package com.gitbitex.openapi.controller;
 
-import java.math.BigDecimal;
-import java.util.UUID;
-
-import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
-
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.marketdata.entity.Order;
 import com.gitbitex.marketdata.entity.Product;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.manager.AccountManager;
@@ -19,9 +12,12 @@ import com.gitbitex.matchingengine.command.PutProductCommand;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
+
+import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
+import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * For demonstration, do not expose to external users ！！！！！！
@@ -80,16 +76,16 @@ public class AdminController {
         return product;
     }
 
-    public void cancelOrder( String orderId, String productId) {
+    public void cancelOrder(String orderId, String productId) {
         CancelOrderCommand command = new CancelOrderCommand();
         command.setProductId(productId);
         command.setOrderId(orderId);
-        producer.sendToMatchingEngine( command, null);
+        producer.sendToMatchingEngine(command, null);
     }
 
     @Getter
     @Setter
-    public static class PutProductRequest{
+    public static class PutProductRequest {
         @NotBlank
         private String baseCurrency;
         @NotBlank

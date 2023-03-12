@@ -1,4 +1,9 @@
-package com.gitbitex.matchingengine.snapshot;
+package com.gitbitex.matchingengine;
+
+import com.gitbitex.enums.OrderSide;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.lang.Nullable;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -6,12 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import com.gitbitex.enums.OrderSide;
-import com.gitbitex.matchingengine.SimpleOrderBook;
-import lombok.Getter;
-import lombok.Setter;
-import org.springframework.lang.Nullable;
 
 @Getter
 @Setter
@@ -22,20 +21,21 @@ public class L2OrderBook {
     private List<Line> asks = new ArrayList<>();
     private List<Line> bids = new ArrayList<>();
 
-    public L2OrderBook() {}
+    public L2OrderBook() {
+    }
 
     public L2OrderBook(SimpleOrderBook orderBook, int depth) {
         this.productId = orderBook.getProductId();
-        this.sequence = orderBook.getSequence();
+        this.sequence = orderBook.getMessageSequence();
         this.time = System.currentTimeMillis();
         this.asks = orderBook.getAsks().entrySet().stream()
-            .limit(depth)
-            .map(x -> new Line(x.getKey(), x.getValue().getRemainingSize(), x.getValue().size()))
-            .collect(Collectors.toList());
+                .limit(depth)
+                .map(x -> new Line(x.getKey(), x.getValue().getRemainingSize(), x.getValue().size()))
+                .collect(Collectors.toList());
         this.bids = orderBook.getBids().entrySet().stream()
-            .limit(depth)
-            .map(x -> new Line(x.getKey(), x.getValue().getRemainingSize(), x.getValue().size()))
-            .collect(Collectors.toList());
+                .limit(depth)
+                .map(x -> new Line(x.getKey(), x.getValue().getRemainingSize(), x.getValue().size()))
+                .collect(Collectors.toList());
     }
 
     @Nullable
@@ -71,7 +71,7 @@ public class L2OrderBook {
                 changes.add(change);
             } else if (!newLine.getSize().equals(oldLine.getSize())) {
                 L2OrderBookChange change = new L2OrderBookChange(side.name().toLowerCase(), oldPrice,
-                    newLine.getSize());
+                        newLine.getSize());
                 changes.add(change);
             }
         }));
@@ -79,7 +79,7 @@ public class L2OrderBook {
             Line oldLine = oldLineByPrice.get(newPrice);
             if (oldLine == null) {
                 L2OrderBookChange change = new L2OrderBookChange(side.name().toLowerCase(), newPrice,
-                    newLine.getSize());
+                        newLine.getSize());
                 changes.add(change);
             }
         });

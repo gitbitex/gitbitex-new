@@ -1,7 +1,5 @@
 package com.gitbitex;
 
-import java.util.Properties;
-
 import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.middleware.kafka.KafkaProperties;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +9,8 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.Properties;
 
 @Configuration
 @RequiredArgsConstructor

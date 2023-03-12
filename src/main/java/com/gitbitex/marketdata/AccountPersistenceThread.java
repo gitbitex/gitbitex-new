@@ -1,11 +1,5 @@
 package com.gitbitex.marketdata;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.Account;
 import com.gitbitex.marketdata.manager.AccountManager;
@@ -17,14 +11,20 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 @Slf4j
 public class AccountPersistenceThread extends KafkaConsumerThread<String, AccountMessage>
-    implements ConsumerRebalanceListener {
+        implements ConsumerRebalanceListener {
     private final AccountManager accountManager;
     private final AppProperties appProperties;
 
     public AccountPersistenceThread(KafkaConsumer<String, AccountMessage> consumer, AccountManager accountManager,
-        AppProperties appProperties) {
+                                    AppProperties appProperties) {
         super(consumer, logger);
         this.accountManager = accountManager;
         this.appProperties = appProperties;
@@ -62,9 +62,9 @@ public class AccountPersistenceThread extends KafkaConsumerThread<String, Accoun
             accounts.put(account.getId(), account);
         });
 
-        long t1= System.currentTimeMillis();
+        long t1 = System.currentTimeMillis();
         accountManager.saveAll(accounts.values());
-        logger.info("saved {} account(s) ({}ms)",accounts.size(),System.currentTimeMillis()-t1);
+        logger.info("saved {} account(s) ({}ms)", accounts.size(), System.currentTimeMillis() - t1);
 
         consumer.commitSync();
     }

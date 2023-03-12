@@ -1,37 +1,36 @@
 package com.gitbitex.marketdata.repository;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.marketdata.entity.Order;
 import com.gitbitex.openapi.model.PagedList;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.BulkWriteOptions;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.ReplaceOneModel;
-import com.mongodb.client.model.ReplaceOptions;
-import com.mongodb.client.model.WriteModel;
+import com.mongodb.client.model.*;
 import org.bson.conversions.Bson;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 @Component
 public class OrderRepository {
-    private final MongoCollection<Order> mongoCollection;
+    private final MongoCollection<Order> collection;
 
     public OrderRepository(MongoDatabase database) {
-        this.mongoCollection = database.getCollection(Order.class.getSimpleName().toLowerCase(), Order.class);
+        this.collection = database.getCollection(Order.class.getSimpleName().toLowerCase(), Order.class);
+        this.collection.createIndex(Indexes.descending("userId", "productId", "sequence"));
     }
 
     public Order findByOrderId(String orderId) {
-        return this.mongoCollection.find(Filters.eq("_id", orderId)).first();
+        return this.collection
+                .find(Filters.eq("_id", orderId))
+                .first();
     }
 
     public PagedList<Order> findAll(String userId, String productId, OrderStatus status, OrderSide side, int pageIndex,
-        int pageSize) {
+                                    int pageSize) {
         Bson filter = Filters.empty();
         if (userId != null) {
             filter = Filters.and(Filters.eq("userId", userId), filter);
@@ -46,11 +45,13 @@ public class OrderRepository {
             filter = Filters.and(Filters.eq("side", side.name()), filter);
         }
 
-        long count = this.mongoCollection.countDocuments(filter);
-        List<Order> orders = this.mongoCollection.find(filter)
-            .skip(pageIndex - 1)
-            .limit(pageSize)
-            .into(new ArrayList<>());
+        long count = this.collection.countDocuments(filter);
+        List<Order> orders = this.collection
+                .find(filter)
+                .sort(Sorts.descending("sequence"))
+                .skip(pageIndex - 1)
+                .limit(pageSize)
+                .into(new ArrayList<>());
         return new PagedList<>(orders, count);
     }
 
@@ -61,6 +62,6 @@ public class OrderRepository {
             WriteModel<Order> writeModel = new ReplaceOneModel<>(filter, item, new ReplaceOptions().upsert(true));
             writeModels.add(writeModel);
         }
-        mongoCollection.bulkWrite(writeModels, new BulkWriteOptions().ordered(false));
+        collection.bulkWrite(writeModels, new BulkWriteOptions().ordered(false));
     }
 }

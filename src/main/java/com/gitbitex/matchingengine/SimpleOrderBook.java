@@ -1,12 +1,12 @@
 package com.gitbitex.matchingengine;
 
-import java.math.BigDecimal;
-import java.util.Comparator;
-import java.util.TreeMap;
-
 import com.gitbitex.enums.OrderSide;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.util.Comparator;
+import java.util.TreeMap;
 
 @Getter
 public class SimpleOrderBook {
@@ -14,20 +14,19 @@ public class SimpleOrderBook {
     private final TreeMap<BigDecimal, PriceGroupedOrderCollection> asks = new TreeMap<>(Comparator.naturalOrder());
     private final TreeMap<BigDecimal, PriceGroupedOrderCollection> bids = new TreeMap<>(Comparator.reverseOrder());
     @Setter
-    private long sequence;
+    private long messageSequence;
 
     public SimpleOrderBook(String productId) {
         this.productId = productId;
     }
 
-    public SimpleOrderBook(String productId, long sequence) {
+    public SimpleOrderBook(String productId, long messageSequence) {
         this.productId = productId;
-        this.sequence = sequence;
+        this.messageSequence = messageSequence;
     }
 
-    public void putOrder(Order order) {
-        TreeMap<BigDecimal, PriceGroupedOrderCollection> ordersByPrice = (order.getSide() == OrderSide.BUY ? bids
-            : asks);
+    public void addOrder(Order order) {
+        TreeMap<BigDecimal, PriceGroupedOrderCollection> ordersByPrice = order.getSide() == OrderSide.BUY ? bids : asks;
         PriceGroupedOrderCollection priceGroupedOrders = ordersByPrice.get(order.getPrice());
         if (priceGroupedOrders == null) {
             priceGroupedOrders = new PriceGroupedOrderCollection();
@@ -42,8 +41,7 @@ public class SimpleOrderBook {
     }
 
     public void removeOrder(Order order) {
-        TreeMap<BigDecimal, PriceGroupedOrderCollection> ordersByPrice = (order.getSide() == OrderSide.BUY ? bids
-            : asks);
+        TreeMap<BigDecimal, PriceGroupedOrderCollection> ordersByPrice = order.getSide() == OrderSide.BUY ? bids : asks;
         PriceGroupedOrderCollection priceGroupedOrders = ordersByPrice.get(order.getPrice());
         if (priceGroupedOrders == null) {
             return;

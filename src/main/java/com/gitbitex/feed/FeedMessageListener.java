@@ -3,9 +3,9 @@ package com.gitbitex.feed;
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.feed.message.*;
 import com.gitbitex.marketdata.entity.Candle;
+import com.gitbitex.matchingengine.L2OrderBook;
+import com.gitbitex.matchingengine.OrderBookSnapshotStore;
 import com.gitbitex.matchingengine.message.*;
-import com.gitbitex.matchingengine.snapshot.L2OrderBook;
-import com.gitbitex.matchingengine.snapshot.OrderBookManager;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +21,9 @@ import javax.annotation.PostConstruct;
 public class FeedMessageListener {
     private final RedissonClient redissonClient;
     private final SessionManager sessionManager;
-    private final OrderBookManager orderBookManager;
-    private final StripedExecutorService listenerExecutor = new StripedExecutorService(Runtime.getRuntime().availableProcessors());
+    private final OrderBookSnapshotStore orderBookSnapshotStore;
+    private final StripedExecutorService listenerExecutor =
+            new StripedExecutorService(Runtime.getRuntime().availableProcessors());
 
     @PostConstruct
     public void run() {

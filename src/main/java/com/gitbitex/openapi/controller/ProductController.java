@@ -1,19 +1,12 @@
 package com.gitbitex.openapi.controller;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.entity.Product;
 import com.gitbitex.marketdata.entity.Trade;
-import com.gitbitex.marketdata.entity.User;
-import com.gitbitex.marketdata.manager.UserManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.matchingengine.snapshot.OrderBookManager;
+import com.gitbitex.matchingengine.OrderBookSnapshotStore;
 import com.gitbitex.openapi.model.PagedList;
 import com.gitbitex.openapi.model.ProductDto;
 import com.gitbitex.openapi.model.TradeDto;
@@ -24,20 +17,17 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController()
 @RequiredArgsConstructor
 public class ProductController {
-    private final OrderBookManager orderBookManager;
+    private final OrderBookSnapshotStore orderBookSnapshotStore;
     private final ProductRepository productRepository;
     private final TradeRepository tradeRepository;
     private final CandleRepository candleRepository;
-    private final UserManager userManager;
-    private final KafkaMessageProducer producer;
-
-    @GetMapping("/api/admin/addUser")
-    public void addUser(@RequestParam String email, @RequestParam String password) {
-        userManager.createUser(email, password);
-    }
 
     @GetMapping("/api/products")
     public List<ProductDto> getProducts() {
@@ -47,13 +37,13 @@ public class ProductController {
 
     @GetMapping("/api/products/{productId}/trades")
     public List<TradeDto> getProductTrades(@PathVariable String productId) {
-        List<Trade> trades = tradeRepository.findTradesByProductId(productId, 50);
+        List<Trade> trades = tradeRepository.findByProductId(productId, 50);
         return trades.stream().map(this::tradeDto).collect(Collectors.toList());
     }
 
     @GetMapping("/api/products/{productId}/candles")
     public List<List<Object>> getProductCandles(@PathVariable String productId, @RequestParam int granularity,
-        @RequestParam(defaultValue = "1000") int limit) {
+                                                @RequestParam(defaultValue = "1000") int limit) {
         PagedList<Candle> candlePage = candleRepository.findAll(productId, granularity / 60, 1, limit);
 
         //[
@@ -78,11 +68,11 @@ public class ProductController {
     public Object getProductBook(@PathVariable String productId, @RequestParam(defaultValue = "2") int level) {
         switch (level) {
             case 1:
-                return orderBookManager.getL1OrderBook(productId);
+                return orderBookSnapshotStore.getL1OrderBook(productId);
             case 2:
-                return orderBookManager.getL2OrderBook(productId);
+                return orderBookSnapshotStore.getL2OrderBook(productId);
             case 3:
-                return orderBookManager.getL3OrderBook(productId);
+                return orderBookSnapshotStore.getL3OrderBook(productId);
             default:
                 return null;
         }
@@ -98,7 +88,7 @@ public class ProductController {
 
     private TradeDto tradeDto(Trade trade) {
         TradeDto tradeDto = new TradeDto();
-        tradeDto.setTradeId(trade.getTradeId());
+        tradeDto.setSequence(trade.getSequence());
         tradeDto.setTime(trade.getTime().toInstant().toString());
         tradeDto.setPrice(trade.getPrice().toPlainString());
         tradeDto.setSize(trade.getSize().toPlainString());

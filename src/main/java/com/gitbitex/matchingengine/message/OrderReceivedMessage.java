@@ -1,12 +1,12 @@
 package com.gitbitex.matchingengine.message;
 
-import java.math.BigDecimal;
-import java.util.Date;
-
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderType;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.util.Date;
 
 @Getter
 @Setter
