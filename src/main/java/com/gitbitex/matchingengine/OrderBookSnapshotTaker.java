@@ -7,6 +7,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PreDestroy;
 import java.util.concurrent.*;
 
 @Component
@@ -32,8 +33,10 @@ public class OrderBookSnapshotTaker implements EngineListener {
         restoreState();
     }
 
+    @PreDestroy
     public void close() {
-
+        scheduledExecutor.shutdown();
+        orderBookSnapshotExecutor.shutdown();
     }
 
     @Override

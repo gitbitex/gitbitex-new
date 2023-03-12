@@ -7,6 +7,7 @@ import io.micrometer.core.instrument.Metrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PreDestroy;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -29,6 +30,11 @@ public class EngineSnapshotTaker implements EngineListener {
         Gauge.builder("gbe_matching_engine_snapshot_taker_modified_objects_queue_size", modifiedObjectsQueue::size)
                 .register(Metrics.globalRegistry);
         startMainTask();
+    }
+
+    @PreDestroy
+    public void close(){
+        this.mainExecutor.shutdown();
     }
 
     @Override

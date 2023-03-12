@@ -36,11 +36,15 @@ public class EngineSnapshotStore {
     }
 
     public List<Product> getProducts() {
-        return this.productCollection.find().into(new ArrayList<>());
+        return this.productCollection
+                .find()
+                .into(new ArrayList<>());
     }
 
     public List<Account> getAccounts() {
-        return this.accountCollection.find().into(new ArrayList<>());
+        return this.accountCollection
+                .find()
+                .into(new ArrayList<>());
     }
 
     public List<Order> getOrders(String productId) {
