@@ -7,6 +7,7 @@ import com.gitbitex.matchingengine.message.OrderBookMessage;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
+@Slf4j
 public class ModifiedObjectWriter implements EngineListener {
     private final KafkaMessageProducer producer;
     private final StripedExecutorService kafkaExecutor = new StripedExecutorService(20);
@@ -35,6 +37,7 @@ public class ModifiedObjectWriter implements EngineListener {
     private final RTopic orderBookMessageTopic;
     private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectsQueue = new ConcurrentLinkedQueue<>();
     private final ScheduledExecutorService mainExecutor = Executors.newScheduledThreadPool(1);
+    private long lastCommandOffset;
 
     public ModifiedObjectWriter(KafkaMessageProducer producer, RedissonClient redissonClient) {
         this.producer = producer;
@@ -53,6 +56,11 @@ public class ModifiedObjectWriter implements EngineListener {
 
     @Override
     public void onCommandExecuted(Command command, ModifiedObjectList modifiedObjects) {
+        if (lastCommandOffset != 0 && modifiedObjects.getCommandOffset() <= lastCommandOffset) {
+            logger.info("received processed message: {}", modifiedObjects.getCommandOffset());
+            return;
+        }
+        lastCommandOffset = modifiedObjects.getCommandOffset();
         modifiedObjectsQueue.offer(modifiedObjects);
     }
 

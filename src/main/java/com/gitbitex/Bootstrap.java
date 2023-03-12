@@ -50,6 +50,7 @@ public class Bootstrap {
     private final ModifiedObjectWriter modifiedObjectWriter;
     private final EngineSnapshotTaker engineSnapshotTaker;
     private final OrderBookSnapshotTaker orderBookSnapshotTaker;
+    private final List<EngineListener> engineListeners;
 
     @PostConstruct
     public void init() {
@@ -95,8 +96,6 @@ public class Bootstrap {
             threads.add(matchingEngineThread);
         }
     }
-
-    private final List<EngineListener> engineListeners;
 
     private void startTickerThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {

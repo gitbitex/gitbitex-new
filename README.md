@@ -57,5 +57,5 @@ The metrics are as follows:
 - **gbe_matching_engine_modified_objects_queue_size** : The number of modified object lists that are not consumed. If the value becomes larger, it may block the matching thread
 - **gbe_matching_engine_modified_object_created_total** : This value represents the number of objects that have modified,Wait to save to database.
 - **gbe_matching_engine_modified_object_saved_total** : The number of modified objects that have been saved. If the difference between this value and _gbe_matching_engine_modified_object_created_total_ is too large, it means that saving to disk is too slow.
-- **gbe_matching_engine_state_unsaved_modified_object_map_size** : Objects that have not been written to the snapshot. This value reflects the performance of the snapshot thread.
+- **gbe.matching-engine.snapshot-taker.modified-objects-queue.size** : Objects that have not been written to the snapshot. This value reflects the performance of the snapshot thread.
 

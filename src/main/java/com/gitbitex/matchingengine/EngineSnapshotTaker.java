@@ -26,7 +26,7 @@ public class EngineSnapshotTaker implements EngineListener {
 
     public EngineSnapshotTaker(EngineSnapshotStore engineSnapshotStore) {
         this.engineSnapshotStore = engineSnapshotStore;
-        Gauge.builder("gbe.matching-engine.state-unsaved-modified-objects-queue.size", modifiedObjectsQueue::size)
+        Gauge.builder("gbe.matching-engine.snapshot-taker.modified-objects-queue.size", modifiedObjectsQueue::size)
                 .register(Metrics.globalRegistry);
         startMainTask();
     }
@@ -34,8 +34,10 @@ public class EngineSnapshotTaker implements EngineListener {
     @Override
     public void onCommandExecuted(Command command, ModifiedObjectList modifiedObjects) {
         if (lastCommandOffset != 0 && modifiedObjects.getCommandOffset() <= lastCommandOffset) {
-            logger.info("ignore ");
+            logger.info("received processed message: {}", modifiedObjects.getCommandOffset());
+            return;
         }
+        lastCommandOffset = modifiedObjects.getCommandOffset();
         modifiedObjectsQueue.put(modifiedObjects.getCommandOffset(), modifiedObjects);
     }
 

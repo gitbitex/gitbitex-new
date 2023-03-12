@@ -4,11 +4,13 @@ import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.matchingengine.command.Command;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.*;
 
 @Component
+@Slf4j
 public class OrderBookSnapshotTaker implements EngineListener {
     private final OrderBookSnapshotStore orderBookSnapshotStore;
     private final EngineSnapshotStore engineSnapshotStore;
@@ -19,6 +21,7 @@ public class OrderBookSnapshotTaker implements EngineListener {
     private final StripedExecutorService orderBookSnapshotExecutor =
             new StripedExecutorService(Runtime.getRuntime().availableProcessors(),
                     new ThreadFactoryBuilder().setNameFormat("OrderBookSnapshot-%s").build());
+    private long lastCommandOffset;
 
     public OrderBookSnapshotTaker(EngineSnapshotStore engineSnapshotStore,
                                   OrderBookSnapshotStore orderBookSnapshotStore) {
@@ -35,6 +38,11 @@ public class OrderBookSnapshotTaker implements EngineListener {
 
     @Override
     public void onCommandExecuted(Command command, ModifiedObjectList modifiedObjects) {
+        if (lastCommandOffset != 0 && modifiedObjects.getCommandOffset() <= lastCommandOffset) {
+            logger.info("received processed message: {}", modifiedObjects.getCommandOffset());
+            return;
+        }
+        lastCommandOffset = modifiedObjects.getCommandOffset();
         modifiedObjectsQueue.offer(modifiedObjects);
     }
 

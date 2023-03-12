@@ -32,7 +32,7 @@ public class MatchingEngine {
         restoreState();
     }
 
-    public void shutdown(){
+    public void shutdown() {
 
     }
 
