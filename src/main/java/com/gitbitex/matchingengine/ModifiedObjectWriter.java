@@ -12,7 +12,11 @@ import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PreDestroy;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
@@ -29,21 +33,30 @@ public class ModifiedObjectWriter implements EngineListener {
     private final RTopic accountTopic;
     private final RTopic orderTopic;
     private final RTopic orderBookMessageTopic;
-    private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectLists = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectsQueue = new ConcurrentLinkedQueue<>();
+    private final ScheduledExecutorService mainExecutor = Executors.newScheduledThreadPool(1);
 
     public ModifiedObjectWriter(KafkaMessageProducer producer, RedissonClient redissonClient) {
         this.producer = producer;
         this.accountTopic = redissonClient.getTopic("account", StringCodec.INSTANCE);
         this.orderTopic = redissonClient.getTopic("order", StringCodec.INSTANCE);
         this.orderBookMessageTopic = redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE);
+        startMainTask();
+    }
+
+    @PreDestroy
+    public void close() {
+        mainExecutor.shutdown();
+        kafkaExecutor.shutdown();
+        redisExecutor.shutdown();
     }
 
     @Override
     public void onCommandExecuted(Command command, ModifiedObjectList modifiedObjects) {
-        modifiedObjectLists.offer(modifiedObjects);
+        modifiedObjectsQueue.offer(modifiedObjects);
     }
 
-    public void saveAsync(ModifiedObjectList modifiedObjects) {
+    private void save(ModifiedObjectList modifiedObjects) {
         modifiedObjectCreatedCounter.increment(modifiedObjects.size());
         modifiedObjects.forEach(obj -> {
             if (obj instanceof Order) {
@@ -105,5 +118,15 @@ public class ModifiedObjectWriter implements EngineListener {
         });
     }
 
-
+    private void startMainTask() {
+        mainExecutor.scheduleWithFixedDelay(() -> {
+            while (true) {
+                ModifiedObjectList modifiedObjects = modifiedObjectsQueue.poll();
+                if (modifiedObjects == null) {
+                    break;
+                }
+                save(modifiedObjects);
+            }
+        }, 0, 500, TimeUnit.MILLISECONDS);
+    }
 }

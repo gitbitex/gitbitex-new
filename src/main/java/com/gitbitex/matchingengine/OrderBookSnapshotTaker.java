@@ -6,36 +6,39 @@ import com.gitbitex.stripexecutor.StripedExecutorService;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @Component
 public class OrderBookSnapshotTaker implements EngineListener {
     private final OrderBookSnapshotStore orderBookSnapshotStore;
+    private final EngineSnapshotStore engineSnapshotStore;
     private final ConcurrentHashMap<String, SimpleOrderBook> simpleOrderBooks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Long> lastL2OrderBookSequences = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectsQueue = new ConcurrentLinkedQueue<>();
+    private final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(2);
     private final StripedExecutorService orderBookSnapshotExecutor =
             new StripedExecutorService(Runtime.getRuntime().availableProcessors(),
                     new ThreadFactoryBuilder().setNameFormat("OrderBookSnapshot-%s").build());
-    private final ConcurrentHashMap<String, Long> lastL2OrderBookSequences = new ConcurrentHashMap<>();
-    private final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
-    private final EngineSnapshotStore engineSnapshotStore;
 
     public OrderBookSnapshotTaker(EngineSnapshotStore engineSnapshotStore,
                                   OrderBookSnapshotStore orderBookSnapshotStore) {
         this.engineSnapshotStore = engineSnapshotStore;
         this.orderBookSnapshotStore = orderBookSnapshotStore;
+        startMainTask();
         startL2OrderBookPublishTask();
         restoreState();
     }
 
-    @Override
-    public void onCommandExecuted(Command command, ModifiedObjectList modifiedObjects) {
+    public void close() {
 
     }
 
-    public void refresh(ModifiedObjectList modifiedObjects) {
+    @Override
+    public void onCommandExecuted(Command command, ModifiedObjectList modifiedObjects) {
+        modifiedObjectsQueue.offer(modifiedObjects);
+    }
+
+    private void updateOrderBook(ModifiedObjectList modifiedObjects) {
         String productId = modifiedObjects.getProductId();
         if (productId == null) {
             return;
@@ -70,12 +73,22 @@ public class OrderBookSnapshotTaker implements EngineListener {
         }
     }
 
-    public void startL2OrderBookPublishTask() {
+    private void startMainTask() {
+        scheduledExecutor.scheduleWithFixedDelay(() -> {
+            while (true) {
+                ModifiedObjectList modifiedObjects = modifiedObjectsQueue.poll();
+                if (modifiedObjects == null) {
+                    break;
+                }
+                updateOrderBook(modifiedObjects);
+            }
+        }, 0, 500, TimeUnit.MILLISECONDS);
+    }
+
+    private void startL2OrderBookPublishTask() {
         scheduledExecutor.scheduleWithFixedDelay(() -> {
             simpleOrderBooks.forEach((productId, simpleOrderBook) -> {
-                orderBookSnapshotExecutor.execute(productId, () -> {
-                    takeL2OrderBookSnapshot(simpleOrderBook, 0);
-                });
+                orderBookSnapshotExecutor.execute(productId, () -> takeL2OrderBookSnapshot(simpleOrderBook, 0));
             });
         }, 0, 1, TimeUnit.SECONDS);
     }
@@ -90,6 +103,5 @@ public class OrderBookSnapshotTaker implements EngineListener {
             engineSnapshotStore.getOrders(x.getProductId()).forEach(simpleOrderBook::addOrder);
         });
     }
-
 
 }

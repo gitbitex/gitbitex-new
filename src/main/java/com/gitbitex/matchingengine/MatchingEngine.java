@@ -12,19 +12,15 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
 public class MatchingEngine {
     private final ProductBook productBook = new ProductBook();
     private final AccountBook accountBook = new AccountBook();
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
-    private final ScheduledExecutorService scheduledExecutor =
-            Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
     private final EngineSnapshotStore stateStore;
     private final Counter commandProcessedCounter;
-    List<EngineListener> engineListeners;
+    private final List<EngineListener> engineListeners;
     @Getter
     private Long startupCommandOffset;
 
@@ -34,11 +30,10 @@ public class MatchingEngine {
         this.commandProcessedCounter = Counter.builder("gbe.matching-engine.command.processed")
                 .register(Metrics.globalRegistry);
         restoreState();
-        //startModifiedObjectSaveTask();
     }
 
-    public void shutdown() {
-        scheduledExecutor.shutdown();
+    public void shutdown(){
+
     }
 
     public void executeCommand(DepositCommand command) {
@@ -46,7 +41,6 @@ public class MatchingEngine {
         ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), null);
         accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
                 command.getTransactionId(), modifiedObjects);
-        //engineListener.onCommandExecuted(modifiedObjects);
         engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
     }
 
@@ -55,7 +49,6 @@ public class MatchingEngine {
         ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), null);
         productBook.putProduct(new Product(command), modifiedObjects);
         createOrderBook(command.getProductId());
-        //engineListener.onCommandExecuted(modifiedObjects);
         engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
     }
 
@@ -68,7 +61,6 @@ public class MatchingEngine {
         }
         ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), command.getProductId());
         orderBook.placeOrder(new Order(command), modifiedObjects);
-        //engineListener.onCommandExecuted(modifiedObjects);
         engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
     }
 
@@ -81,7 +73,6 @@ public class MatchingEngine {
         }
         ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), command.getProductId());
         orderBook.cancelOrder(command.getOrderId(), modifiedObjects);
-        //engineListener.onCommandExecuted(modifiedObjects);
         engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
     }
 
@@ -108,25 +99,5 @@ public class MatchingEngine {
             stateStore.getOrders(x.getProductId()).forEach(orderBook::addOrder);
         });
     }
-
-   /*
-   private void dispatch(ModifiedObjectList modifiedObjects) {
-        modifiedObjectWriter.saveAsync(modifiedObjects);
-        orderBookSnapshotTaker.refresh(modifiedObjects);
-        engineSnapshotTaker.append(modifiedObjects);
-    }
-
-    private void startModifiedObjectSaveTask() {
-        scheduledExecutor.scheduleWithFixedDelay(() -> {
-            while (true) {
-                ModifiedObjectList modifiedObjects = modifiedObjectListQueue.poll();
-                if (modifiedObjects == null) {
-                    break;
-                }
-                dispatch(modifiedObjects);
-            }
-        }, 0, 500, TimeUnit.MILLISECONDS);
-    }
-*/
 
 }

@@ -1,6 +1,7 @@
 package com.gitbitex.matchingengine;
 
 import com.gitbitex.matchingengine.command.Command;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
 import lombok.extern.slf4j.Slf4j;
@@ -18,24 +19,28 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class EngineSnapshotTaker implements EngineListener {
     private final EngineSnapshotStore engineSnapshotStore;
-    private final ConcurrentSkipListMap<Long, ModifiedObjectList> modifiedObjects =
-            new ConcurrentSkipListMap<>();
-    private final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
+    private final ConcurrentSkipListMap<Long, ModifiedObjectList> modifiedObjectsQueue = new ConcurrentSkipListMap<>();
+    private final ScheduledExecutorService mainExecutor = Executors.newScheduledThreadPool(1,
+            new ThreadFactoryBuilder().setNameFormat("EngineSnapshotTaker-%s").build());
+    private long lastCommandOffset;
 
     public EngineSnapshotTaker(EngineSnapshotStore engineSnapshotStore) {
         this.engineSnapshotStore = engineSnapshotStore;
-        Gauge.builder("gbe.matching-engine.state-unsaved-modified-object-map.size", modifiedObjects::size)
+        Gauge.builder("gbe.matching-engine.state-unsaved-modified-objects-queue.size", modifiedObjectsQueue::size)
                 .register(Metrics.globalRegistry);
-        startSateSaveTask();
+        startMainTask();
     }
 
     @Override
     public void onCommandExecuted(Command command, ModifiedObjectList modifiedObjects) {
-        this.modifiedObjects.put(modifiedObjects.getCommandOffset(), modifiedObjects);
+        if (lastCommandOffset != 0 && modifiedObjects.getCommandOffset() <= lastCommandOffset) {
+            logger.info("ignore ");
+        }
+        modifiedObjectsQueue.put(modifiedObjects.getCommandOffset(), modifiedObjects);
     }
 
     private void saveState() {
-        if (modifiedObjects.isEmpty()) {
+        if (modifiedObjectsQueue.isEmpty()) {
             return;
         }
 
@@ -44,7 +49,7 @@ public class EngineSnapshotTaker implements EngineListener {
         Map<String, Account> accounts = new HashMap<>();
         Map<String, Order> orders = new HashMap<>();
         Map<String, Product> products = new HashMap<>();
-        for (Map.Entry<Long, ModifiedObjectList> entry : modifiedObjects.entrySet()) {
+        for (Map.Entry<Long, ModifiedObjectList> entry : modifiedObjectsQueue.entrySet()) {
             ModifiedObjectList modifiedObjects = entry.getValue();
             if (!modifiedObjects.allSaved()) {
                 break;
@@ -69,17 +74,18 @@ public class EngineSnapshotTaker implements EngineListener {
         if (commandOffset == null) {
             return;
         }
+
         Long savedCommandOffset = engineSnapshotStore.getCommandOffset();
         if (savedCommandOffset != null && commandOffset <= savedCommandOffset) {
             logger.warn("ignore outdated commandOffset: ignored={} saved={}", commandOffset, savedCommandOffset);
-            return;
+        } else {
+            engineSnapshotStore.save(commandOffset, orderBookState, accounts.values(), orders.values(),
+                    products.values());
+            logger.info("state saved: commandOffset={}, {} account(s), {} order(s), {} product(s)", commandOffset,
+                    accounts.size(), orders.size(), products.size());
         }
-        engineSnapshotStore.save(commandOffset, orderBookState, accounts.values(), orders.values(), products.values());
-        logger.info("state saved: commandOffset={}, {} account(s), {} order(s), {} product(s)", commandOffset,
-                accounts.size(), orders.size(), products.size());
 
-
-        Iterator<Map.Entry<Long, ModifiedObjectList>> itr = modifiedObjects.entrySet().iterator();
+        Iterator<Map.Entry<Long, ModifiedObjectList>> itr = modifiedObjectsQueue.entrySet().iterator();
         while (itr.hasNext()) {
             if (itr.next().getKey() <= commandOffset) {
                 itr.remove();
@@ -87,8 +93,8 @@ public class EngineSnapshotTaker implements EngineListener {
         }
     }
 
-    private void startSateSaveTask() {
-        scheduledExecutor.scheduleWithFixedDelay(() -> {
+    private void startMainTask() {
+        mainExecutor.scheduleWithFixedDelay(() -> {
             try {
                 saveState();
             } catch (Exception e) {

@@ -21,7 +21,9 @@ public class CandleRepository {
     }
 
     public Candle findById(String id) {
-        return this.mongoCollection.find(Filters.eq("_id", id)).first();
+        return this.mongoCollection
+                .find(Filters.eq("_id", id))
+                .first();
     }
 
     public PagedList<Candle> findAll(String productId, Integer granularity, int pageIndex, int pageSize) {

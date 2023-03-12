@@ -20,8 +20,6 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
     private final AppProperties appProperties;
     private final EngineSnapshotStore engineSnapshotStore;
     private final List<EngineListener> engineListeners;
-    long t1 = System.currentTimeMillis();
-    long total = 0;
     private MatchingEngine matchingEngine;
 
     public MatchingEngineThread(KafkaConsumer<String, Command> consumer, EngineSnapshotStore engineSnapshotStore,
@@ -49,7 +47,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
             matchingEngine = new MatchingEngine(engineSnapshotStore, engineListeners);
             if (matchingEngine.getStartupCommandOffset() != null) {
                 logger.info("seek to offset: {}", matchingEngine.getStartupCommandOffset() + 1);
-                //consumer.seek(partition, matchingEngine.getStartupCommandOffset() + 1);
+                consumer.seek(partition, matchingEngine.getStartupCommandOffset() + 1);
             }
         }
     }
@@ -75,9 +73,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }*/
-            total++;
         });
-        System.out.println(total + " " + (System.currentTimeMillis() - t1));
     }
 
     @Override
