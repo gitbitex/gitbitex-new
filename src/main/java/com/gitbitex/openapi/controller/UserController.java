@@ -1,10 +1,10 @@
 package com.gitbitex.openapi.controller;
 
-import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.manager.UserManager;
 import com.gitbitex.marketdata.repository.UserRepository;
 import com.gitbitex.matchingengine.command.DepositCommand;
+import com.gitbitex.matchingengine.command.MatchingEngineCommandProducer;
 import com.gitbitex.openapi.model.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,7 +24,7 @@ import java.util.UUID;
 public class UserController {
     private final UserManager userManager;
     private final UserRepository userRepository;
-    private final KafkaMessageProducer producer;
+    private final MatchingEngineCommandProducer matchingEngineCommandProducer;
 
     @GetMapping("/users/self")
     public UserDto getCurrentUser(@RequestAttribute(required = false) User currentUser) {
@@ -118,6 +118,6 @@ public class UserController {
         command.setCurrency(currency);
         command.setAmount(amount);
         command.setTransactionId(UUID.randomUUID().toString());
-        producer.sendToMatchingEngine(command, null);
+        matchingEngineCommandProducer.send(command, null);
     }
 }

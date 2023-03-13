@@ -10,11 +10,10 @@ import org.springframework.validation.annotation.Validated;
 @Setter
 @Validated
 public class AppProperties {
+    private String matchingEngineCommandTopic;
     private String tradeMessageTopic;
     private String accountMessageTopic;
     private String orderMessageTopic;
-    private String matchingEngineCommandTopic;
-    private String orderBookMessageTopic;
     private int l2BatchOrderBookPersistenceInterval = 20;
     private int l2BatchOrderBookSize = 50;
     private int l2OrderBookPersistenceInterval = 10000;

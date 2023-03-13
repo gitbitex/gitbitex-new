@@ -32,10 +32,6 @@ public class MatchingEngine {
         restoreState();
     }
 
-    public void shutdown() {
-
-    }
-
     public void executeCommand(DepositCommand command) {
         commandProcessedCounter.increment();
         ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), null);
@@ -77,11 +73,10 @@ public class MatchingEngine {
     }
 
     private void createOrderBook(String productId) {
-        OrderBook orderBook = orderBooks.get(productId);
-        if (orderBook != null) {
+        if (orderBooks.containsKey(productId)) {
             return;
         }
-        orderBook = new OrderBook(productId, null, null, null, accountBook, productBook);
+        OrderBook orderBook = new OrderBook(productId, null, null, null, accountBook, productBook);
         orderBooks.put(productId, orderBook);
     }
 

@@ -35,9 +35,6 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
         for (TopicPartition partition : partitions) {
             logger.warn("partition revoked: {}", partition.toString());
         }
-        if (matchingEngine != null) {
-            matchingEngine.shutdown();
-        }
     }
 
     @Override

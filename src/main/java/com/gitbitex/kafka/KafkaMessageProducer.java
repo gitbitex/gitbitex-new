@@ -5,7 +5,6 @@ import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.Account;
 import com.gitbitex.matchingengine.Order;
 import com.gitbitex.matchingengine.Trade;
-import com.gitbitex.matchingengine.command.Command;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -22,19 +21,6 @@ public class KafkaMessageProducer extends KafkaProducer<String, String> {
         this.appProperties = appProperties;
     }
 
-    public void sendToMatchingEngine(Command command, Callback callback) {
-        byte[] jsonBytes = JSON.toJSONBytes(command);
-        byte[] messageBytes = new byte[jsonBytes.length + 1];
-        messageBytes[0] = command.getType().getByteValue();
-        System.arraycopy(jsonBytes, 0, messageBytes, 1, jsonBytes.length);
-        ProducerRecord<String, String> record = new ProducerRecord<>(appProperties.getMatchingEngineCommandTopic(),
-                new String(messageBytes));
-        super.send(record, (metadata, exception) -> {
-            if (callback != null) {
-                callback.onCompletion(metadata, exception);
-            }
-        });
-    }
 
     public void sendAccount(Account account, Callback callback) {
         send(new ProducerRecord<>(appProperties.getAccountMessageTopic(), account.getUserId(),

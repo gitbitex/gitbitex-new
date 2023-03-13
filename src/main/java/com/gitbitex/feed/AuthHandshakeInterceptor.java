@@ -19,7 +19,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthHandshakeInterceptor extends HttpSessionHandshakeInterceptor {
     private final UserManager userManager;
-    private final SessionManager sessionManager;
 
     @Override
     public boolean beforeHandshake(@NotNull ServerHttpRequest request, @NotNull ServerHttpResponse response,

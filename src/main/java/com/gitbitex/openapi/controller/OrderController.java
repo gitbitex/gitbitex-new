@@ -4,12 +4,13 @@ import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
 import com.gitbitex.enums.TimeInForce;
-import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Order;
 import com.gitbitex.marketdata.entity.Product;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.repository.OrderRepository;
+import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
+import com.gitbitex.matchingengine.command.MatchingEngineCommandProducer;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
 import com.gitbitex.openapi.model.OrderDto;
 import com.gitbitex.openapi.model.PagedList;
@@ -32,13 +33,18 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OrderController {
     private final OrderRepository orderRepository;
-    private final KafkaMessageProducer producer;
+    private final MatchingEngineCommandProducer matchingEngineCommandProducer;
+    private final ProductRepository productRepository;
 
     @PostMapping(value = "/orders")
     public OrderDto placeOrder(@RequestBody @Valid PlaceOrderRequest request,
                                @RequestAttribute(required = false) User currentUser) {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        }
+        Product product = productRepository.findById(request.getProductId());
+        if (product == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "product not found: " + request.getProductId());
         }
 
         OrderType type = OrderType.valueOf(request.getType().toUpperCase());
@@ -60,7 +66,9 @@ public class OrderController {
         command.setPrice(price);
         command.setFunds(funds);
         command.setTime(new Date());
-        producer.sendToMatchingEngine(command, null);
+        formatPlaceOrderCommand(command, product);
+        validatePlaceOrderCommand(command);
+        matchingEngineCommandProducer.send(command, null);
 
         OrderDto orderDto = new OrderDto();
         orderDto.setId(command.getOrderId());
@@ -85,7 +93,7 @@ public class OrderController {
         CancelOrderCommand command = new CancelOrderCommand();
         command.setProductId(order.getProductId());
         command.setOrderId(order.getId());
-        producer.sendToMatchingEngine(command, null);
+        matchingEngineCommandProducer.send(command, null);
     }
 
     @DeleteMapping("/orders")
@@ -104,7 +112,7 @@ public class OrderController {
             CancelOrderCommand command = new CancelOrderCommand();
             command.setProductId(order.getProductId());
             command.setOrderId(order.getId());
-            producer.sendToMatchingEngine(command, null);
+            matchingEngineCommandProducer.send(command, null);
         }
     }
 
@@ -121,8 +129,7 @@ public class OrderController {
         OrderStatus orderStatus = status != null ? OrderStatus.valueOf(status.toUpperCase()) : null;
 
         PagedList<Order> orderPage = orderRepository.findAll(currentUser.getId(), productId, orderStatus, null,
-                page,
-                pageSize);
+                page, pageSize);
         return new PagedList<>(
                 orderPage.getItems().stream().map(this::orderDto).collect(Collectors.toList()),
                 orderPage.getCount());
@@ -148,13 +155,13 @@ public class OrderController {
         return orderDto;
     }
 
-    private void formatOrder(Order order, Product product) {
-        BigDecimal size = order.getSize();
-        BigDecimal price = order.getPrice();
-        BigDecimal funds = order.getFunds();
-        OrderSide side = order.getSide();
+    private void formatPlaceOrderCommand(PlaceOrderCommand command, Product product) {
+        BigDecimal size = command.getSize();
+        BigDecimal price = command.getPrice();
+        BigDecimal funds = command.getFunds();
+        OrderSide side = command.getOrderSide();
 
-        switch (order.getType()) {
+        switch (command.getOrderType()) {
             case LIMIT:
                 size = size.setScale(product.getBaseScale(), RoundingMode.DOWN);
                 price = price.setScale(product.getQuoteScale(), RoundingMode.DOWN);
@@ -171,18 +178,18 @@ public class OrderController {
                 }
                 break;
             default:
-                throw new RuntimeException("unknown order type: " + order.getType());
+                throw new RuntimeException("unknown order type: " + command.getType());
         }
 
-        order.setSize(size);
-        order.setPrice(price);
-        order.setFunds(funds);
+        command.setSize(size);
+        command.setPrice(price);
+        command.setFunds(funds);
     }
 
-    private void validateOrder(Order order) {
-        BigDecimal size = order.getSize();
-        BigDecimal funds = order.getFunds();
-        OrderSide side = order.getSide();
+    private void validatePlaceOrderCommand(PlaceOrderCommand command) {
+        BigDecimal size = command.getSize();
+        BigDecimal funds = command.getFunds();
+        OrderSide side = command.getOrderSide();
 
         if (side == OrderSide.SELL) {
             if (size.compareTo(BigDecimal.ZERO) <= 0) {

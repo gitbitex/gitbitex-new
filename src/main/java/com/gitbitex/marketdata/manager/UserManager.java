@@ -23,7 +23,7 @@ public class UserManager {
         // check if the email address is already registered
         User user = userRepository.findByEmail(email);
         if (user != null) {
-            throw new RuntimeException("duplicate email addresses");
+            throw new RuntimeException("duplicate email address");
         }
 
         // create new user
@@ -38,10 +38,8 @@ public class UserManager {
 
     public String generateAccessToken(User user, String sessionId) {
         String accessToken = user.getId() + ":" + sessionId + ":" + generateAccessTokenSecret(user);
-
         redissonClient.getBucket(redisKeyForAccessToken(accessToken))
                 .set(new Date().toString(), 14, TimeUnit.DAYS);
-
         return accessToken;
     }
 

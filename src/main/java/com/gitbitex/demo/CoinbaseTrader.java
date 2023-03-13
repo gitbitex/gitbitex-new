@@ -55,8 +55,10 @@ public class CoinbaseTrader {
 
         scheduledExecutor.scheduleAtFixedRate(() -> {
             try {
-                //test(user);
-                //if (true) {return;}
+                test(user);
+                if (true) {
+                    return;
+                }
 
                 if (!client.isOpen()) {
                     try {

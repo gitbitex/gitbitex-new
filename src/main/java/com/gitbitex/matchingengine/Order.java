@@ -4,6 +4,7 @@ import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
+import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -33,19 +34,6 @@ public class Order implements Cloneable {
     }
 
     public Order(PlaceOrderCommand command) {
-        if (command.getUserId() == null) {
-            throw new NullPointerException("userId");
-        }
-        if (command.getOrderId() == null) {
-            throw new NullPointerException("orderId");
-        }
-        if (command.getOrderType() == null) {
-            throw new NullPointerException("orderType");
-        }
-        if (command.getPrice() == null) {
-            throw new NullPointerException("price");
-        }
-
         this.productId = command.getProductId();
         this.userId = command.getUserId();
         this.id = command.getOrderId();

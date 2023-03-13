@@ -96,7 +96,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
                         continue;
                     } else if (candle.getTradeId() + 1 != trade.getSequence()) {
                         throw new RuntimeException(
-                                "bad trade: " + " " + (candle.getTradeId()) + " " + trade.getSequence());
+                                "out of order sequence: " + " " + (candle.getTradeId()) + " " + trade.getSequence());
                     }
                     candle.setClose(trade.getPrice());
                     candle.setLow(candle.getLow().min(trade.getPrice()));

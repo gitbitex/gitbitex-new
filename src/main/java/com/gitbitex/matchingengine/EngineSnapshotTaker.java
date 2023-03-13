@@ -33,7 +33,7 @@ public class EngineSnapshotTaker implements EngineListener {
     }
 
     @PreDestroy
-    public void close(){
+    public void close() {
         this.mainExecutor.shutdown();
     }
 
@@ -87,10 +87,11 @@ public class EngineSnapshotTaker implements EngineListener {
         if (savedCommandOffset != null && commandOffset <= savedCommandOffset) {
             logger.warn("ignore outdated commandOffset: ignored={} saved={}", commandOffset, savedCommandOffset);
         } else {
+            long t1 = System.currentTimeMillis();
             engineSnapshotStore.save(commandOffset, orderBookState, accounts.values(), orders.values(),
                     products.values());
-            logger.info("state saved: commandOffset={}, {} account(s), {} order(s), {} product(s)", commandOffset,
-                    accounts.size(), orders.size(), products.size());
+            logger.info("state saved: commandOffset={}, {} account(s), {} order(s), {} product(s) ({}ms)", commandOffset,
+                    accounts.size(), orders.size(), products.size(), System.currentTimeMillis() - t1);
         }
 
         Iterator<Map.Entry<Long, ModifiedObjectList>> itr = modifiedObjectsQueue.entrySet().iterator();

@@ -24,8 +24,6 @@ import java.util.concurrent.atomic.AtomicLong;
 @Slf4j
 public class ModifiedObjectWriter implements EngineListener {
     private final KafkaMessageProducer producer;
-    private final StripedExecutorService kafkaExecutor = new StripedExecutorService(20);
-    private final StripedExecutorService redisExecutor = new StripedExecutorService(20);
     private final Counter modifiedObjectCreatedCounter = Counter
             .builder("gbe.matching-engine.modified-object.created")
             .register(Metrics.globalRegistry);
@@ -37,6 +35,8 @@ public class ModifiedObjectWriter implements EngineListener {
     private final RTopic orderBookMessageTopic;
     private final ConcurrentLinkedQueue<ModifiedObjectList> modifiedObjectsQueue = new ConcurrentLinkedQueue<>();
     private final ScheduledExecutorService mainExecutor = Executors.newScheduledThreadPool(1);
+    private final StripedExecutorService kafkaExecutor = new StripedExecutorService(Runtime.getRuntime().availableProcessors());
+    private final StripedExecutorService redisExecutor = new StripedExecutorService(Runtime.getRuntime().availableProcessors());
     private long lastCommandOffset;
 
     public ModifiedObjectWriter(KafkaMessageProducer producer, RedissonClient redissonClient) {

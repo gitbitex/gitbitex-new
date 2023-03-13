@@ -1,6 +1,5 @@
 package com.gitbitex.openapi.controller;
 
-import com.gitbitex.kafka.KafkaMessageProducer;
 import com.gitbitex.marketdata.entity.Product;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.manager.AccountManager;
@@ -8,6 +7,7 @@ import com.gitbitex.marketdata.manager.UserManager;
 import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.matchingengine.command.DepositCommand;
+import com.gitbitex.matchingengine.command.MatchingEngineCommandProducer;
 import com.gitbitex.matchingengine.command.PutProductCommand;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ import java.util.UUID;
 @RestController
 @RequiredArgsConstructor
 public class AdminController {
-    private final KafkaMessageProducer producer;
+    private final MatchingEngineCommandProducer producer;
     private final AccountManager accountManager;
     private final ProductRepository productRepository;
     private final UserManager userManager;
@@ -48,7 +48,7 @@ public class AdminController {
         command.setCurrency(currency);
         command.setAmount(new BigDecimal(amount));
         command.setTransactionId(UUID.randomUUID().toString());
-        producer.sendToMatchingEngine(command, null);
+        producer.send(command, null);
         return "ok";
     }
 
@@ -71,7 +71,7 @@ public class AdminController {
         putProductCommand.setProductId(product.getId());
         putProductCommand.setBaseCurrency(product.getBaseCurrency());
         putProductCommand.setQuoteCurrency(product.getQuoteCurrency());
-        producer.sendToMatchingEngine(putProductCommand, null);
+        producer.send(putProductCommand, null);
 
         return product;
     }
@@ -80,7 +80,7 @@ public class AdminController {
         CancelOrderCommand command = new CancelOrderCommand();
         command.setProductId(productId);
         command.setOrderId(orderId);
-        producer.sendToMatchingEngine(command, null);
+        producer.send(command, null);
     }
 
     @Getter

@@ -28,7 +28,7 @@ public class OrderBook {
     private final AccountBook accountBook;
     private final TreeMap<BigDecimal, PriceGroupedOrderCollection> asks = new TreeMap<>(Comparator.naturalOrder());
     private final TreeMap<BigDecimal, PriceGroupedOrderCollection> bids = new TreeMap<>(Comparator.reverseOrder());
-    private final LinkedHashMap<String, Order> orderById = new LinkedHashMap<>();
+    private final Map<String, Order> orderById = new HashMap<>();
 
     public OrderBook(String productId, Long orderSequence, Long tradeSequence, Long messageSequence,
                      AccountBook accountBook, ProductBook productBook) {
