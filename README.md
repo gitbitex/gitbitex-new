@@ -47,8 +47,7 @@ For example, after users recharge/withdraw, send **_DepositCommand_**/**_Withdra
 ### Can I use this project for production?
 Probably not. Some customers I know use this project in production, but they all have professional technicians. 
 If you want to use it in production, you need professional technicians to help you. Like me . 
-(**If you want to build an exchange, you can hire me. I'm looking for a part-time job remotely 
-because I lost a lot of money on the damn digital currency.😂**)
+(**If you want to build an exchange, you can hire me. I'm looking for a part-time job remotely**)
 ### How can I monitor the performance of the matching engine
 Some prometheus metrics for measuring performance have been built into the project. 
 You can visit http://127.0.0.1:7002/actuator/prometheus see.You can use Prometheus and grafana to monitor.
