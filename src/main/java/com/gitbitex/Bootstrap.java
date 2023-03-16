@@ -12,13 +12,10 @@ import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.*;
 import com.gitbitex.matchingengine.command.Command;
 import com.gitbitex.matchingengine.command.CommandDeserializer;
-import com.gitbitex.matchingengine.message.AccountMessageDeserializer;
-import com.gitbitex.matchingengine.message.OrderMessageDeserializer;
-import com.gitbitex.matchingengine.message.TradeMessageDeserializer;
+import com.gitbitex.matchingengine.message.*;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import com.gitbitex.middleware.kafka.KafkaProperties;
 import lombok.RequiredArgsConstructor;
-import lombok.var;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.redisson.api.RedissonClient;
@@ -74,7 +71,7 @@ public class Bootstrap {
     private void startAccountPersistenceThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Account";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+            KafkaConsumer<String, AccountMessage> consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
                     new AccountMessageDeserializer());
             AccountPersistenceThread accountPersistenceThread = new AccountPersistenceThread(consumer, accountManager,
                     appProperties);
@@ -100,7 +97,7 @@ public class Bootstrap {
     private void startTickerThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Ticker";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+            KafkaConsumer<String, TradeMessage> consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
                     new TradeMessageDeserializer());
             TickerThread tickerThread = new TickerThread(consumer, tickerManager, appProperties);
             tickerThread.setName(groupId + "-" + tickerThread.getId());
