@@ -174,11 +174,10 @@ public class SessionManager {
         }
 
         List<L2OrderBookChange> changes = lastL2OrderBook.diff(l2OrderBook);
-        if (changes == null || changes.isEmpty()) {
-            return;
+        if (changes != null && !changes.isEmpty()) {
+            L2UpdateFeedMessage l2UpdateFeedMessage = new L2UpdateFeedMessage(l2OrderBook.getProductId(), changes);
+            doSendJson(session, l2UpdateFeedMessage);
         }
-        L2UpdateFeedMessage l2UpdateFeedMessage = new L2UpdateFeedMessage(l2OrderBook.getProductId(), changes);
-        doSendJson(session, l2UpdateFeedMessage);
 
         session.getAttributes().put(key, l2OrderBook);
     }
