@@ -10,6 +10,7 @@ import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.matchingengine.L2OrderBook;
 import com.gitbitex.matchingengine.L2OrderBookChange;
 import com.gitbitex.matchingengine.OrderBookSnapshotStore;
+import com.gitbitex.stripexecutor.StripedExecutorService;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,8 @@ public class SessionManager {
     private final ConcurrentHashMap<String, WebSocketSession> sessionById = new ConcurrentHashMap<>();
     private final OrderBookSnapshotStore orderBookSnapshotStore;
     private final TickerManager tickerManager;
+    private final StripedExecutorService messageSenderExecutor =
+            new StripedExecutorService(Runtime.getRuntime().availableProcessors());
 
     @SneakyThrows
     public void subOrUnSub(WebSocketSession session, List<String> productIds, List<String> currencies,
@@ -46,15 +49,7 @@ public class SessionManager {
 
                         if (isSub) {
                             subscribeChannel(session, productChannel);
-
-                            try {
-                                L2OrderBook l2OrderBook = orderBookSnapshotStore.getL2BatchOrderBook(productId);
-                                if (l2OrderBook != null) {
-                                    sendL2OrderBook(session, l2OrderBook);
-                                }
-                            } catch (Exception e) {
-                                logger.error("send level2 snapshot error: {}", e.getMessage(), e);
-                            }
+                            sendL2OrderBookSnapshot(session, productId);
                         } else {
                             String key = "LAST_L2_ORDER_BOOK:" + productId;
                             session.getAttributes().remove(key);
@@ -68,15 +63,7 @@ public class SessionManager {
 
                         if (isSub) {
                             subscribeChannel(session, productChannel);
-
-                            try {
-                                Ticker ticker = tickerManager.getTicker(productId);
-                                if (ticker != null) {
-                                    sendJson(session, new TickerFeedMessage(ticker));
-                                }
-                            } catch (Exception e) {
-                                logger.error("send ticker error: {}", e.getMessage(), e);
-                            }
+                            sendTicker(session, productId);
                         } else {
                             unsubscribeChannel(session, productChannel);
                         }
@@ -132,35 +119,49 @@ public class SessionManager {
         }
     }
 
-    public void sendMessageToChannel(String channel, Object message) {
+    public void broadcast(String channel, Object message) {
         Set<String> sessionIds = sessionIdsByChannel.get(channel);
         if (sessionIds == null || sessionIds.isEmpty()) {
             return;
         }
 
-        sessionIds.parallelStream().forEach(sessionId -> {
-            try {
-                WebSocketSession session = sessionById.get(sessionId);
-                if (session != null) {
-                    synchronized (session) {
-                        if (message instanceof L2OrderBook) {
-                            sendL2OrderBook(session, (L2OrderBook) message);
-                        } else {
-                            sendJson(session, message);
-                        }
+        sessionIds.forEach(sessionId -> {
+            messageSenderExecutor.execute(sessionId, () -> {
+                try {
+                    WebSocketSession session = sessionById.get(sessionId);
+                    if (session == null) {
+                        return;
                     }
+                    if (message instanceof L2OrderBook) {
+                        doSendL2OrderBook(session, (L2OrderBook) message);
+                    } else {
+                        doSendJson(session, message);
+                    }
+                } catch (Exception e) {
+                    logger.error("send error: {}", e.getMessage());
+                }
+            });
+        });
+    }
+
+    private void sendL2OrderBookSnapshot(WebSocketSession session, String productId) {
+        messageSenderExecutor.execute(session.getId(), () -> {
+            try {
+                L2OrderBook l2OrderBook = orderBookSnapshotStore.getL2BatchOrderBook(productId);
+                if (l2OrderBook != null) {
+                    doSendL2OrderBook(session, l2OrderBook);
                 }
             } catch (Exception e) {
-                logger.error("send error: {}", e.getMessage());
+                logger.error("send level2 snapshot error: {}", e.getMessage(), e);
             }
         });
     }
 
-    private void sendL2OrderBook(WebSocketSession session, L2OrderBook l2OrderBook) throws IOException {
+    private void doSendL2OrderBook(WebSocketSession session, L2OrderBook l2OrderBook) throws IOException {
         String key = "LAST_L2_ORDER_BOOK:" + l2OrderBook.getProductId();
 
         if (!session.getAttributes().containsKey(key)) {
-            sendJson(session, new L2SnapshotFeedMessage(l2OrderBook));
+            doSendJson(session, new L2SnapshotFeedMessage(l2OrderBook));
             session.getAttributes().put(key, l2OrderBook);
             return;
         }
@@ -173,25 +174,40 @@ public class SessionManager {
         }
 
         List<L2OrderBookChange> changes = lastL2OrderBook.diff(l2OrderBook);
-        if (changes == null || changes.isEmpty()) {
-            return;
+        if (changes != null && !changes.isEmpty()) {
+            L2UpdateFeedMessage l2UpdateFeedMessage = new L2UpdateFeedMessage(l2OrderBook.getProductId(), changes);
+            doSendJson(session, l2UpdateFeedMessage);
         }
-        L2UpdateFeedMessage l2UpdateFeedMessage = new L2UpdateFeedMessage(l2OrderBook.getProductId(), changes);
-        sendJson(session, l2UpdateFeedMessage);
+
         session.getAttributes().put(key, l2OrderBook);
     }
 
-    public void sendPong(WebSocketSession session) {
-        try {
-            PongFeedMessage pongFeedMessage = new PongFeedMessage();
-            pongFeedMessage.setType("pong");
-            session.sendMessage(new TextMessage(JSON.toJSONString(pongFeedMessage)));
-        } catch (Exception e) {
-            logger.error("send pong error: {}", e.getMessage());
-        }
+    private void sendTicker(WebSocketSession session, String productId) {
+        messageSenderExecutor.execute(session.getId(), () -> {
+            try {
+                Ticker ticker = tickerManager.getTicker(productId);
+                if (ticker != null) {
+                    doSendJson(session, new TickerFeedMessage(ticker));
+                }
+            } catch (Exception e) {
+                logger.error("send ticker error: {}", e.getMessage(), e);
+            }
+        });
     }
 
-    private void sendJson(WebSocketSession session, Object msg) {
+    public void sendPong(WebSocketSession session) {
+        messageSenderExecutor.execute(session.getId(), () -> {
+            try {
+                PongFeedMessage pongFeedMessage = new PongFeedMessage();
+                pongFeedMessage.setType("pong");
+                session.sendMessage(new TextMessage(JSON.toJSONString(pongFeedMessage)));
+            } catch (Exception e) {
+                logger.error("send pong error: {}", e.getMessage());
+            }
+        });
+    }
+
+    private void doSendJson(WebSocketSession session, Object msg) {
         try {
             session.sendMessage(new TextMessage(JSON.toJSONString(msg)));
         } catch (Exception e) {
@@ -216,9 +232,6 @@ public class SessionManager {
             v.remove(channel);
             return v;
         });
-        if (channelsBySessionId.containsKey(session.getId())) {
-
-        }
     }
 
     public void removeSession(WebSocketSession session) {

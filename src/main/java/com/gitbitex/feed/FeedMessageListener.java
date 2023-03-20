@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.feed.message.*;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.matchingengine.L2OrderBook;
-import com.gitbitex.matchingengine.OrderBookSnapshotStore;
 import com.gitbitex.matchingengine.message.*;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import lombok.RequiredArgsConstructor;
@@ -21,76 +20,75 @@ import javax.annotation.PostConstruct;
 public class FeedMessageListener {
     private final RedissonClient redissonClient;
     private final SessionManager sessionManager;
-    private final OrderBookSnapshotStore orderBookSnapshotStore;
-    private final StripedExecutorService listenerExecutor =
+    private final StripedExecutorService callbackExecutor =
             new StripedExecutorService(Runtime.getRuntime().availableProcessors());
 
     @PostConstruct
     public void run() {
         redissonClient.getTopic("order", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             OrderMessage orderMessage = JSON.parseObject(msg, OrderMessage.class);
-            listenerExecutor.execute(orderMessage.getUserId(), () -> {
+            callbackExecutor.execute(orderMessage.getUserId(), () -> {
                 String channel = orderMessage.getUserId() + "." + orderMessage.getProductId() + ".order";
-                sessionManager.sendMessageToChannel(channel, orderFeedMessage(orderMessage));
+                sessionManager.broadcast(channel, orderFeedMessage(orderMessage));
             });
         });
 
         redissonClient.getTopic("account", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             AccountMessage accountMessage = JSON.parseObject(msg, AccountMessage.class);
-            listenerExecutor.execute(accountMessage.getUserId(), () -> {
+            callbackExecutor.execute(accountMessage.getUserId(), () -> {
                 String channel = accountMessage.getUserId() + "." + accountMessage.getCurrency() + ".funds";
-                sessionManager.sendMessageToChannel(channel, accountFeedMessage(accountMessage));
+                sessionManager.broadcast(channel, accountFeedMessage(accountMessage));
             });
         });
 
         redissonClient.getTopic("ticker", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             TickerMessage tickerMessage = JSON.parseObject(msg, TickerMessage.class);
-            listenerExecutor.execute(tickerMessage.getProductId(), () -> {
+            callbackExecutor.execute(tickerMessage.getProductId(), () -> {
                 String channel = tickerMessage.getProductId() + ".ticker";
-                sessionManager.sendMessageToChannel(channel, tickerFeedMessage(tickerMessage));
+                sessionManager.broadcast(channel, tickerFeedMessage(tickerMessage));
             });
         });
 
         redissonClient.getTopic("candle", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
-            listenerExecutor.execute(() -> {
+            callbackExecutor.execute(() -> {
                 Candle candle = JSON.parseObject(msg, Candle.class);
                 String channel = candle.getProductId() + ".candle_" + candle.getGranularity() * 60;
-                sessionManager.sendMessageToChannel(channel, (candleMessage(candle)));
+                sessionManager.broadcast(channel, (candleMessage(candle)));
             });
         });
 
         redissonClient.getTopic("l2_batch", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             L2OrderBook l2OrderBook = JSON.parseObject(msg, L2OrderBook.class);
-            listenerExecutor.execute(l2OrderBook.getProductId(), () -> {
+            callbackExecutor.execute(l2OrderBook.getProductId(), () -> {
                 String channel = l2OrderBook.getProductId() + ".level2";
-                sessionManager.sendMessageToChannel(channel, l2OrderBook);
+                sessionManager.broadcast(channel, l2OrderBook);
             });
         });
 
         redissonClient.getTopic("orderBookLog", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             OrderBookMessage message = JSON.parseObject(msg, OrderBookMessage.class);
-            listenerExecutor.execute(message.getProductId(), () -> {
+            callbackExecutor.execute(message.getProductId(), () -> {
                 switch (message.getType()) {
                     case ORDER_RECEIVED:
                         OrderReceivedMessage orderReceivedMessage = JSON.parseObject(msg, OrderReceivedMessage.class);
-                        sessionManager.sendMessageToChannel(orderReceivedMessage.getProductId() + ".full",
+                        sessionManager.broadcast(orderReceivedMessage.getProductId() + ".full",
                                 (orderReceivedMessage(orderReceivedMessage)));
                         break;
                     case ORDER_MATCH:
                         OrderMatchMessage orderMatchMessage = JSON.parseObject(msg, OrderMatchMessage.class);
                         String matchChannel = orderMatchMessage.getProductId() + ".match";
-                        sessionManager.sendMessageToChannel(matchChannel, (matchMessage(orderMatchMessage)));
-                        sessionManager.sendMessageToChannel(orderMatchMessage.getProductId() + ".full",
+                        sessionManager.broadcast(matchChannel, (matchMessage(orderMatchMessage)));
+                        sessionManager.broadcast(orderMatchMessage.getProductId() + ".full",
                                 (matchMessage(orderMatchMessage)));
                         break;
                     case ORDER_OPEN:
                         OrderOpenMessage orderOpenMessage = JSON.parseObject(msg, OrderOpenMessage.class);
-                        sessionManager.sendMessageToChannel(orderOpenMessage.getProductId() + ".full",
+                        sessionManager.broadcast(orderOpenMessage.getProductId() + ".full",
                                 (orderOpenMessage(orderOpenMessage)));
                         break;
                     case ORDER_DONE:
                         OrderDoneMessage orderDoneMessage = JSON.parseObject(msg, OrderDoneMessage.class);
-                        sessionManager.sendMessageToChannel(orderDoneMessage.getProductId() + ".full",
+                        sessionManager.broadcast(orderDoneMessage.getProductId() + ".full",
                                 (orderDoneMessage(orderDoneMessage)));
                         break;
                     default:
