@@ -7,7 +7,7 @@ import lombok.Setter;
 @Setter
 public class OrderBookState {
     private String productId;
-    private Long orderSequence;
-    private Long tradeSequence;
-    private Long messageSequence;
+    private long orderSequence;
+    private long tradeSequence;
+    private long messageSequence;
 }
