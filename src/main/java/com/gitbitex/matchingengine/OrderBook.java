@@ -15,35 +15,28 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Getter
 @Slf4j
 public class OrderBook {
     private final String productId;
-    private final AtomicLong orderSequence = new AtomicLong();
-    private final AtomicLong tradeSequence = new AtomicLong();
-    private final AtomicLong messageSequence = new AtomicLong();
     private final ProductBook productBook;
     private final AccountBook accountBook;
     private final TreeMap<BigDecimal, PriceGroupedOrderCollection> asks = new TreeMap<>(Comparator.naturalOrder());
     private final TreeMap<BigDecimal, PriceGroupedOrderCollection> bids = new TreeMap<>(Comparator.reverseOrder());
     private final Map<String, Order> orderById = new HashMap<>();
+    private long orderSequence;
+    private long tradeSequence;
+    private long messageSequence;
 
-    public OrderBook(String productId, Long orderSequence, Long tradeSequence, Long messageSequence,
+    public OrderBook(String productId, long orderSequence, long tradeSequence, long messageSequence,
                      AccountBook accountBook, ProductBook productBook) {
         this.productId = productId;
         this.productBook = productBook;
         this.accountBook = accountBook;
-        if (orderSequence != null) {
-            this.orderSequence.set(orderSequence);
-        }
-        if (tradeSequence != null) {
-            this.tradeSequence.set(tradeSequence);
-        }
-        if (messageSequence != null) {
-            this.messageSequence.set(messageSequence);
-        }
+        this.orderSequence = orderSequence;
+        this.tradeSequence = (tradeSequence);
+        this.messageSequence = (messageSequence);
     }
 
     public void placeOrder(Order takerOrder, ModifiedObjectList modifiedObjects) {
@@ -53,7 +46,7 @@ public class OrderBook {
             return;
         }
 
-        takerOrder.setSequence(orderSequence.incrementAndGet());
+        takerOrder.setSequence(++orderSequence);
 
         if (takerOrder.getSide() == OrderSide.BUY) {
             accountBook.hold(takerOrder.getUserId(), product.getQuoteCurrency(), takerOrder.getRemainingFunds(),
@@ -204,7 +197,7 @@ public class OrderBook {
         }
 
         Trade trade = new Trade();
-        trade.setSequence(tradeSequence.incrementAndGet());
+        trade.setSequence(++tradeSequence);
         trade.setProductId(productId);
         trade.setSize(tradeSize);
         trade.setFunds(tradeFunds);
@@ -250,7 +243,7 @@ public class OrderBook {
 
     public OrderReceivedMessage orderReceivedMessage(Order order) {
         OrderReceivedMessage message = new OrderReceivedMessage();
-        message.setSequence(messageSequence.incrementAndGet());
+        message.setSequence(++messageSequence);
         message.setProductId(order.getProductId());
         message.setUserId(order.getUserId());
         message.setPrice(order.getPrice());
@@ -265,7 +258,7 @@ public class OrderBook {
 
     public OrderOpenMessage orderOpenMessage(Order order) {
         OrderOpenMessage message = new OrderOpenMessage();
-        message.setSequence(messageSequence.incrementAndGet());
+        message.setSequence(++messageSequence);
         message.setProductId(order.getProductId());
         message.setRemainingSize(order.getRemainingSize());
         message.setPrice(order.getPrice());
@@ -278,7 +271,7 @@ public class OrderBook {
 
     public OrderMatchMessage orderMatchMessage(Order takerOrder, Order makerOrder, Trade trade) {
         OrderMatchMessage message = new OrderMatchMessage();
-        message.setSequence(messageSequence.incrementAndGet());
+        message.setSequence(++messageSequence);
         message.setTradeId(trade.getSequence());
         message.setProductId(trade.getProductId());
         message.setTakerOrderId(takerOrder.getId());
@@ -295,7 +288,7 @@ public class OrderBook {
 
     public OrderDoneMessage orderDoneMessage(Order order) {
         OrderDoneMessage message = new OrderDoneMessage();
-        message.setSequence(messageSequence.incrementAndGet());
+        message.setSequence(++messageSequence);
         message.setProductId(order.getProductId());
         if (order.getType() != OrderType.MARKET) {
             message.setRemainingSize(order.getRemainingSize());
@@ -315,9 +308,9 @@ public class OrderBook {
     public OrderBookState orderBookState() {
         OrderBookState orderBookState = new OrderBookState();
         orderBookState.setProductId(this.productId);
-        orderBookState.setOrderSequence(this.orderSequence.get());
-        orderBookState.setTradeSequence(this.tradeSequence.get());
-        orderBookState.setMessageSequence(this.messageSequence.get());
+        orderBookState.setOrderSequence(this.orderSequence);
+        orderBookState.setTradeSequence(this.tradeSequence);
+        orderBookState.setMessageSequence(this.messageSequence);
         return orderBookState;
     }
 }

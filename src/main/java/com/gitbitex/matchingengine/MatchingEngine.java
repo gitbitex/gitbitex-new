@@ -76,7 +76,7 @@ public class MatchingEngine {
         if (orderBooks.containsKey(productId)) {
             return;
         }
-        OrderBook orderBook = new OrderBook(productId, null, null, null, accountBook, productBook);
+        OrderBook orderBook = new OrderBook(productId, 0, 0, 0, accountBook, productBook);
         orderBooks.put(productId, orderBook);
     }
 
