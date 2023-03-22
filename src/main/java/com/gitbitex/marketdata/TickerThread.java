@@ -56,7 +56,7 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
 
     @Override
     protected void doPoll() {
-        ConsumerRecords<String, TradeMessage> records = consumer.poll(Duration.ofSeconds(5));
+        var records = consumer.poll(Duration.ofSeconds(5));
         if (records.isEmpty()) {
             return;
         }

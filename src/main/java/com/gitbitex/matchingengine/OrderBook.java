@@ -13,8 +13,10 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.*;
-import java.util.Map.Entry;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Getter
 @Slf4j
@@ -22,8 +24,8 @@ public class OrderBook {
     private final String productId;
     private final ProductBook productBook;
     private final AccountBook accountBook;
-    private final TreeMap<BigDecimal, PriceGroupedOrderCollection> asks = new TreeMap<>(Comparator.naturalOrder());
-    private final TreeMap<BigDecimal, PriceGroupedOrderCollection> bids = new TreeMap<>(Comparator.reverseOrder());
+    private final Depth asks = new Depth(Comparator.naturalOrder());
+    private final Depth bids = new Depth(Comparator.reverseOrder());
     private final Map<String, Order> orderById = new HashMap<>();
     private long orderSequence;
     private long tradeSequence;
@@ -40,7 +42,7 @@ public class OrderBook {
     }
 
     public void placeOrder(Order takerOrder, ModifiedObjectList modifiedObjects) {
-        Product product = productBook.getProduct(productId);
+        var product = productBook.getProduct(productId);
         if (product == null) {
             logger.warn("order rejected, reason: PRODUCT_NOT_FOUND");
             return;
@@ -68,30 +70,29 @@ public class OrderBook {
         modifiedObjects.add(orderReceivedMessage(takerOrder));
 
         // start matching
-        Iterator<Entry<BigDecimal, PriceGroupedOrderCollection>> priceItr = (takerOrder.getSide() == OrderSide.BUY
-                ? asks : bids).entrySet().iterator();
+        var makerDepth = takerOrder.getSide() == OrderSide.BUY ? asks : bids;
+        var depthEntryItr = makerDepth.entrySet().iterator();
         MATCHING:
-        while (priceItr.hasNext()) {
-            Map.Entry<BigDecimal, PriceGroupedOrderCollection> entry = priceItr.next();
-            BigDecimal price = entry.getKey();
-            PriceGroupedOrderCollection orders = entry.getValue();
+        while (depthEntryItr.hasNext()) {
+            var entry = depthEntryItr.next();
+            var price = entry.getKey();
+            var orders = entry.getValue();
 
             // check whether there is price crossing between the taker and the maker
             if (!isPriceCrossed(takerOrder, price)) {
                 break;
             }
 
-            Iterator<Map.Entry<String, Order>> orderItr = orders.entrySet().iterator();
+            var orderItr = orders.entrySet().iterator();
             while (orderItr.hasNext()) {
-                Map.Entry<String, Order> orderEntry = orderItr.next();
-                Order makerOrder = orderEntry.getValue();
+                var orderEntry = orderItr.next();
+                var makerOrder = orderEntry.getValue();
 
                 // make trade
                 Trade trade = trade(takerOrder, makerOrder);
                 if (trade == null) {
                     break MATCHING;
                 }
-                entry.getValue().decrRemainingSize(trade.getSize());
 
                 modifiedObjects.add(orderMatchMessage(takerOrder, makerOrder, trade));
 
@@ -114,7 +115,7 @@ public class OrderBook {
 
             // remove price line with empty order list
             if (orders.isEmpty()) {
-                priceItr.remove();
+                depthEntryItr.remove();
             }
         }
 
@@ -139,19 +140,14 @@ public class OrderBook {
     }
 
     public void cancelOrder(String orderId, ModifiedObjectList modifiedObjects) {
-        Order order = orderById.remove(orderId);
+        var order = orderById.remove(orderId);
         if (order == null) {
             return;
         }
 
-        // remove order from order book
-        TreeMap<BigDecimal, PriceGroupedOrderCollection> ordersByPrice = order.getSide() == OrderSide.BUY ? bids : asks;
-        LinkedHashMap<String, Order> orders = ordersByPrice.get(order.getPrice());
-        orders.remove(orderId);
-        if (orders.isEmpty()) {
-            ordersByPrice.remove(order.getPrice());
-        }
-        orderById.remove(orderId);
+        // remove order from depth
+        var depth = order.getSide() == OrderSide.BUY ? bids : asks;
+        depth.removeOrder(order);
 
         order.setStatus(OrderStatus.CANCELLED);
         modifiedObjects.add(order);
@@ -159,7 +155,7 @@ public class OrderBook {
         modifiedObjects.add(orderBookState());
 
         // un-hold funds
-        Product product = productBook.getProduct(productId);
+        var product = productBook.getProduct(productId);
         unholdOrderFunds(order, product, modifiedObjects);
     }
 
@@ -210,9 +206,8 @@ public class OrderBook {
     }
 
     public void addOrder(Order order) {
-        (order.getSide() == OrderSide.BUY ? bids : asks)
-                .computeIfAbsent(order.getPrice(), k -> new PriceGroupedOrderCollection())
-                .put(order.getId(), order);
+        var depth = order.getSide() == OrderSide.BUY ? bids : asks;
+        depth.addOrder(order);
         orderById.put(order.getId(), order);
     }
 
@@ -242,7 +237,7 @@ public class OrderBook {
     }
 
     public OrderReceivedMessage orderReceivedMessage(Order order) {
-        OrderReceivedMessage message = new OrderReceivedMessage();
+        var message = new OrderReceivedMessage();
         message.setSequence(++messageSequence);
         message.setProductId(order.getProductId());
         message.setUserId(order.getUserId());
@@ -257,7 +252,7 @@ public class OrderBook {
     }
 
     public OrderOpenMessage orderOpenMessage(Order order) {
-        OrderOpenMessage message = new OrderOpenMessage();
+        var message = new OrderOpenMessage();
         message.setSequence(++messageSequence);
         message.setProductId(order.getProductId());
         message.setRemainingSize(order.getRemainingSize());
@@ -270,7 +265,7 @@ public class OrderBook {
     }
 
     public OrderMatchMessage orderMatchMessage(Order takerOrder, Order makerOrder, Trade trade) {
-        OrderMatchMessage message = new OrderMatchMessage();
+        var message = new OrderMatchMessage();
         message.setSequence(++messageSequence);
         message.setTradeId(trade.getSequence());
         message.setProductId(trade.getProductId());
@@ -287,7 +282,7 @@ public class OrderBook {
     }
 
     public OrderDoneMessage orderDoneMessage(Order order) {
-        OrderDoneMessage message = new OrderDoneMessage();
+        var message = new OrderDoneMessage();
         message.setSequence(++messageSequence);
         message.setProductId(order.getProductId());
         if (order.getType() != OrderType.MARKET) {
@@ -306,7 +301,7 @@ public class OrderBook {
     }
 
     public OrderBookState orderBookState() {
-        OrderBookState orderBookState = new OrderBookState();
+        var orderBookState = new OrderBookState();
         orderBookState.setProductId(this.productId);
         orderBookState.setOrderSequence(this.orderSequence);
         orderBookState.setTradeSequence(this.tradeSequence);

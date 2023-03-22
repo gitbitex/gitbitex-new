@@ -20,8 +20,8 @@ public class PriceGroupedOrderCollection extends LinkedHashMap<String, Order> {
 
     public BigDecimal getRemainingSize() {
         return values().stream()
-                .map(x -> x.getRemainingSize())
-                .reduce((x, y) -> x.add(y))
+                .map(Order::getRemainingSize)
+                .reduce(BigDecimal::add)
                 .get();
     }
 }

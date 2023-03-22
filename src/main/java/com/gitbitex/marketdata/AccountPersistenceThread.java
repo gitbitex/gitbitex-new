@@ -51,7 +51,7 @@ public class AccountPersistenceThread extends KafkaConsumerThread<String, Accoun
 
     @Override
     protected void doPoll() {
-        ConsumerRecords<String, AccountMessage> records = consumer.poll(Duration.ofSeconds(5));
+        var records = consumer.poll(Duration.ofSeconds(5));
         if (records.isEmpty()) {
             return;
         }

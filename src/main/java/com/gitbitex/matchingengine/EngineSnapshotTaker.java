@@ -65,14 +65,11 @@ public class EngineSnapshotTaker implements EngineListener {
             for (Object obj : modifiedObjects) {
                 if (obj instanceof OrderBookState) {
                     orderBookState = (OrderBookState) obj;
-                } else if (obj instanceof Account) {
-                    Account account = (Account) obj;
+                } else if (obj instanceof Account account) {
                     accounts.put(account.getId(), account);
-                } else if (obj instanceof Order) {
-                    Order order = (Order) obj;
+                } else if (obj instanceof Order order) {
                     orders.put(order.getId(), order);
-                } else if (obj instanceof Product) {
-                    Product product = (Product) obj;
+                } else if (obj instanceof Product product) {
                     products.put(product.getId(), product);
                 }
             }

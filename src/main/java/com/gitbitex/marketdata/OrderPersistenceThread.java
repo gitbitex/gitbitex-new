@@ -48,7 +48,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, OrderMes
 
     @Override
     protected void doPoll() {
-        ConsumerRecords<String, OrderMessage> records = consumer.poll(Duration.ofSeconds(5));
+        var records = consumer.poll(Duration.ofSeconds(5));
         if (records.isEmpty()) {
             return;
         }

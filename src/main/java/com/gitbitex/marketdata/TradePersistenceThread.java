@@ -51,7 +51,7 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, TradeMes
 
     @Override
     protected void doPoll() {
-        ConsumerRecords<String, TradeMessage> records = consumer.poll(Duration.ofSeconds(5));
+        var records = consumer.poll(Duration.ofSeconds(5));
         if (records.isEmpty()) {
             return;
         }
