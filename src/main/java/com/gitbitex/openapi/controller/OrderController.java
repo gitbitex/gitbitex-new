@@ -162,12 +162,12 @@ public class OrderController {
         OrderSide side = command.getOrderSide();
 
         switch (command.getOrderType()) {
-            case LIMIT:
+            case LIMIT -> {
                 size = size.setScale(product.getBaseScale(), RoundingMode.DOWN);
                 price = price.setScale(product.getQuoteScale(), RoundingMode.DOWN);
                 funds = side == OrderSide.BUY ? size.multiply(price) : BigDecimal.ZERO;
-                break;
-            case MARKET:
+            }
+            case MARKET -> {
                 price = BigDecimal.ZERO;
                 if (side == OrderSide.BUY) {
                     size = BigDecimal.ZERO;
@@ -176,9 +176,8 @@ public class OrderController {
                     size = size.setScale(product.getBaseScale(), RoundingMode.DOWN);
                     funds = BigDecimal.ZERO;
                 }
-                break;
-            default:
-                throw new RuntimeException("unknown order type: " + command.getType());
+            }
+            default -> throw new RuntimeException("unknown order type: " + command.getType());
         }
 
         command.setSize(size);

@@ -37,8 +37,8 @@ public class OrderBook {
         this.productBook = productBook;
         this.accountBook = accountBook;
         this.orderSequence = orderSequence;
-        this.tradeSequence = (tradeSequence);
-        this.messageSequence = (messageSequence);
+        this.tradeSequence = tradeSequence;
+        this.messageSequence = messageSequence;
     }
 
     public void placeOrder(Order takerOrder, ModifiedObjectList modifiedObjects) {

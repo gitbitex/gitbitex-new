@@ -66,16 +66,12 @@ public class ProductController {
 
     @GetMapping("/api/products/{productId}/book")
     public Object getProductBook(@PathVariable String productId, @RequestParam(defaultValue = "2") int level) {
-        switch (level) {
-            case 1:
-                return orderBookSnapshotStore.getL1OrderBook(productId);
-            case 2:
-                return orderBookSnapshotStore.getL2OrderBook(productId);
-            case 3:
-                return orderBookSnapshotStore.getL3OrderBook(productId);
-            default:
-                return null;
-        }
+        return switch (level) {
+            case 1 -> orderBookSnapshotStore.getL1OrderBook(productId);
+            case 2 -> orderBookSnapshotStore.getL2OrderBook(productId);
+            case 3 -> orderBookSnapshotStore.getL3OrderBook(productId);
+            default -> null;
+        };
     }
 
     private ProductDto productDto(Product product) {

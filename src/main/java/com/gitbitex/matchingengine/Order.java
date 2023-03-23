@@ -4,7 +4,6 @@ import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
 import com.gitbitex.matchingengine.command.PlaceOrderCommand;
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 

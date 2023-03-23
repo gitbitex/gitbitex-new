@@ -55,18 +55,15 @@ public class OrderBookSnapshotTaker implements EngineListener {
             return;
         }
         orderBookSnapshotExecutor.execute(productId, () -> {
-            simpleOrderBooks.putIfAbsent(productId, new SimpleOrderBook(productId));
-            SimpleOrderBook simpleOrderBook = simpleOrderBooks.get(productId);
+            SimpleOrderBook simpleOrderBook = getOrderBook(productId);
             modifiedObjects.forEach(obj -> {
-                if (obj instanceof Order) {
-                    Order order = (Order) obj;
+                if (obj instanceof Order order) {
                     if (order.getStatus() == OrderStatus.OPEN) {
                         simpleOrderBook.addOrder(order);
                     } else {
                         simpleOrderBook.removeOrder(order);
                     }
-                } else if (obj instanceof OrderBookState) {
-                    OrderBookState orderBookState = (OrderBookState) obj;
+                } else if (obj instanceof OrderBookState orderBookState) {
                     simpleOrderBook.setMessageSequence(orderBookState.getMessageSequence());
                     takeL2OrderBookSnapshot(simpleOrderBook, 200);
                 }
@@ -82,6 +79,15 @@ public class OrderBookSnapshotTaker implements EngineListener {
             lastL2OrderBookSequences.put(productId, simpleOrderBook.getMessageSequence());
             orderBookSnapshotStore.saveL2BatchOrderBook(l2OrderBook);
         }
+    }
+
+    private SimpleOrderBook getOrderBook(String productId) {
+        SimpleOrderBook simpleOrderBook = simpleOrderBooks.get(productId);
+        if (simpleOrderBook == null) {
+            simpleOrderBook = new SimpleOrderBook(productId);
+            simpleOrderBooks.put(productId, simpleOrderBook);
+        }
+        return simpleOrderBook;
     }
 
     private void startMainTask() {
