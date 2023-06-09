@@ -48,7 +48,7 @@ For example, after users recharge/withdraw, send **_DepositCommand_**/**_Withdra
 Probably not. Some customers I know use this project in production, but they all have professional technicians. 
 If you want to use it in production, you need professional technicians to help you. Like me . 
 
-### How can I monitor the performance of the matching engine
+### How can I monitor the performance of the matching engine?
 Some prometheus metrics for measuring performance have been built into the project. 
 You can visit http://127.0.0.1:7002/actuator/prometheus see.You can use Prometheus and grafana to monitor.
 The metrics are as follows:
@@ -58,5 +58,5 @@ The metrics are as follows:
 - **gbe_matching_engine_snapshot_taker_modified_objects_queue_size** : Objects that have not been written to the snapshot. This value reflects the performance of the snapshot thread.
 
 
-### Where is the API document
+### Where is the API document?
 http://127.0.0.1/swagger-ui/index.html#/
