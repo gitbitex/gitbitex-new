@@ -4,8 +4,8 @@ import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
 import com.gitbitex.enums.TimeInForce;
-import com.gitbitex.marketdata.entity.Order;
-import com.gitbitex.marketdata.entity.Product;
+import com.gitbitex.marketdata.entity.OrderEntity;
+import com.gitbitex.marketdata.entity.ProductEntity;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.repository.OrderRepository;
 import com.gitbitex.marketdata.repository.ProductRepository;
@@ -42,7 +42,7 @@ public class OrderController {
         if (currentUser == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
-        Product product = productRepository.findById(request.getProductId());
+        ProductEntity product = productRepository.findById(request.getProductId());
         if (product == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "product not found: " + request.getProductId());
         }
@@ -82,7 +82,7 @@ public class OrderController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        Order order = orderRepository.findByOrderId(orderId);
+        OrderEntity order = orderRepository.findByOrderId(orderId);
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "order not found: " + orderId);
         }
@@ -105,10 +105,10 @@ public class OrderController {
 
         OrderSide orderSide = side != null ? OrderSide.valueOf(side.toUpperCase()) : null;
 
-        PagedList<Order> orderPage = orderRepository.findAll(currentUser.getId(), productId, OrderStatus.OPEN,
+        PagedList<OrderEntity> orderPage = orderRepository.findAll(currentUser.getId(), productId, OrderStatus.OPEN,
                 orderSide, 1, 20000);
 
-        for (Order order : orderPage.getItems()) {
+        for (OrderEntity order : orderPage.getItems()) {
             CancelOrderCommand command = new CancelOrderCommand();
             command.setProductId(order.getProductId());
             command.setOrderId(order.getId());
@@ -128,14 +128,14 @@ public class OrderController {
 
         OrderStatus orderStatus = status != null ? OrderStatus.valueOf(status.toUpperCase()) : null;
 
-        PagedList<Order> orderPage = orderRepository.findAll(currentUser.getId(), productId, orderStatus, null,
+        PagedList<OrderEntity> orderPage = orderRepository.findAll(currentUser.getId(), productId, orderStatus, null,
                 page, pageSize);
         return new PagedList<>(
                 orderPage.getItems().stream().map(this::orderDto).collect(Collectors.toList()),
                 orderPage.getCount());
     }
 
-    private OrderDto orderDto(Order order) {
+    private OrderDto orderDto(OrderEntity order) {
         OrderDto orderDto = new OrderDto();
         orderDto.setId(order.getId());
         orderDto.setPrice(order.getPrice().toPlainString());
@@ -155,7 +155,7 @@ public class OrderController {
         return orderDto;
     }
 
-    private void formatPlaceOrderCommand(PlaceOrderCommand command, Product product) {
+    private void formatPlaceOrderCommand(PlaceOrderCommand command, ProductEntity product) {
         BigDecimal size = command.getSize();
         BigDecimal price = command.getPrice();
         BigDecimal funds = command.getFunds();

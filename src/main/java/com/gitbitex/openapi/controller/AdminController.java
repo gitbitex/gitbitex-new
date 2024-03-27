@@ -1,6 +1,6 @@
 package com.gitbitex.openapi.controller;
 
-import com.gitbitex.marketdata.entity.Product;
+import com.gitbitex.marketdata.entity.ProductEntity;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.manager.AccountManager;
 import com.gitbitex.marketdata.manager.UserManager;
@@ -53,9 +53,9 @@ public class AdminController {
     }
 
     @PutMapping("/api/admin/products")
-    public Product saveProduct(@RequestBody @Valid PutProductRequest request) {
+    public ProductEntity saveProduct(@RequestBody @Valid PutProductRequest request) {
         String productId = request.getBaseCurrency() + "-" + request.getQuoteCurrency();
-        Product product = new Product();
+        ProductEntity product = new ProductEntity();
         product.setId(productId);
         product.setBaseCurrency(request.baseCurrency);
         product.setQuoteCurrency(request.quoteCurrency);

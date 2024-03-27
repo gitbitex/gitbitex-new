@@ -39,6 +39,14 @@ services:
       - mongo1
       - mongo2
       - mongo3
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    security_opt:
+      - no-new-privileges:true
+    restart: always
+    ports:
+      - "8086:8086"
   kafka:
     image: 'bitnami/kafka:3.4.0'
     container_name: kafka

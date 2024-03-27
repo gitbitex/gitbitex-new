@@ -16,23 +16,20 @@ import java.util.List;
 
 @Slf4j
 @Component
-public class EngineSnapshotStore {
+public class EngineSnapshotManager {
     private final MongoCollection<EngineState> engineStateCollection;
     private final MongoCollection<Account> accountCollection;
     private final MongoCollection<Order> orderCollection;
     private final MongoCollection<Product> productCollection;
-    private final MongoCollection<OrderBookState> orderBookStateCollection;
     private final MongoClient mongoClient;
 
-    public EngineSnapshotStore(MongoClient mongoClient, MongoDatabase database) {
+    public EngineSnapshotManager(MongoClient mongoClient, MongoDatabase database) {
         this.mongoClient = mongoClient;
         this.engineStateCollection = database.getCollection("snapshot_engine", EngineState.class);
         this.accountCollection = database.getCollection("snapshot_account", Account.class);
         this.orderCollection = database.getCollection("snapshot_order", Order.class);
         this.orderCollection.createIndex(Indexes.descending("product_id", "sequence"), new IndexOptions().unique(true));
         this.productCollection = database.getCollection("snapshot_product", Product.class);
-        this.orderBookStateCollection = database.getCollection("snapshot_order_book", OrderBookState.class);
-        this.orderBookStateCollection.createIndex(Indexes.descending("product_id"), new IndexOptions().unique(true));
     }
 
     public List<Product> getProducts() {
@@ -54,27 +51,18 @@ public class EngineSnapshotStore {
                 .into(new ArrayList<>());
     }
 
-    public List<OrderBookState> getOrderBookStates() {
-        return orderBookStateCollection
-                .find()
-                .into(new ArrayList<>());
-    }
-
     public EngineState getEngineState() {
         return engineStateCollection
                 .find(Filters.eq("_id", "default"))
                 .first();
     }
 
-    public Long getCommandOffset() {
-        EngineState engineState = getEngineState();
-        return engineState != null ? engineState.getCommandOffset() : null;
-    }
+    public void save(EngineState engineState,
+                     Collection<Account> accounts,
+                     Collection<Order> orders,
+                     Collection<Product> products) {
+        logger.info("Saving snapshot : commandOffset={}", engineState.getCommandOffset());
 
-    public void save(Long commandOffset, OrderBookState orderBookState, Collection<Account> accounts,
-                     Collection<Order> orders, Collection<Product> products) {
-        EngineState engineState = new EngineState();
-        engineState.setCommandOffset(commandOffset);
         List<WriteModel<Account>> accountWriteModels = buildAccountWriteModels(accounts);
         List<WriteModel<Product>> productWriteModels = buildProductWriteModels(products);
         List<WriteModel<Order>> orderWriteModels = buildOrderWriteModels(orders);
@@ -83,20 +71,19 @@ public class EngineSnapshotStore {
             try {
                 engineStateCollection.replaceOne(session, Filters.eq("_id", engineState.getId()), engineState,
                         new ReplaceOptions().upsert(true));
-                if (orderBookState != null) {
-                    orderBookStateCollection.replaceOne(session,
-                            Filters.eq("productId", orderBookState.getProductId()),
-                            orderBookState, new ReplaceOptions().upsert(true));
-                }
+
                 if (!accountWriteModels.isEmpty()) {
                     accountCollection.bulkWrite(session, accountWriteModels, new BulkWriteOptions().ordered(false));
                 }
+
                 if (!productWriteModels.isEmpty()) {
                     productCollection.bulkWrite(session, productWriteModels, new BulkWriteOptions().ordered(false));
                 }
+
                 if (!orderWriteModels.isEmpty()) {
                     orderCollection.bulkWrite(session, orderWriteModels, new BulkWriteOptions().ordered(false));
                 }
+
                 session.commitTransaction();
             } catch (Exception e) {
                 session.abortTransaction();

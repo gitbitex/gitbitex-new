@@ -6,5 +6,10 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class AccountMessage extends Account {
+public class AccountMessage extends Message {
+    private Account account;
+
+    public AccountMessage() {
+        this.setMessageType(MessageType.ACCOUNT);
+    }
 }

@@ -5,6 +5,7 @@ import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.marketdata.util.DateUtil;
 import com.gitbitex.matchingengine.Trade;
+import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.message.TradeMessage;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
@@ -22,12 +23,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-public class TickerThread extends KafkaConsumerThread<String, TradeMessage> implements ConsumerRebalanceListener {
+public class TickerThread extends KafkaConsumerThread<String, Message> implements ConsumerRebalanceListener {
     private final AppProperties appProperties;
     private final TickerManager tickerManager;
     private final Map<String, Ticker> tickerByProductId = new HashMap<>();
 
-    public TickerThread(KafkaConsumer<String, TradeMessage> consumer, TickerManager tickerManager,
+    public TickerThread(KafkaConsumer<String, Message> consumer, TickerManager tickerManager,
                         AppProperties appProperties) {
         super(consumer, logger);
         this.tickerManager = tickerManager;
@@ -61,9 +62,12 @@ public class TickerThread extends KafkaConsumerThread<String, TradeMessage> impl
         }
 
         records.forEach(x -> {
-            TradeMessage tradeMessage = x.value();
-            refreshTicker(tradeMessage);
+            Message message = x.value();
+            if (message instanceof TradeMessage) {
+                refreshTicker(((TradeMessage) message).getTrade());
+            }
         });
+
         consumer.commitSync();
     }
 

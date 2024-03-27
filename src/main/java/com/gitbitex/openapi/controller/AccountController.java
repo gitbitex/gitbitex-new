@@ -1,6 +1,6 @@
 package com.gitbitex.openapi.controller;
 
-import com.gitbitex.marketdata.entity.Account;
+import com.gitbitex.marketdata.entity.AccountEntity;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.manager.AccountManager;
 import com.gitbitex.openapi.model.AccountDto;
@@ -27,13 +27,13 @@ public class AccountController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        List<Account> accounts = accountManager.getAccounts(currentUser.getId());
-        Map<String, Account> accountByCurrency = accounts.stream()
-                .collect(Collectors.toMap(Account::getCurrency, x -> x));
+        List<AccountEntity> accounts = accountManager.getAccounts(currentUser.getId());
+        Map<String, AccountEntity> accountByCurrency = accounts.stream()
+                .collect(Collectors.toMap(AccountEntity::getCurrency, x -> x));
 
         List<AccountDto> accountDtoList = new ArrayList<>();
         for (String currency : currencies) {
-            Account account = accountByCurrency.get(currency);
+            AccountEntity account = accountByCurrency.get(currency);
             if (account != null) {
                 accountDtoList.add(accountDto(account));
             } else {
@@ -47,7 +47,7 @@ public class AccountController {
         return accountDtoList;
     }
 
-    private AccountDto accountDto(Account account) {
+    private AccountDto accountDto(AccountEntity account) {
         AccountDto accountDto = new AccountDto();
         accountDto.setId(account.getId());
         accountDto.setCurrency(account.getCurrency());

@@ -12,22 +12,21 @@ import org.apache.kafka.common.TopicPartition;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 @Slf4j
 public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
         implements CommandHandler, ConsumerRebalanceListener {
     private final AppProperties appProperties;
-    private final EngineSnapshotStore engineSnapshotStore;
-    private final List<EngineListener> engineListeners;
+    private final EngineSnapshotManager engineSnapshotManager;
+    private final MessageSender messageSender;
     private MatchingEngine matchingEngine;
 
-    public MatchingEngineThread(KafkaConsumer<String, Command> consumer, EngineSnapshotStore engineSnapshotStore,
-                                List<EngineListener> engineListeners, AppProperties appProperties) {
+    public MatchingEngineThread(KafkaConsumer<String, Command> consumer, EngineSnapshotManager engineSnapshotManager, MessageSender messageSender,
+                                AppProperties appProperties) {
         super(consumer, logger);
         this.appProperties = appProperties;
-        this.engineSnapshotStore = engineSnapshotStore;
-        this.engineListeners = engineListeners;
+        this.engineSnapshotManager = engineSnapshotManager;
+        this.messageSender = messageSender;
     }
 
     @Override
@@ -41,7 +40,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            matchingEngine = new MatchingEngine(engineSnapshotStore, engineListeners);
+            matchingEngine = new MatchingEngine(engineSnapshotManager, messageSender);
             if (matchingEngine.getStartupCommandOffset() != null) {
                 logger.info("seek to offset: {}", matchingEngine.getStartupCommandOffset() + 1);
                 consumer.seek(partition, matchingEngine.getStartupCommandOffset() + 1);

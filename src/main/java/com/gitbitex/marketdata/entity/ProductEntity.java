@@ -8,7 +8,7 @@ import java.util.Date;
 
 @Getter
 @Setter
-public class Product {
+public class ProductEntity {
     private String id;
     private Date createdAt;
     private Date updatedAt;

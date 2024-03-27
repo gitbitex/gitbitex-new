@@ -79,7 +79,7 @@ public class CoinbaseTrader {
             } catch (Exception e) {
                 logger.error("send ping error: {}", e.getMessage(), e);
             }
-        }, 0, 3000, TimeUnit.MILLISECONDS);
+        }, 0, 10000, TimeUnit.MILLISECONDS);
     }
 
     @PreDestroy

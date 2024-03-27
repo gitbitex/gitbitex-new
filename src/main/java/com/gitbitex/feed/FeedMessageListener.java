@@ -3,7 +3,9 @@ package com.gitbitex.feed;
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.feed.message.*;
 import com.gitbitex.marketdata.entity.Candle;
-import com.gitbitex.matchingengine.L2OrderBook;
+import com.gitbitex.matchingengine.Account;
+import com.gitbitex.marketdata.L2OrderBook;
+import com.gitbitex.matchingengine.Order;
 import com.gitbitex.matchingengine.message.*;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import lombok.RequiredArgsConstructor;
@@ -27,16 +29,16 @@ public class FeedMessageListener {
     public void run() {
         redissonClient.getTopic("order", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             OrderMessage orderMessage = JSON.parseObject(msg, OrderMessage.class);
-            callbackExecutor.execute(orderMessage.getUserId(), () -> {
-                String channel = orderMessage.getUserId() + "." + orderMessage.getProductId() + ".order";
+            callbackExecutor.execute(orderMessage.getOrder().getUserId(), () -> {
+                String channel = orderMessage.getOrder().getUserId() + "." + orderMessage.getOrder().getProductId() + ".order";
                 sessionManager.broadcast(channel, orderFeedMessage(orderMessage));
             });
         });
 
         redissonClient.getTopic("account", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             AccountMessage accountMessage = JSON.parseObject(msg, AccountMessage.class);
-            callbackExecutor.execute(accountMessage.getUserId(), () -> {
-                String channel = accountMessage.getUserId() + "." + accountMessage.getCurrency() + ".funds";
+            callbackExecutor.execute(accountMessage.getAccount().getUserId(), () -> {
+                String channel = accountMessage.getAccount().getUserId() + "." + accountMessage.getAccount().getCurrency() + ".funds";
                 sessionManager.broadcast(channel, accountFeedMessage(accountMessage));
             });
         });
@@ -165,7 +167,8 @@ public class FeedMessageListener {
         return message;
     }
 
-    private OrderFeedMessage orderFeedMessage(OrderMessage order) {
+    private OrderFeedMessage orderFeedMessage(OrderMessage orderMessage) {
+        Order order = orderMessage.getOrder();
         OrderFeedMessage message = new OrderFeedMessage();
         message.setUserId(order.getUserId());
         message.setProductId(order.getProductId());
@@ -176,20 +179,21 @@ public class FeedMessageListener {
         message.setSide(order.getSide().name().toLowerCase());
         message.setOrderType(order.getType().name().toLowerCase());
         message.setCreatedAt(order.getTime().toInstant().toString());
-        message.setFillFees(
-                order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
+        //message.setFillFees(
+        //       order.getFillFees() != null ? order.getFillFees().stripTrailingZeros().toPlainString() : "0");
         message.setFilledSize(order.getSize().subtract(order.getRemainingSize()).stripTrailingZeros().toPlainString());
         message.setExecutedValue(order.getFunds().subtract(order.getRemainingFunds()).stripTrailingZeros().toPlainString());
         message.setStatus(order.getStatus().name().toLowerCase());
         return message;
     }
 
-    private AccountFeedMessage accountFeedMessage(AccountMessage message) {
+    private AccountFeedMessage accountFeedMessage(AccountMessage accountMessage) {
+        Account account = accountMessage.getAccount();
         AccountFeedMessage accountFeedMessage = new AccountFeedMessage();
-        accountFeedMessage.setUserId(message.getUserId());
-        accountFeedMessage.setCurrencyCode(message.getCurrency());
-        accountFeedMessage.setAvailable(message.getAvailable().stripTrailingZeros().toPlainString());
-        accountFeedMessage.setHold(message.getHold().stripTrailingZeros().toPlainString());
+        accountFeedMessage.setUserId(account.getUserId());
+        accountFeedMessage.setCurrencyCode(account.getCurrency());
+        accountFeedMessage.setAvailable(account.getAvailable().stripTrailingZeros().toPlainString());
+        accountFeedMessage.setHold(account.getHold().stripTrailingZeros().toPlainString());
         return accountFeedMessage;
     }
 

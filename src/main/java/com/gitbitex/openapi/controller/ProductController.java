@@ -1,12 +1,12 @@
 package com.gitbitex.openapi.controller;
 
 import com.gitbitex.marketdata.entity.Candle;
-import com.gitbitex.marketdata.entity.Product;
-import com.gitbitex.marketdata.entity.Trade;
+import com.gitbitex.marketdata.entity.ProductEntity;
+import com.gitbitex.marketdata.entity.TradeEntity;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.matchingengine.OrderBookSnapshotStore;
+import com.gitbitex.marketdata.OrderBookSnapshotManager;
 import com.gitbitex.openapi.model.PagedList;
 import com.gitbitex.openapi.model.ProductDto;
 import com.gitbitex.openapi.model.TradeDto;
@@ -24,20 +24,20 @@ import java.util.stream.Collectors;
 @RestController()
 @RequiredArgsConstructor
 public class ProductController {
-    private final OrderBookSnapshotStore orderBookSnapshotStore;
+    private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final ProductRepository productRepository;
     private final TradeRepository tradeRepository;
     private final CandleRepository candleRepository;
 
     @GetMapping("/api/products")
     public List<ProductDto> getProducts() {
-        List<Product> products = productRepository.findAll();
+        List<ProductEntity> products = productRepository.findAll();
         return products.stream().map(this::productDto).collect(Collectors.toList());
     }
 
     @GetMapping("/api/products/{productId}/trades")
     public List<TradeDto> getProductTrades(@PathVariable String productId) {
-        List<Trade> trades = tradeRepository.findByProductId(productId, 50);
+        List<TradeEntity> trades = tradeRepository.findByProductId(productId, 50);
         return trades.stream().map(this::tradeDto).collect(Collectors.toList());
     }
 
@@ -67,14 +67,14 @@ public class ProductController {
     @GetMapping("/api/products/{productId}/book")
     public Object getProductBook(@PathVariable String productId, @RequestParam(defaultValue = "2") int level) {
         return switch (level) {
-            case 1 -> orderBookSnapshotStore.getL1OrderBook(productId);
-            case 2 -> orderBookSnapshotStore.getL2OrderBook(productId);
-            case 3 -> orderBookSnapshotStore.getL3OrderBook(productId);
+            case 1 -> orderBookSnapshotManager.getL1OrderBook(productId);
+            case 2 -> orderBookSnapshotManager.getL2OrderBook(productId);
+            case 3 -> orderBookSnapshotManager.getL3OrderBook(productId);
             default -> null;
         };
     }
 
-    private ProductDto productDto(Product product) {
+    private ProductDto productDto(ProductEntity product) {
         ProductDto productDto = new ProductDto();
         BeanUtils.copyProperties(product, productDto);
         productDto.setId(product.getId());
@@ -82,7 +82,7 @@ public class ProductController {
         return productDto;
     }
 
-    private TradeDto tradeDto(Trade trade) {
+    private TradeDto tradeDto(TradeEntity trade) {
         TradeDto tradeDto = new TradeDto();
         tradeDto.setSequence(trade.getSequence());
         tradeDto.setTime(trade.getTime().toInstant().toString());

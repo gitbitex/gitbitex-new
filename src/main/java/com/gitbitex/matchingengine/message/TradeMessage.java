@@ -6,5 +6,10 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class TradeMessage extends Trade {
+public class TradeMessage extends Message {
+    private Trade trade;
+
+    public TradeMessage() {
+        this.setMessageType(MessageType.TRADE);
+    }
 }

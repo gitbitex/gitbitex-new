@@ -1,5 +1,7 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.marketdata;
 
+import com.gitbitex.matchingengine.Order;
+import com.gitbitex.matchingengine.OrderBook;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,7 +24,6 @@ public class L3OrderBook {
 
     public L3OrderBook(OrderBook orderBook) {
         this.productId = orderBook.getProductId();
-        this.sequence = orderBook.getMessageSequence();
         this.tradeId = orderBook.getTradeSequence();
         this.time = System.currentTimeMillis();
         this.asks = orderBook.getAsks().values().stream()

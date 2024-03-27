@@ -9,7 +9,7 @@ import java.util.Date;
 
 @Getter
 @Setter
-public class Trade {
+public class TradeEntity {
     private String id;
     private Date createdAt;
     private Date updatedAt;
