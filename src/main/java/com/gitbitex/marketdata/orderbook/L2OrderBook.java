@@ -24,7 +24,7 @@ public class L2OrderBook {
     public L2OrderBook() {
     }
 
-    public L2OrderBook(SimpleOrderBook orderBook, int depth) {
+    public L2OrderBook(OrderBook orderBook, int depth) {
         this.productId = orderBook.getProductId();
         this.sequence = orderBook.getSequence();
         this.time = System.currentTimeMillis();

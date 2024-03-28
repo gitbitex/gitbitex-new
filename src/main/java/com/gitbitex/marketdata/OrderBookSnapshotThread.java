@@ -4,7 +4,7 @@ import com.gitbitex.AppProperties;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.marketdata.orderbook.L2OrderBook;
 import com.gitbitex.marketdata.orderbook.OrderBookSnapshotManager;
-import com.gitbitex.marketdata.orderbook.SimpleOrderBook;
+import com.gitbitex.marketdata.orderbook.OrderBook;
 import com.gitbitex.matchingengine.*;
 import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.message.OrderMessage;
@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class OrderBookSnapshotThread extends MessageConsumerThread {
-    private final ConcurrentHashMap<String, SimpleOrderBook> orderBooks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, OrderBook> orderBooks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, L2OrderBook> l2OrderBooks = new ConcurrentHashMap<>();
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final EngineSnapshotManager stateStore;
@@ -54,7 +54,7 @@ public class OrderBookSnapshotThread extends MessageConsumerThread {
         for (Product product : this.stateStore.getProducts()) {
             orderBooks.remove(product.getId());
             for (Order order : stateStore.getOrders(product.getId())) {
-                SimpleOrderBook orderBook = getOrderBook(product.getId());
+                OrderBook orderBook = getOrderBook(product.getId());
                 orderBook.addOrder(order);
             }
         }
@@ -66,7 +66,7 @@ public class OrderBookSnapshotThread extends MessageConsumerThread {
             Message message = x.value();
             if (message instanceof OrderMessage orderMessage) {
                 Order order = orderMessage.getOrder();
-                SimpleOrderBook orderBook = getOrderBook(order.getProductId());
+                OrderBook orderBook = getOrderBook(order.getProductId());
                 if (order.getStatus() == OrderStatus.OPEN) {
                     orderBook.addOrder(order);
                 } else {
@@ -86,16 +86,16 @@ public class OrderBookSnapshotThread extends MessageConsumerThread {
         });
     }
 
-    private SimpleOrderBook getOrderBook(String productId) {
-        SimpleOrderBook orderBook = orderBooks.get(productId);
+    private OrderBook getOrderBook(String productId) {
+        OrderBook orderBook = orderBooks.get(productId);
         if (orderBook == null) {
-            orderBook = new SimpleOrderBook(productId);
+            orderBook = new OrderBook(productId);
             orderBooks.put(productId, orderBook);
         }
         return orderBook;
     }
 
-    private void takeL2OrderBookSnapshot(SimpleOrderBook orderBook) {
+    private void takeL2OrderBookSnapshot(OrderBook orderBook) {
         L2OrderBook l2OrderBook = new L2OrderBook(orderBook, 25);
         orderBookSnapshotManager.saveL2BatchOrderBook(l2OrderBook);
     }
