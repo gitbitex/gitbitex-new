@@ -29,15 +29,17 @@ public class OrderBook {
     private final AtomicLong messageSequence;
     private long orderSequence;
     private long tradeSequence;
+    private long orderBookSequence;
 
     public OrderBook(String productId,
-                     long orderSequence, long tradeSequence,
+                     long orderSequence, long tradeSequence, long orderBookSequence,
                      AccountBook accountBook, ProductBook productBook, MessageSender messageSender, AtomicLong messageSequence) {
         this.productId = productId;
         this.productBook = productBook;
         this.accountBook = accountBook;
         this.orderSequence = orderSequence;
         this.tradeSequence = tradeSequence;
+        this.orderBookSequence=orderBookSequence;
         this.messageSender = messageSender;
         this.messageSequence = messageSequence;
     }
@@ -101,10 +103,10 @@ public class OrderBook {
                 if (makerOrder.getStatus() == OrderStatus.FILLED || makerOrder.getStatus() == OrderStatus.CANCELLED) {
                     orderItr.remove();
                     orderById.remove(makerOrder.getId());
-                    messageSender.send(orderMessage(makerOrder.clone()));
                     unholdOrderFunds(makerOrder, product);
                 }
 
+                orderBookSequence++;
                 messageSender.send(orderMessage(makerOrder.clone()));
                 messageSender.send(tradeMessage(trade));
             }
@@ -121,6 +123,7 @@ public class OrderBook {
         if (takerOrder.getType() == OrderType.LIMIT && takerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
             addOrder(takerOrder);
             takerOrder.setStatus(OrderStatus.OPEN);
+            orderBookSequence++;
         } else {
             if (takerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
                 takerOrder.setStatus(OrderStatus.CANCELLED);
@@ -231,6 +234,7 @@ public class OrderBook {
     private OrderMessage orderMessage(Order order) {
         OrderMessage message = new OrderMessage();
         message.setSequence(messageSequence.incrementAndGet());
+        message.setOrderBookSequence(orderBookSequence);
         message.setOrder(order);
         return message;
     }

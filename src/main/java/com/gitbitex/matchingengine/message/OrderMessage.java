@@ -7,6 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class OrderMessage extends Message {
+    private long orderBookSequence;
     private Order order;
 
     public OrderMessage() {

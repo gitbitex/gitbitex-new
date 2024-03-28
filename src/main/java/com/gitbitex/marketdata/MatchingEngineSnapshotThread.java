@@ -62,6 +62,7 @@ public class MatchingEngineSnapshotThread extends MessageConsumerThread {
                 Order order = orderMessage.getOrder();
                 orders.put(order.getId(), order);
                 lastEngineState.getOrderSequences().put(order.getProductId(), order.getSequence());
+                lastEngineState.getOrderBookSequences().put(order.getProductId(),orderMessage.getOrderBookSequence());
 
             } else if (message instanceof TradeMessage tradeMessage) {
                 Trade trade = tradeMessage.getTrade();

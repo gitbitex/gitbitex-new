@@ -15,4 +15,5 @@ public class EngineState {
     private Long messageSequence;
     private Map<String, Long> tradeSequences = new HashMap<>();
     private Map<String, Long> orderSequences = new HashMap<>();
+    private Map<String, Long> orderBookSequences = new HashMap<>();
 }

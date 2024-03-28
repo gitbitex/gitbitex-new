@@ -1,7 +1,6 @@
-package com.gitbitex.marketdata;
+package com.gitbitex.marketdata.orderbook;
 
 import com.gitbitex.enums.OrderSide;
-import com.gitbitex.matchingengine.SimpleOrderBook;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.lang.Nullable;

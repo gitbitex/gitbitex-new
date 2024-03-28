@@ -1,4 +1,4 @@
-package com.gitbitex.marketdata;
+package com.gitbitex.marketdata.orderbook;
 
 import com.gitbitex.matchingengine.Order;
 import com.gitbitex.matchingengine.OrderBook;

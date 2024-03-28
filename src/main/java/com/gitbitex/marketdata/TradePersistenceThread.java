@@ -35,7 +35,6 @@ public class TradePersistenceThread extends MessageConsumerThread {
                 trades.put(trade.getId(), trade);
             }
         });
-
         tradeManager.saveAll(trades.values());
     }
 

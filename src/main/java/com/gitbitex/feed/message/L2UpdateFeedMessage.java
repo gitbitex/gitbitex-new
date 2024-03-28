@@ -1,6 +1,6 @@
 package com.gitbitex.feed.message;
 
-import com.gitbitex.marketdata.L2OrderBookChange;
+import com.gitbitex.marketdata.orderbook.L2OrderBookChange;
 import lombok.Getter;
 import lombok.Setter;
 

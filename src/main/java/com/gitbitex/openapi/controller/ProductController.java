@@ -6,7 +6,7 @@ import com.gitbitex.marketdata.entity.TradeEntity;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.ProductRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
-import com.gitbitex.marketdata.OrderBookSnapshotManager;
+import com.gitbitex.marketdata.orderbook.OrderBookSnapshotManager;
 import com.gitbitex.openapi.model.PagedList;
 import com.gitbitex.openapi.model.ProductDto;
 import com.gitbitex.openapi.model.TradeDto;

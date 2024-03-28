@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.feed.message.*;
 import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.matchingengine.Account;
-import com.gitbitex.marketdata.L2OrderBook;
+import com.gitbitex.marketdata.orderbook.L2OrderBook;
 import com.gitbitex.matchingengine.Order;
 import com.gitbitex.matchingengine.message.*;
 import com.gitbitex.stripexecutor.StripedExecutorService;

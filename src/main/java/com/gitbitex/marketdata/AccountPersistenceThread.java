@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.TopicPartition;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,18 +29,13 @@ public class AccountPersistenceThread extends MessageConsumerThread {
     @Override
     protected void processRecords(ConsumerRecords<String, Message> records) {
         Map<String, AccountEntity> accounts = new HashMap<>();
-
         for (ConsumerRecord<String, Message> record : records) {
             Message message = record.value();
-
-            checkMessageSequence(new TopicPartition(record.topic(), record.partition()), message);
-
             if (message instanceof AccountMessage accountMessage) {
                 AccountEntity account = account(accountMessage);
                 accounts.put(account.getId(), account);
             }
         }
-
         accountManager.saveAll(accounts.values());
     }
 

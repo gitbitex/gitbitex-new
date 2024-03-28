@@ -54,6 +54,7 @@ public class MatchingEngine {
             OrderBook orderBook = new OrderBook(product.getId(),
                     engineState != null ? engineState.getOrderSequences().getOrDefault(product.getId(), 0L) : 0L,
                     engineState != null ? engineState.getTradeSequences().getOrDefault(product.getId(), 0L) : 0L,
+                    engineState != null ? engineState.getOrderBookSequences().getOrDefault(product.getId(), 0L) : 0L,
                     accountBook, productBook, messageSender, this.messageSequence);
             orderBooks.put(orderBook.getProductId(), orderBook);
 
@@ -127,7 +128,7 @@ public class MatchingEngine {
         if (orderBooks.containsKey(productId)) {
             return;
         }
-        OrderBook orderBook = new OrderBook(productId, 0, 0, accountBook, productBook, messageSender, messageSequence);
+        OrderBook orderBook = new OrderBook(productId, 0, 0,0, accountBook, productBook, messageSender, messageSequence);
         orderBooks.put(productId, orderBook);
     }
 

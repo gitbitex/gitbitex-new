@@ -2,6 +2,9 @@ package com.gitbitex.marketdata;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.enums.OrderStatus;
+import com.gitbitex.marketdata.orderbook.L2OrderBook;
+import com.gitbitex.marketdata.orderbook.OrderBookSnapshotManager;
+import com.gitbitex.marketdata.orderbook.SimpleOrderBook;
 import com.gitbitex.matchingengine.*;
 import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.message.OrderMessage;
@@ -15,18 +18,18 @@ import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-public class L2OrderBookSnapshotThread extends MessageConsumerThread {
+public class OrderBookSnapshotThread extends MessageConsumerThread {
     private final ConcurrentHashMap<String, SimpleOrderBook> orderBooks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, L2OrderBook> l2OrderBooks = new ConcurrentHashMap<>();
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final EngineSnapshotManager stateStore;
     private final RedissonClient redissonClient;
 
-    public L2OrderBookSnapshotThread(KafkaConsumer<String, Message> consumer,
-                                     OrderBookSnapshotManager orderBookSnapshotManager,
-                                     EngineSnapshotManager engineSnapshotManager,
-                                     RedissonClient redissonClient,
-                                     AppProperties appProperties) {
+    public OrderBookSnapshotThread(KafkaConsumer<String, Message> consumer,
+                                   OrderBookSnapshotManager orderBookSnapshotManager,
+                                   EngineSnapshotManager engineSnapshotManager,
+                                   RedissonClient redissonClient,
+                                   AppProperties appProperties) {
         super(consumer, appProperties, logger);
         this.orderBookSnapshotManager = orderBookSnapshotManager;
         this.stateStore = engineSnapshotManager;
@@ -61,14 +64,24 @@ public class L2OrderBookSnapshotThread extends MessageConsumerThread {
     protected void processRecords(ConsumerRecords<String, Message> records) {
         records.forEach(x -> {
             Message message = x.value();
-            if (message instanceof OrderMessage) {
-                Order order = ((OrderMessage) message).getOrder();
+            if (message instanceof OrderMessage orderMessage) {
+                Order order = orderMessage.getOrder();
                 SimpleOrderBook orderBook = getOrderBook(order.getProductId());
                 if (order.getStatus() == OrderStatus.OPEN) {
                     orderBook.addOrder(order);
                 } else {
                     orderBook.removeOrder(order);
                 }
+                orderBook.setSequence(orderMessage.getOrderBookSequence());
+            }
+        });
+
+        orderBooks.forEach((productId, orderBook) -> {
+            L2OrderBook l2OrderBook = l2OrderBooks.get(productId);
+            if (l2OrderBook == null ||
+                    orderBook.getSequence() - l2OrderBook.getSequence() > 1000 ||
+                    System.currentTimeMillis() - l2OrderBook.getTime() > 1000) {
+                takeL2OrderBookSnapshot(orderBook);
             }
         });
     }
