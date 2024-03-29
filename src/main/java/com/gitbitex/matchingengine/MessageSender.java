@@ -32,7 +32,7 @@ public class MessageSender {
         kafkaProducer.send(record);
     }
 
-    public KafkaProducer<String, Message> kafkaProducer() {
+    private KafkaProducer<String, Message> kafkaProducer() {
         Properties properties = new Properties();
         properties.put("bootstrap.servers", kafkaProperties.getBootstrapServers());
         properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());

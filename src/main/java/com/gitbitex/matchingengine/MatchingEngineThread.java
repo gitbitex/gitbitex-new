@@ -1,5 +1,6 @@
 package com.gitbitex.matchingengine;
 
+import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.command.*;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
@@ -15,7 +16,7 @@ import java.util.Collections;
 
 @Slf4j
 public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
-        implements CommandHandler, ConsumerRebalanceListener {
+        implements ConsumerRebalanceListener {
     private final AppProperties appProperties;
     private final EngineSnapshotManager engineSnapshotManager;
     private final MessageSender messageSender;
@@ -63,7 +64,18 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
             Command command = x.value();
             command.setOffset(x.offset());
             //logger.info("{}", JSON.toJSONString(command));
-            CommandDispatcher.dispatch(command, this);
+
+            if (command instanceof PlaceOrderCommand placeOrderCommand) {
+                on(placeOrderCommand);
+            } else if (command instanceof CancelOrderCommand cancelOrderCommand) {
+                on(cancelOrderCommand);
+            } else if (command instanceof DepositCommand depositCommand) {
+                on(depositCommand);
+            } else if (command instanceof PutProductCommand putProductCommand) {
+                on(putProductCommand);
+            } else {
+                logger.warn("Unhandled command: {} {}", command.getClass().getName(), JSON.toJSONString(command));
+            }
             /*try {
                 Thread.sleep(50);
             } catch (InterruptedException e) {
@@ -72,22 +84,19 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
         });
     }
 
-    @Override
+
     public void on(PutProductCommand command) {
         matchingEngine.executeCommand(command);
     }
 
-    @Override
     public void on(DepositCommand command) {
         matchingEngine.executeCommand(command);
     }
 
-    @Override
     public void on(PlaceOrderCommand command) {
         matchingEngine.executeCommand(command);
     }
 
-    @Override
     public void on(CancelOrderCommand command) {
         matchingEngine.executeCommand(command);
     }

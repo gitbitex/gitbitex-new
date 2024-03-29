@@ -22,7 +22,6 @@ public class AccountRepository {
     }
 
     public List<AccountEntity> findAccountsByUserId(String userId) {
-
         return collection
                 .find(Filters.eq("userId", userId))
                 .into(new ArrayList<>());

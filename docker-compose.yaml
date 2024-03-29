@@ -7,26 +7,35 @@ services:
     ports:
       - "6379:6379"
   mongo1:
-    image: mongo:5
+    image: mongo:7.0
     container_name: mongo1
     command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30001" ]
     ports:
       - 30001:30001
     healthcheck:
-      test: test $$(echo "rs.initiate({_id:'my-replica-set',members:[{_id:0,host:\"mongo1:30001\"},{_id:1,host:\"mongo2:30002\"},{_id:2,host:\"mongo3:30003\"}]}).ok || rs.status().ok" | mongo --port 30001 --quiet) -eq 1
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'my-replica-set',members:[{_id:0,host:'mongo1:30001',priority:1},{_id:1,host:'mongo2:30002',priority:0.5},{_id:2,host:'mongo3:30003',priority:0.5}]}) }" | mongosh --port 30001 --quiet
       interval: 10s
+    volumes:
+      - "mongo1_data:/data/db"
+      - "mongo1_config:/data/configdb"
   mongo2:
-    image: mongo:5
+    image: mongo:7.0
     container_name: mongo2
     command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30002" ]
     ports:
       - 30002:30002
+    volumes:
+      - "mongo2_data:/data/db"
+      - "mongo2_config:/data/configdb"
   mongo3:
-    image: mongo:5
+    image: mongo:7.0
     container_name: mongo3
     command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30003" ]
     ports:
       - 30003:30003
+    volumes:
+      - "mongo3_data:/data/db"
+      - "mongo3_config:/data/configdb"
   mongo-express:
     image: mongo-express
     container_name: mongo-express
@@ -39,14 +48,6 @@ services:
       - mongo1
       - mongo2
       - mongo3
-  influxdb:
-    image: influxdb:latest
-    container_name: influxdb
-    security_opt:
-      - no-new-privileges:true
-    restart: always
-    ports:
-      - "8086:8086"
   kafka:
     image: 'bitnami/kafka:3.4.0'
     container_name: kafka
@@ -62,3 +63,10 @@ services:
       - KAFKA_BROKER_ID=1
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@127.0.0.1:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
+volumes:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:
+  mongo1_config:
+  mongo2_config:
+  mongo3_config:

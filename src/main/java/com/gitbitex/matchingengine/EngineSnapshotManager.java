@@ -1,5 +1,6 @@
 package com.gitbitex.matchingengine;
 
+import com.alibaba.fastjson.JSON;
 import com.gitbitex.enums.OrderStatus;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
@@ -61,7 +62,7 @@ public class EngineSnapshotManager {
                      Collection<Account> accounts,
                      Collection<Order> orders,
                      Collection<Product> products) {
-        logger.info("Saving snapshot : commandOffset={}", engineState.getCommandOffset());
+        logger.info("Saving snapshot : state={}", JSON.toJSONString(engineState));
 
         List<WriteModel<Account>> accountWriteModels = buildAccountWriteModels(accounts);
         List<WriteModel<Product>> productWriteModels = buildProductWriteModels(products);

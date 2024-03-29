@@ -32,13 +32,10 @@ public class Bootstrap {
     private final AccountManager accountManager;
     private final TradeRepository tradeRepository;
     private final TradeManager tradeManager;
-
     private final CandleRepository candleRepository;
-
     private final TickerManager tickerManager;
     private final AppProperties appProperties;
     private final KafkaProperties kafkaProperties;
-
     private final List<Thread> threads = new ArrayList<>();
     private final EngineSnapshotManager engineSnapshotManager;
     private final MessageSender messageSender;

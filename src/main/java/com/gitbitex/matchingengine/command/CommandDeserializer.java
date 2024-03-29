@@ -13,8 +13,8 @@ public class CommandDeserializer implements Deserializer<Command> {
         try {
             CommandType commandType = CommandType.valueOfByte(bytes[0]);
             return switch (commandType) {
-                case PUT_PRODUCT -> JSON.parseObject(bytes, 1, bytes.length - 1, Charset.defaultCharset(),
-                        PutProductCommand.class);
+                case PUT_PRODUCT ->
+                        JSON.parseObject(bytes, 1, bytes.length - 1, Charset.defaultCharset(), PutProductCommand.class);
                 case DEPOSIT ->
                         JSON.parseObject(bytes, 1, bytes.length - 1, Charset.defaultCharset(), DepositCommand.class);
                 case PLACE_ORDER -> JSON.parseObject(bytes, 1, bytes.length - 1, Charset.defaultCharset(),

@@ -32,6 +32,5 @@ public class ProductRepository {
         WriteModel<ProductEntity> writeModel = new ReplaceOneModel<>(filter, product, new ReplaceOptions().upsert(true));
         writeModels.add(writeModel);
         this.mongoCollection.bulkWrite(writeModels, new BulkWriteOptions().ordered(false));
-
     }
 }
