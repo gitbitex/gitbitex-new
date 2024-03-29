@@ -34,13 +34,15 @@ public class MatchingEngineSnapshotThread extends MessageConsumerThread {
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         super.onPartitionsAssigned(partitions);
 
-        EngineState engineState = snapshotStore.getEngineState();
-        if (engineState != null) {
-            lastEngineState = engineState;
-            lastSnapshotCommandOffset = engineState.getCommandOffset();
-        } else {
-            lastEngineState = new EngineState();
-        }
+        snapshotStore.runInSession(session -> {
+            EngineState engineState = snapshotStore.getEngineState(session);
+            if (engineState != null) {
+                lastEngineState = engineState;
+                lastSnapshotCommandOffset = engineState.getCommandOffset();
+            } else {
+                lastEngineState = new EngineState();
+            }
+        });
     }
 
     @Override

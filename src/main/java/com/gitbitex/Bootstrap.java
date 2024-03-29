@@ -5,6 +5,7 @@ import com.gitbitex.marketdata.manager.AccountManager;
 import com.gitbitex.marketdata.manager.OrderManager;
 import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.marketdata.manager.TradeManager;
+import com.gitbitex.marketdata.orderbook.OrderBookSnapshotManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.EngineSnapshotManager;
@@ -49,6 +50,7 @@ public class Bootstrap {
         startCandleMaker(1);
         startTickerThread(1);
         startSnapshotThread(1);
+        startOrderBookSnapshotThread(1);
     }
 
     @PreDestroy
@@ -72,11 +74,24 @@ public class Bootstrap {
         }
     }
 
+    private final OrderBookSnapshotManager orderBookSnapshotManager;
+
     private void startSnapshotThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "EngineSnapshot";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
             var thread = new MatchingEngineSnapshotThread(consumer, engineSnapshotManager, appProperties);
+            thread.setName(groupId + "-" + thread.getId());
+            thread.start();
+            threads.add(thread);
+        }
+    }
+
+    private void startOrderBookSnapshotThread(int nThreads) {
+        for (int i = 0; i < nThreads; i++) {
+            String groupId = "OrderBookSnapshot";
+            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
+            var thread = new OrderBookSnapshotThread(consumer, orderBookSnapshotManager,  engineSnapshotManager, appProperties);
             thread.setName(groupId + "-" + thread.getId());
             thread.start();
             threads.add(thread);

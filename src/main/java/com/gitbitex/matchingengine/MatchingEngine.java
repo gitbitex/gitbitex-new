@@ -1,5 +1,6 @@
 package com.gitbitex.matchingengine;
 
+import com.alibaba.fastjson.JSON;
 import com.gitbitex.matchingengine.command.*;
 import com.gitbitex.matchingengine.message.CommandEndMessage;
 import com.gitbitex.matchingengine.message.CommandStartMessage;
@@ -14,13 +15,13 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 public class MatchingEngine {
-    private final ProductBook productBook;
-    private final AccountBook accountBook;
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
     private final EngineSnapshotManager stateStore;
     private final Counter commandProcessedCounter;
     private final AtomicLong messageSequence = new AtomicLong();
     private final MessageSender messageSender;
+    private final ProductBook productBook;
+    private final AccountBook accountBook;
     @Getter
     private Long startupCommandOffset;
 
@@ -29,40 +30,51 @@ public class MatchingEngine {
         this.messageSender = messageSender;
         this.commandProcessedCounter = Counter.builder("gbe.matching-engine.command.processed")
                 .register(Metrics.globalRegistry);
+        this.productBook = new ProductBook(messageSender, this.messageSequence);
+        this.accountBook = new AccountBook(messageSender, this.messageSequence);
 
-        // restore engine states
-        EngineState engineState = stateStore.getEngineState();
-        if (engineState != null) {
+
+        logger.info("restoring snapshot");
+        stateStore.runInSession(session -> {
+            // restore engine states
+            EngineState engineState = stateStore.getEngineState(session);
+            if (engineState == null) {
+                logger.info("no snapshot found");
+                return;
+            }
+
+            logger.info("snapshot found, state: {}", JSON.toJSONString(engineState));
+
+
             if (engineState.getCommandOffset() != null) {
                 this.startupCommandOffset = engineState.getCommandOffset();
             }
             if (engineState.getMessageSequence() != null) {
                 this.messageSequence.set(engineState.getMessageSequence());
             }
-        }
 
-        // restore product book
-        this.productBook = new ProductBook(messageSender, this.messageSequence);
-        stateStore.getProducts().forEach(productBook::addProduct);
+            // restore product book
+            stateStore.getProducts(session).forEach(productBook::addProduct);
 
-        // restore account book
-        this.accountBook = new AccountBook(messageSender, this.messageSequence);
-        stateStore.getAccounts().forEach(accountBook::add);
+            // restore account book
+            stateStore.getAccounts(session).forEach(accountBook::add);
 
-        // restore order books
-        for (Product product : this.productBook.getAllProducts()) {
-            OrderBook orderBook = new OrderBook(product.getId(),
-                    engineState != null ? engineState.getOrderSequences().getOrDefault(product.getId(), 0L) : 0L,
-                    engineState != null ? engineState.getTradeSequences().getOrDefault(product.getId(), 0L) : 0L,
-                    engineState != null ? engineState.getOrderBookSequences().getOrDefault(product.getId(), 0L) : 0L,
-                    accountBook, productBook, messageSender, this.messageSequence);
-            orderBooks.put(orderBook.getProductId(), orderBook);
+            // restore order books
+            for (Product product : this.productBook.getAllProducts()) {
+                OrderBook orderBook = new OrderBook(product.getId(),
+                        engineState.getOrderSequences().getOrDefault(product.getId(), 0L),
+                        engineState.getTradeSequences().getOrDefault(product.getId(), 0L),
+                        engineState.getOrderBookSequences().getOrDefault(product.getId(), 0L),
+                        accountBook, productBook, messageSender, this.messageSequence);
+                orderBooks.put(orderBook.getProductId(), orderBook);
 
 
-            for (Order order : stateStore.getOrders(product.getId())) {
-                orderBook.addOrder(order);
+                for (Order order : stateStore.getOrders(session, product.getId())) {
+                    orderBook.addOrder(order);
+                }
             }
-        }
+        });
+        logger.info("snapshot restored");
     }
 
     private CommandStartMessage commandStartMessage(Command command) {
@@ -78,7 +90,6 @@ public class MatchingEngine {
         return message;
     }
 
-
     public void executeCommand(DepositCommand command) {
         commandProcessedCounter.increment();
 
@@ -86,7 +97,6 @@ public class MatchingEngine {
         accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
                 command.getTransactionId());
         messageSender.send(commandEndMessage(command));
-
     }
 
     public void executeCommand(PutProductCommand command) {
@@ -128,7 +138,7 @@ public class MatchingEngine {
         if (orderBooks.containsKey(productId)) {
             return;
         }
-        OrderBook orderBook = new OrderBook(productId, 0, 0,0, accountBook, productBook, messageSender, messageSequence);
+        OrderBook orderBook = new OrderBook(productId, 0, 0, 0, accountBook, productBook, messageSender, messageSequence);
         orderBooks.put(productId, orderBook);
     }
 

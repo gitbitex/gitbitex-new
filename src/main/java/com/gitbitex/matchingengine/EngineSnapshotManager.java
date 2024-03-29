@@ -1,5 +1,6 @@
 package com.gitbitex.matchingengine;
 
+import ch.qos.logback.core.net.server.Client;
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.enums.OrderStatus;
 import com.mongodb.client.ClientSession;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Slf4j
 @Component
@@ -33,26 +35,38 @@ public class EngineSnapshotManager {
         this.productCollection = database.getCollection("snapshot_product", Product.class);
     }
 
-    public List<Product> getProducts() {
+    public void runInSession(Consumer<ClientSession> consumer) {
+        try (ClientSession session = mongoClient.startSession()) {
+            session.startTransaction();
+            try {
+                consumer.accept(session);
+            } catch (Exception e) {
+                session.abortTransaction();
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public List<Product> getProducts( ClientSession session ) {
         return this.productCollection
                 .find()
                 .into(new ArrayList<>());
     }
 
-    public List<Account> getAccounts() {
+    public List<Account> getAccounts( ClientSession session) {
         return this.accountCollection
                 .find()
                 .into(new ArrayList<>());
     }
 
-    public List<Order> getOrders(String productId) {
+    public List<Order> getOrders(ClientSession session, String productId) {
         return this.orderCollection
                 .find(Filters.eq("productId", productId))
                 .sort(Sorts.ascending("sequence"))
                 .into(new ArrayList<>());
     }
 
-    public EngineState getEngineState() {
+    public EngineState getEngineState(ClientSession session) {
         return engineStateCollection
                 .find(Filters.eq("_id", "default"))
                 .first();
