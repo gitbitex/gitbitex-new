@@ -68,7 +68,7 @@ public class ProductController {
     public Object getProductBook(@PathVariable String productId, @RequestParam(defaultValue = "2") int level) {
         return switch (level) {
             case 1 -> orderBookSnapshotManager.getL1OrderBook(productId);
-            case 2 -> orderBookSnapshotManager.getL2OrderBook(productId);
+            case 2 -> orderBookSnapshotManager.getL2BatchOrderBook(productId);
             case 3 -> orderBookSnapshotManager.getL3OrderBook(productId);
             default -> null;
         };

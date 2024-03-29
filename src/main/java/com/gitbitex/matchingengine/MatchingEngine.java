@@ -4,6 +4,8 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.matchingengine.command.*;
 import com.gitbitex.matchingengine.message.CommandEndMessage;
 import com.gitbitex.matchingengine.message.CommandStartMessage;
+import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
+import com.gitbitex.matchingengine.snapshot.EngineState;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
 import lombok.Getter;

@@ -1,4 +1,4 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.matchingengine.snapshot;
 
 import lombok.Getter;
 import lombok.Setter;

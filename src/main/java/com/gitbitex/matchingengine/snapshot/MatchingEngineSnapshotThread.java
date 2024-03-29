@@ -1,8 +1,10 @@
-package com.gitbitex.marketdata;
+package com.gitbitex.matchingengine.snapshot;
 
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.*;
 import com.gitbitex.matchingengine.message.*;
+import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
+import com.gitbitex.matchingengine.snapshot.EngineState;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;

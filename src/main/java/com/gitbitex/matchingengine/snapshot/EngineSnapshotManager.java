@@ -1,7 +1,10 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.matchingengine.snapshot;
 
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.enums.OrderStatus;
+import com.gitbitex.matchingengine.Account;
+import com.gitbitex.matchingengine.Order;
+import com.gitbitex.matchingengine.Product;
 import com.mongodb.ClientSessionOptions;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;

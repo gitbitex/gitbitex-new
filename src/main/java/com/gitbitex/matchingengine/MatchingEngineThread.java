@@ -3,6 +3,7 @@ package com.gitbitex.matchingengine;
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.command.*;
+import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;

@@ -8,6 +8,8 @@ import com.gitbitex.marketdata.orderbook.OrderBookSnapshotManager;
 import com.gitbitex.matchingengine.*;
 import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.message.OrderMessage;
+import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
+import com.gitbitex.matchingengine.snapshot.EngineState;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -34,8 +36,7 @@ public class OrderBookSnapshotThread extends MessageConsumerThread {
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-        // restore engine states
-
+        // restore order book from engine state
         stateStore.runInSession(session -> {
             EngineState engineState = stateStore.getEngineState(session);
             if (engineState != null) {
