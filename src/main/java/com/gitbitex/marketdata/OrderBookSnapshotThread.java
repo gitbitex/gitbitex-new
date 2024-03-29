@@ -92,8 +92,9 @@ public class OrderBookSnapshotThread extends MessageConsumerThread {
     }
 
     private void takeL2OrderBookSnapshot(OrderBook orderBook) {
+        logger.info("taking level2 order book snapshot: sequence={}", orderBook.getSequence());
         L2OrderBook l2OrderBook = new L2OrderBook(orderBook, 25);
+        l2OrderBooks.put(orderBook.getProductId(), l2OrderBook);
         orderBookSnapshotManager.saveL2BatchOrderBook(l2OrderBook);
-        logger.info("take l2OrderBook snapshot: {}", orderBook.getSequence());
     }
 }
