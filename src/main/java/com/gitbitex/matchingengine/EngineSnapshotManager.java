@@ -1,8 +1,8 @@
 package com.gitbitex.matchingengine;
 
-import ch.qos.logback.core.net.server.Client;
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.enums.OrderStatus;
+import com.mongodb.ClientSessionOptions;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -36,32 +36,26 @@ public class EngineSnapshotManager {
     }
 
     public void runInSession(Consumer<ClientSession> consumer) {
-        try (ClientSession session = mongoClient.startSession()) {
-            session.startTransaction();
-            try {
-                consumer.accept(session);
-            } catch (Exception e) {
-                session.abortTransaction();
-                throw new RuntimeException(e);
-            }
+        try (ClientSession session = mongoClient.startSession(ClientSessionOptions.builder().snapshot(true).build())) {
+            consumer.accept(session);
         }
     }
 
-    public List<Product> getProducts( ClientSession session ) {
+    public List<Product> getProducts(ClientSession session) {
         return this.productCollection
-                .find()
+                .find(session)
                 .into(new ArrayList<>());
     }
 
-    public List<Account> getAccounts( ClientSession session) {
+    public List<Account> getAccounts(ClientSession session) {
         return this.accountCollection
-                .find()
+                .find(session)
                 .into(new ArrayList<>());
     }
 
     public List<Order> getOrders(ClientSession session, String productId) {
         return this.orderCollection
-                .find(Filters.eq("productId", productId))
+                .find(session, Filters.eq("productId", productId))
                 .sort(Sorts.ascending("sequence"))
                 .into(new ArrayList<>());
     }
@@ -76,7 +70,8 @@ public class EngineSnapshotManager {
                      Collection<Account> accounts,
                      Collection<Order> orders,
                      Collection<Product> products) {
-        logger.info("Saving snapshot : state={}", JSON.toJSONString(engineState));
+        logger.info("saving snapshot: state={}, {} account(s), {} order(s), {} products",
+                JSON.toJSONString(engineState), accounts.size(), orders.size(), products.size());
 
         List<WriteModel<Account>> accountWriteModels = buildAccountWriteModels(accounts);
         List<WriteModel<Product>> productWriteModels = buildProductWriteModels(products);

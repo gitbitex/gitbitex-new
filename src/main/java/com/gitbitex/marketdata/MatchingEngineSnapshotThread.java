@@ -18,11 +18,11 @@ import java.util.Map;
 public class MatchingEngineSnapshotThread extends MessageConsumerThread {
     private final EngineSnapshotManager snapshotStore;
     private final AppProperties appProperties;
-    private Long lastSnapshotCommandOffset;
-    private EngineState lastEngineState;
     private final Map<String, Account> accounts = new HashMap<>();
     private final Map<String, Order> orders = new HashMap<>();
     private final Map<String, Product> products = new HashMap<>();
+    private Long lastSnapshotCommandOffset;
+    private EngineState lastEngineState;
 
     public MatchingEngineSnapshotThread(KafkaConsumer<String, Message> consumer, EngineSnapshotManager engineSnapshotManager, AppProperties appProperties) {
         super(consumer, appProperties, logger);
@@ -64,7 +64,7 @@ public class MatchingEngineSnapshotThread extends MessageConsumerThread {
                 Order order = orderMessage.getOrder();
                 orders.put(order.getId(), order);
                 lastEngineState.getOrderSequences().put(order.getProductId(), order.getSequence());
-                lastEngineState.getOrderBookSequences().put(order.getProductId(),orderMessage.getOrderBookSequence());
+                lastEngineState.getOrderBookSequences().put(order.getProductId(), orderMessage.getOrderBookSequence());
 
             } else if (message instanceof TradeMessage tradeMessage) {
                 Trade trade = tradeMessage.getTrade();

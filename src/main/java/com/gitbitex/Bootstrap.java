@@ -40,6 +40,7 @@ public class Bootstrap {
     private final List<Thread> threads = new ArrayList<>();
     private final EngineSnapshotManager engineSnapshotManager;
     private final MessageSender messageSender;
+    private final OrderBookSnapshotManager orderBookSnapshotManager;
 
     @PostConstruct
     public void init() {
@@ -62,7 +63,6 @@ public class Bootstrap {
         }
     }
 
-
     private void startMatchingEngine(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "MatchingEngine";
@@ -73,8 +73,6 @@ public class Bootstrap {
             threads.add(matchingEngineThread);
         }
     }
-
-    private final OrderBookSnapshotManager orderBookSnapshotManager;
 
     private void startSnapshotThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
@@ -91,7 +89,7 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "OrderBookSnapshot";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
-            var thread = new OrderBookSnapshotThread(consumer, orderBookSnapshotManager,  engineSnapshotManager, appProperties);
+            var thread = new OrderBookSnapshotThread(consumer, orderBookSnapshotManager, engineSnapshotManager, appProperties);
             thread.setName(groupId + "-" + thread.getId());
             thread.start();
             threads.add(thread);

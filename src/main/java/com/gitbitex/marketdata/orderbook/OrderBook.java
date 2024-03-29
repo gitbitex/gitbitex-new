@@ -11,10 +11,10 @@ import java.util.Comparator;
 @Getter
 public class OrderBook {
     private final String productId;
-    @Setter
-    private long sequence;
     private final Depth asks = new Depth(Comparator.naturalOrder());
     private final Depth bids = new Depth(Comparator.reverseOrder());
+    @Setter
+    private long sequence;
 
     public OrderBook(String productId) {
         this.productId = productId;

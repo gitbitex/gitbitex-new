@@ -4,7 +4,6 @@ import com.gitbitex.marketdata.entity.AccountEntity;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.*;
-import com.mongodb.internal.operation.FindOperation;
 import org.bson.conversions.Bson;
 import org.springframework.stereotype.Component;
 

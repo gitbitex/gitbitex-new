@@ -39,7 +39,7 @@ public class OrderBook {
         this.accountBook = accountBook;
         this.orderSequence = orderSequence;
         this.tradeSequence = tradeSequence;
-        this.orderBookSequence=orderBookSequence;
+        this.orderBookSequence = orderBookSequence;
         this.messageSender = messageSender;
         this.messageSequence = messageSequence;
     }

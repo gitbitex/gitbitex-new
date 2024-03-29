@@ -1,8 +1,6 @@
 package com.gitbitex.marketdata.orderbook;
 
 import com.alibaba.fastjson.JSON;
-import com.gitbitex.marketdata.orderbook.L2OrderBook;
-import com.gitbitex.marketdata.orderbook.L3OrderBook;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
