@@ -54,7 +54,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, Message> impl
 
     @Override
     protected void doSubscribe() {
-        consumer.subscribe(Collections.singletonList(appProperties.getTradeMessageTopic()), this);
+        consumer.subscribe(Collections.singletonList(appProperties.getMatchingEngineMessageTopic()), this);
     }
 
     @Override
