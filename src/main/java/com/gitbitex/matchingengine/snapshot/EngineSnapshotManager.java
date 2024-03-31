@@ -1,6 +1,11 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.matchingengine.snapshot;
 
+import com.alibaba.fastjson.JSON;
 import com.gitbitex.enums.OrderStatus;
+import com.gitbitex.matchingengine.Account;
+import com.gitbitex.matchingengine.Order;
+import com.gitbitex.matchingengine.Product;
+import com.mongodb.ClientSessionOptions;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -13,68 +18,64 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Slf4j
 @Component
-public class EngineSnapshotStore {
+public class EngineSnapshotManager {
     private final MongoCollection<EngineState> engineStateCollection;
     private final MongoCollection<Account> accountCollection;
     private final MongoCollection<Order> orderCollection;
     private final MongoCollection<Product> productCollection;
-    private final MongoCollection<OrderBookState> orderBookStateCollection;
     private final MongoClient mongoClient;
 
-    public EngineSnapshotStore(MongoClient mongoClient, MongoDatabase database) {
+    public EngineSnapshotManager(MongoClient mongoClient, MongoDatabase database) {
         this.mongoClient = mongoClient;
         this.engineStateCollection = database.getCollection("snapshot_engine", EngineState.class);
         this.accountCollection = database.getCollection("snapshot_account", Account.class);
         this.orderCollection = database.getCollection("snapshot_order", Order.class);
         this.orderCollection.createIndex(Indexes.descending("product_id", "sequence"), new IndexOptions().unique(true));
         this.productCollection = database.getCollection("snapshot_product", Product.class);
-        this.orderBookStateCollection = database.getCollection("snapshot_order_book", OrderBookState.class);
-        this.orderBookStateCollection.createIndex(Indexes.descending("product_id"), new IndexOptions().unique(true));
     }
 
-    public List<Product> getProducts() {
+    public void runInSession(Consumer<ClientSession> consumer) {
+        try (ClientSession session = mongoClient.startSession(ClientSessionOptions.builder().snapshot(true).build())) {
+            consumer.accept(session);
+        }
+    }
+
+    public List<Product> getProducts(ClientSession session) {
         return this.productCollection
-                .find()
+                .find(session)
                 .into(new ArrayList<>());
     }
 
-    public List<Account> getAccounts() {
+    public List<Account> getAccounts(ClientSession session) {
         return this.accountCollection
-                .find()
+                .find(session)
                 .into(new ArrayList<>());
     }
 
-    public List<Order> getOrders(String productId) {
+    public List<Order> getOrders(ClientSession session, String productId) {
         return this.orderCollection
-                .find(Filters.eq("productId", productId))
+                .find(session, Filters.eq("productId", productId))
                 .sort(Sorts.ascending("sequence"))
                 .into(new ArrayList<>());
     }
 
-    public List<OrderBookState> getOrderBookStates() {
-        return orderBookStateCollection
-                .find()
-                .into(new ArrayList<>());
-    }
-
-    public EngineState getEngineState() {
+    public EngineState getEngineState(ClientSession session) {
         return engineStateCollection
                 .find(Filters.eq("_id", "default"))
                 .first();
     }
 
-    public Long getCommandOffset() {
-        EngineState engineState = getEngineState();
-        return engineState != null ? engineState.getCommandOffset() : null;
-    }
+    public void save(EngineState engineState,
+                     Collection<Account> accounts,
+                     Collection<Order> orders,
+                     Collection<Product> products) {
+        logger.info("saving snapshot: state={}, {} account(s), {} order(s), {} products",
+                JSON.toJSONString(engineState), accounts.size(), orders.size(), products.size());
 
-    public void save(Long commandOffset, OrderBookState orderBookState, Collection<Account> accounts,
-                     Collection<Order> orders, Collection<Product> products) {
-        EngineState engineState = new EngineState();
-        engineState.setCommandOffset(commandOffset);
         List<WriteModel<Account>> accountWriteModels = buildAccountWriteModels(accounts);
         List<WriteModel<Product>> productWriteModels = buildProductWriteModels(products);
         List<WriteModel<Order>> orderWriteModels = buildOrderWriteModels(orders);
@@ -83,20 +84,19 @@ public class EngineSnapshotStore {
             try {
                 engineStateCollection.replaceOne(session, Filters.eq("_id", engineState.getId()), engineState,
                         new ReplaceOptions().upsert(true));
-                if (orderBookState != null) {
-                    orderBookStateCollection.replaceOne(session,
-                            Filters.eq("productId", orderBookState.getProductId()),
-                            orderBookState, new ReplaceOptions().upsert(true));
-                }
+
                 if (!accountWriteModels.isEmpty()) {
                     accountCollection.bulkWrite(session, accountWriteModels, new BulkWriteOptions().ordered(false));
                 }
+
                 if (!productWriteModels.isEmpty()) {
                     productCollection.bulkWrite(session, productWriteModels, new BulkWriteOptions().ordered(false));
                 }
+
                 if (!orderWriteModels.isEmpty()) {
                     orderCollection.bulkWrite(session, orderWriteModels, new BulkWriteOptions().ordered(false));
                 }
+
                 session.commitTransaction();
             } catch (Exception e) {
                 session.abortTransaction();

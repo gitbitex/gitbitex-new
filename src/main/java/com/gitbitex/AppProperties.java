@@ -11,6 +11,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class AppProperties {
     private String matchingEngineCommandTopic;
+    private String matchingEngineMessageTopic;
     private String tradeMessageTopic;
     private String accountMessageTopic;
     private String orderMessageTopic;

@@ -1,7 +1,9 @@
 package com.gitbitex.matchingengine;
 
+import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.command.*;
+import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -12,22 +14,21 @@ import org.apache.kafka.common.TopicPartition;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 @Slf4j
 public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
-        implements CommandHandler, ConsumerRebalanceListener {
+        implements ConsumerRebalanceListener {
     private final AppProperties appProperties;
-    private final EngineSnapshotStore engineSnapshotStore;
-    private final List<EngineListener> engineListeners;
+    private final EngineSnapshotManager engineSnapshotManager;
+    private final MessageSender messageSender;
     private MatchingEngine matchingEngine;
 
-    public MatchingEngineThread(KafkaConsumer<String, Command> consumer, EngineSnapshotStore engineSnapshotStore,
-                                List<EngineListener> engineListeners, AppProperties appProperties) {
+    public MatchingEngineThread(KafkaConsumer<String, Command> consumer, EngineSnapshotManager engineSnapshotManager, MessageSender messageSender,
+                                AppProperties appProperties) {
         super(consumer, logger);
         this.appProperties = appProperties;
-        this.engineSnapshotStore = engineSnapshotStore;
-        this.engineListeners = engineListeners;
+        this.engineSnapshotManager = engineSnapshotManager;
+        this.messageSender = messageSender;
     }
 
     @Override
@@ -41,7 +42,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            matchingEngine = new MatchingEngine(engineSnapshotStore, engineListeners);
+            matchingEngine = new MatchingEngine(engineSnapshotManager, messageSender);
             if (matchingEngine.getStartupCommandOffset() != null) {
                 logger.info("seek to offset: {}", matchingEngine.getStartupCommandOffset() + 1);
                 consumer.seek(partition, matchingEngine.getStartupCommandOffset() + 1);
@@ -64,7 +65,18 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
             Command command = x.value();
             command.setOffset(x.offset());
             //logger.info("{}", JSON.toJSONString(command));
-            CommandDispatcher.dispatch(command, this);
+
+            if (command instanceof PlaceOrderCommand placeOrderCommand) {
+                on(placeOrderCommand);
+            } else if (command instanceof CancelOrderCommand cancelOrderCommand) {
+                on(cancelOrderCommand);
+            } else if (command instanceof DepositCommand depositCommand) {
+                on(depositCommand);
+            } else if (command instanceof PutProductCommand putProductCommand) {
+                on(putProductCommand);
+            } else {
+                logger.warn("Unhandled command: {} {}", command.getClass().getName(), JSON.toJSONString(command));
+            }
             /*try {
                 Thread.sleep(50);
             } catch (InterruptedException e) {
@@ -73,22 +85,19 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
         });
     }
 
-    @Override
+
     public void on(PutProductCommand command) {
         matchingEngine.executeCommand(command);
     }
 
-    @Override
     public void on(DepositCommand command) {
         matchingEngine.executeCommand(command);
     }
 
-    @Override
     public void on(PlaceOrderCommand command) {
         matchingEngine.executeCommand(command);
     }
 
-    @Override
     public void on(CancelOrderCommand command) {
         matchingEngine.executeCommand(command);
     }

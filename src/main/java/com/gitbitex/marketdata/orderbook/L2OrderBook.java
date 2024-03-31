@@ -1,4 +1,4 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.marketdata.orderbook;
 
 import com.gitbitex.enums.OrderSide;
 import lombok.Getter;
@@ -24,9 +24,9 @@ public class L2OrderBook {
     public L2OrderBook() {
     }
 
-    public L2OrderBook(SimpleOrderBook orderBook, int depth) {
+    public L2OrderBook(OrderBook orderBook, int depth) {
         this.productId = orderBook.getProductId();
-        this.sequence = orderBook.getMessageSequence();
+        this.sequence = orderBook.getSequence();
         this.time = System.currentTimeMillis();
         this.asks = orderBook.getAsks().entrySet().stream()
                 .limit(depth)

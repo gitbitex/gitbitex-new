@@ -1,6 +1,6 @@
 package com.gitbitex.openapi.controller;
 
-import com.gitbitex.marketdata.entity.App;
+import com.gitbitex.marketdata.entity.AppEntity;
 import com.gitbitex.marketdata.entity.User;
 import com.gitbitex.marketdata.repository.AppRepository;
 import com.gitbitex.openapi.model.AppDto;
@@ -26,8 +26,8 @@ public class AppController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        List<App> apps = appRepository.findByUserId(currentUser.getId());
-        return apps.stream().map(this::appDto).collect(Collectors.toList());
+        List<AppEntity> appEntities = appRepository.findByUserId(currentUser.getId());
+        return appEntities.stream().map(this::appDto).collect(Collectors.toList());
     }
 
     @PostMapping("/apps")
@@ -36,15 +36,15 @@ public class AppController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        App app = new App();
-        app.setId(UUID.randomUUID().toString());
-        app.setUserId(currentUser.getId());
-        app.setAccessKey(UUID.randomUUID().toString());
-        app.setSecretKey(UUID.randomUUID().toString());
-        app.setName(request.getName());
-        appRepository.save(app);
+        AppEntity appEntity = new AppEntity();
+        appEntity.setId(UUID.randomUUID().toString());
+        appEntity.setUserId(currentUser.getId());
+        appEntity.setAccessKey(UUID.randomUUID().toString());
+        appEntity.setSecretKey(UUID.randomUUID().toString());
+        appEntity.setName(request.getName());
+        appRepository.save(appEntity);
 
-        return appDto(app);
+        return appDto(appEntity);
     }
 
     @DeleteMapping("/apps/{appId}")
@@ -53,24 +53,24 @@ public class AppController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
-        App app = appRepository.findByAppId(appId);
-        if (app == null) {
+        AppEntity appEntity = appRepository.findByAppId(appId);
+        if (appEntity == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
-        if (!app.getUserId().equals(currentUser.getId())) {
+        if (!appEntity.getUserId().equals(currentUser.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        appRepository.deleteById(app.getId());
+        appRepository.deleteById(appEntity.getId());
     }
 
-    private AppDto appDto(App app) {
+    private AppDto appDto(AppEntity appEntity) {
         AppDto appDto = new AppDto();
-        appDto.setId(app.getId());
-        appDto.setName(app.getName());
-        appDto.setKey(app.getAccessKey());
-        appDto.setSecret(app.getSecretKey());
-        appDto.setCreatedAt(app.getCreatedAt() != null ? app.getCreatedAt().toInstant().toString() : null);
+        appDto.setId(appEntity.getId());
+        appDto.setName(appEntity.getName());
+        appDto.setKey(appEntity.getAccessKey());
+        appDto.setSecret(appEntity.getSecretKey());
+        appDto.setCreatedAt(appEntity.getCreatedAt() != null ? appEntity.getCreatedAt().toInstant().toString() : null);
         return appDto;
     }
 }

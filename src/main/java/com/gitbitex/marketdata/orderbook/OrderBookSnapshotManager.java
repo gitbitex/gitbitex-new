@@ -1,4 +1,4 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.marketdata.orderbook;
 
 import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
@@ -9,11 +9,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
-public class OrderBookSnapshotStore {
+public class OrderBookSnapshotManager {
     private final RedissonClient redissonClient;
     private final RTopic l2BatchNotifyTopic;
 
-    public OrderBookSnapshotStore(RedissonClient redissonClient) {
+    public OrderBookSnapshotManager(RedissonClient redissonClient) {
         this.redissonClient = redissonClient;
         this.l2BatchNotifyTopic = redissonClient.getTopic("l2_batch", StringCodec.INSTANCE);
     }

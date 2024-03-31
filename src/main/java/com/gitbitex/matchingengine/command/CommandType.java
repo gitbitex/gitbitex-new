@@ -24,5 +24,4 @@ public enum CommandType {
         }
         throw new RuntimeException("Unknown byte: " + b);
     }
-
 }

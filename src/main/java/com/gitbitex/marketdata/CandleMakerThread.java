@@ -5,6 +5,7 @@ import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.repository.CandleRepository;
 import com.gitbitex.marketdata.util.DateUtil;
 import com.gitbitex.matchingengine.Trade;
+import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.message.TradeMessage;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.SneakyThrows;
@@ -25,12 +26,12 @@ import java.util.LinkedHashMap;
  * My job is to produce candles
  */
 @Slf4j
-public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage> implements ConsumerRebalanceListener {
+public class CandleMakerThread extends KafkaConsumerThread<String, Message> implements ConsumerRebalanceListener {
     private static final int[] GRANULARITY_ARR = new int[]{1, 5, 15, 30, 60, 360, 1440};
     private final CandleRepository candleRepository;
     private final AppProperties appProperties;
 
-    public CandleMakerThread(CandleRepository candleRepository, KafkaConsumer<String, TradeMessage> consumer,
+    public CandleMakerThread(KafkaConsumer<String, Message> consumer, CandleRepository candleRepository,
                              AppProperties appProperties) {
         super(consumer, logger);
         this.candleRepository = candleRepository;
@@ -53,7 +54,7 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
 
     @Override
     protected void doSubscribe() {
-        consumer.subscribe(Collections.singletonList(appProperties.getTradeMessageTopic()), this);
+        consumer.subscribe(Collections.singletonList(appProperties.getMatchingEngineMessageTopic()), this);
     }
 
     @Override
@@ -66,45 +67,48 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
 
         LinkedHashMap<String, Candle> candles = new LinkedHashMap<>();
         records.forEach(x -> {
-            Trade trade = x.value();
-            for (int granularity : GRANULARITY_ARR) {
-                long time = DateUtil.round(ZonedDateTime.ofInstant(trade.getTime().toInstant(), ZoneId.systemDefault()),
-                        ChronoField.MINUTE_OF_DAY, granularity).toEpochSecond();
-                String candleId = trade.getProductId() + "-" + time + "-" + granularity;
-                Candle candle = candles.get(candleId);
-                if (candle == null) {
-                    candle = candleRepository.findById(candleId);
-                }
-
-                if (candle == null) {
-                    candle = new Candle();
-                    candle.setId(candleId);
-                    candle.setProductId(trade.getProductId());
-                    candle.setGranularity(granularity);
-                    candle.setTime(time);
-                    candle.setProductId(trade.getProductId());
-                    candle.setOpen(trade.getPrice());
-                    candle.setClose(trade.getPrice());
-                    candle.setLow(trade.getPrice());
-                    candle.setHigh(trade.getPrice());
-                    candle.setVolume(trade.getSize());
-                    candle.setTradeId(trade.getSequence());
-                } else {
-                    if (candle.getTradeId() >= trade.getSequence()) {
-                        //logger.warn("ignore trade: {}",trade.getTradeId());
-                        continue;
-                    } else if (candle.getTradeId() + 1 != trade.getSequence()) {
-                        throw new RuntimeException(
-                                "out of order sequence: " + " " + (candle.getTradeId()) + " " + trade.getSequence());
+            Message message = x.value();
+            if (message instanceof TradeMessage) {
+                Trade trade = ((TradeMessage) message).getTrade();
+                for (int granularity : GRANULARITY_ARR) {
+                    long time = DateUtil.round(ZonedDateTime.ofInstant(trade.getTime().toInstant(), ZoneId.systemDefault()),
+                            ChronoField.MINUTE_OF_DAY, granularity).toEpochSecond();
+                    String candleId = trade.getProductId() + "-" + time + "-" + granularity;
+                    Candle candle = candles.get(candleId);
+                    if (candle == null) {
+                        candle = candleRepository.findById(candleId);
                     }
-                    candle.setClose(trade.getPrice());
-                    candle.setLow(candle.getLow().min(trade.getPrice()));
-                    candle.setHigh(candle.getLow().max(trade.getPrice()));
-                    candle.setVolume(candle.getVolume().add(trade.getSize()));
-                    candle.setTradeId(trade.getSequence());
-                }
 
-                candles.put(candle.getId(), candle);
+                    if (candle == null) {
+                        candle = new Candle();
+                        candle.setId(candleId);
+                        candle.setProductId(trade.getProductId());
+                        candle.setGranularity(granularity);
+                        candle.setTime(time);
+                        candle.setProductId(trade.getProductId());
+                        candle.setOpen(trade.getPrice());
+                        candle.setClose(trade.getPrice());
+                        candle.setLow(trade.getPrice());
+                        candle.setHigh(trade.getPrice());
+                        candle.setVolume(trade.getSize());
+                        candle.setTradeId(trade.getSequence());
+                    } else {
+                        if (candle.getTradeId() >= trade.getSequence()) {
+                            //logger.warn("ignore trade: {}",trade.getTradeId());
+                            continue;
+                        } else if (candle.getTradeId() + 1 != trade.getSequence()) {
+                            throw new RuntimeException(
+                                    "out of order sequence: " + " " + (candle.getTradeId()) + " " + trade.getSequence());
+                        }
+                        candle.setClose(trade.getPrice());
+                        candle.setLow(candle.getLow().min(trade.getPrice()));
+                        candle.setHigh(candle.getLow().max(trade.getPrice()));
+                        candle.setVolume(candle.getVolume().add(trade.getSize()));
+                        candle.setTradeId(trade.getSequence());
+                    }
+
+                    candles.put(candle.getId(), candle);
+                }
             }
         });
 
@@ -116,5 +120,6 @@ public class CandleMakerThread extends KafkaConsumerThread<String, TradeMessage>
 
         consumer.commitSync();
     }
+
 
 }

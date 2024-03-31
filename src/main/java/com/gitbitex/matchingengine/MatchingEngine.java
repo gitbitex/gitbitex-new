@@ -1,51 +1,113 @@
 package com.gitbitex.matchingengine;
 
-import com.gitbitex.matchingengine.command.CancelOrderCommand;
-import com.gitbitex.matchingengine.command.DepositCommand;
-import com.gitbitex.matchingengine.command.PlaceOrderCommand;
-import com.gitbitex.matchingengine.command.PutProductCommand;
+import com.alibaba.fastjson.JSON;
+import com.gitbitex.matchingengine.command.*;
+import com.gitbitex.matchingengine.message.CommandEndMessage;
+import com.gitbitex.matchingengine.message.CommandStartMessage;
+import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
+import com.gitbitex.matchingengine.snapshot.EngineState;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 public class MatchingEngine {
-    private final ProductBook productBook = new ProductBook();
-    private final AccountBook accountBook = new AccountBook();
     private final Map<String, OrderBook> orderBooks = new HashMap<>();
-    private final EngineSnapshotStore stateStore;
+    private final EngineSnapshotManager stateStore;
     private final Counter commandProcessedCounter;
-    private final List<EngineListener> engineListeners;
+    private final AtomicLong messageSequence = new AtomicLong();
+    private final MessageSender messageSender;
+    private final ProductBook productBook;
+    private final AccountBook accountBook;
     @Getter
     private Long startupCommandOffset;
 
-    public MatchingEngine(EngineSnapshotStore stateStore, List<EngineListener> engineListeners) {
+    public MatchingEngine(EngineSnapshotManager stateStore, MessageSender messageSender) {
         this.stateStore = stateStore;
-        this.engineListeners = engineListeners;
+        this.messageSender = messageSender;
         this.commandProcessedCounter = Counter.builder("gbe.matching-engine.command.processed")
                 .register(Metrics.globalRegistry);
-        restoreState();
+        this.productBook = new ProductBook(messageSender, this.messageSequence);
+        this.accountBook = new AccountBook(messageSender, this.messageSequence);
+
+
+        logger.info("restoring snapshot");
+        stateStore.runInSession(session -> {
+            // restore engine states
+            EngineState engineState = stateStore.getEngineState(session);
+            if (engineState == null) {
+                logger.info("no snapshot found");
+                return;
+            }
+
+            logger.info("snapshot found, state: {}", JSON.toJSONString(engineState));
+
+
+            if (engineState.getCommandOffset() != null) {
+                this.startupCommandOffset = engineState.getCommandOffset();
+            }
+            if (engineState.getMessageSequence() != null) {
+                this.messageSequence.set(engineState.getMessageSequence());
+            }
+
+            // restore product book
+            stateStore.getProducts(session).forEach(productBook::addProduct);
+
+            // restore account book
+            stateStore.getAccounts(session).forEach(accountBook::add);
+
+            // restore order books
+            for (Product product : this.productBook.getAllProducts()) {
+                OrderBook orderBook = new OrderBook(product.getId(),
+                        engineState.getOrderSequences().getOrDefault(product.getId(), 0L),
+                        engineState.getTradeSequences().getOrDefault(product.getId(), 0L),
+                        engineState.getOrderBookSequences().getOrDefault(product.getId(), 0L),
+                        accountBook, productBook, messageSender, this.messageSequence);
+                orderBooks.put(orderBook.getProductId(), orderBook);
+
+
+                for (Order order : stateStore.getOrders(session, product.getId())) {
+                    orderBook.addOrder(order);
+                }
+            }
+        });
+        logger.info("snapshot restored");
+    }
+
+    private CommandStartMessage commandStartMessage(Command command) {
+        CommandStartMessage message = new CommandStartMessage();
+        message.setSequence(messageSequence.incrementAndGet());
+        return message;
+    }
+
+    private CommandEndMessage commandEndMessage(Command command) {
+        CommandEndMessage message = new CommandEndMessage();
+        message.setSequence(messageSequence.incrementAndGet());
+        message.setCommandOffset(command.getOffset());
+        return message;
     }
 
     public void executeCommand(DepositCommand command) {
         commandProcessedCounter.increment();
-        ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), null);
+
+        messageSender.send(commandStartMessage(command));
         accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
-                command.getTransactionId(), modifiedObjects);
-        engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
+                command.getTransactionId());
+        messageSender.send(commandEndMessage(command));
     }
 
     public void executeCommand(PutProductCommand command) {
         commandProcessedCounter.increment();
-        ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), null);
-        productBook.putProduct(new Product(command), modifiedObjects);
+
+        messageSender.send(commandStartMessage(command));
+        productBook.putProduct(new Product(command));
         createOrderBook(command.getProductId());
-        engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
+        messageSender.send(commandEndMessage(command));
     }
 
     public void executeCommand(PlaceOrderCommand command) {
@@ -55,9 +117,10 @@ public class MatchingEngine {
             logger.warn("no such order book: {}", command.getProductId());
             return;
         }
-        ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), command.getProductId());
-        orderBook.placeOrder(new Order(command), modifiedObjects);
-        engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
+
+        messageSender.send(commandStartMessage(command));
+        orderBook.placeOrder(new Order(command));
+        messageSender.send(commandEndMessage(command));
     }
 
     public void executeCommand(CancelOrderCommand command) {
@@ -67,32 +130,18 @@ public class MatchingEngine {
             logger.warn("no such order book: {}", command.getProductId());
             return;
         }
-        ModifiedObjectList modifiedObjects = new ModifiedObjectList(command.getOffset(), command.getProductId());
-        orderBook.cancelOrder(command.getOrderId(), modifiedObjects);
-        engineListeners.forEach(x -> x.onCommandExecuted(command, modifiedObjects));
+
+        messageSender.send(commandStartMessage(command));
+        orderBook.cancelOrder(command.getOrderId());
+        messageSender.send(commandEndMessage(command));
     }
 
     private void createOrderBook(String productId) {
         if (orderBooks.containsKey(productId)) {
             return;
         }
-        OrderBook orderBook = new OrderBook(productId, 0, 0, 0, accountBook, productBook);
+        OrderBook orderBook = new OrderBook(productId, 0, 0, 0, accountBook, productBook, messageSender, messageSequence);
         orderBooks.put(productId, orderBook);
-    }
-
-    private void restoreState() {
-        startupCommandOffset = stateStore.getCommandOffset();
-        if (startupCommandOffset == null) {
-            return;
-        }
-        stateStore.getAccounts().forEach(accountBook::add);
-        stateStore.getProducts().forEach(productBook::addProduct);
-        stateStore.getOrderBookStates().forEach(x -> {
-            OrderBook orderBook = new OrderBook(x.getProductId(), x.getOrderSequence(), x.getTradeSequence(),
-                    x.getMessageSequence(), accountBook, productBook);
-            orderBooks.put(x.getProductId(), orderBook);
-            stateStore.getOrders(x.getProductId()).forEach(orderBook::addOrder);
-        });
     }
 
 }

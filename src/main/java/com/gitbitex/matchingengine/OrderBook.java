@@ -4,19 +4,17 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.enums.OrderSide;
 import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.enums.OrderType;
-import com.gitbitex.matchingengine.message.OrderDoneMessage;
-import com.gitbitex.matchingengine.message.OrderMatchMessage;
-import com.gitbitex.matchingengine.message.OrderOpenMessage;
-import com.gitbitex.matchingengine.message.OrderReceivedMessage;
+import com.gitbitex.matchingengine.message.OrderMessage;
+import com.gitbitex.matchingengine.message.TradeMessage;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Getter
 @Slf4j
@@ -27,21 +25,26 @@ public class OrderBook {
     private final Depth asks = new Depth(Comparator.naturalOrder());
     private final Depth bids = new Depth(Comparator.reverseOrder());
     private final Map<String, Order> orderById = new HashMap<>();
+    private final MessageSender messageSender;
+    private final AtomicLong messageSequence;
     private long orderSequence;
     private long tradeSequence;
-    private long messageSequence;
+    private long orderBookSequence;
 
-    public OrderBook(String productId, long orderSequence, long tradeSequence, long messageSequence,
-                     AccountBook accountBook, ProductBook productBook) {
+    public OrderBook(String productId,
+                     long orderSequence, long tradeSequence, long orderBookSequence,
+                     AccountBook accountBook, ProductBook productBook, MessageSender messageSender, AtomicLong messageSequence) {
         this.productId = productId;
         this.productBook = productBook;
         this.accountBook = accountBook;
         this.orderSequence = orderSequence;
         this.tradeSequence = tradeSequence;
+        this.orderBookSequence = orderBookSequence;
+        this.messageSender = messageSender;
         this.messageSequence = messageSequence;
     }
 
-    public void placeOrder(Order takerOrder, ModifiedObjectList modifiedObjects) {
+    public void placeOrder(Order takerOrder) {
         var product = productBook.getProduct(productId);
         if (product == null) {
             logger.warn("order rejected, reason: PRODUCT_NOT_FOUND");
@@ -50,24 +53,22 @@ public class OrderBook {
 
         takerOrder.setSequence(++orderSequence);
 
+        boolean ok;
         if (takerOrder.getSide() == OrderSide.BUY) {
-            accountBook.hold(takerOrder.getUserId(), product.getQuoteCurrency(), takerOrder.getRemainingFunds(),
-                    modifiedObjects);
+            ok = accountBook.hold(takerOrder.getUserId(), product.getQuoteCurrency(), takerOrder.getRemainingFunds());
         } else {
-            accountBook.hold(takerOrder.getUserId(), product.getBaseCurrency(), takerOrder.getRemainingSize(),
-                    modifiedObjects);
+            ok = accountBook.hold(takerOrder.getUserId(), product.getBaseCurrency(), takerOrder.getRemainingSize());
         }
-        if (modifiedObjects.isEmpty()) {
+        if (!ok) {
             logger.warn("order rejected, reason: INSUFFICIENT_FUNDS: {}", JSON.toJSONString(takerOrder));
             takerOrder.setStatus(OrderStatus.REJECTED);
-            modifiedObjects.add(takerOrder);
-            modifiedObjects.add(orderBookState());
+            messageSender.send(orderMessage(takerOrder.clone()));
             return;
         }
 
         // order received
         takerOrder.setStatus(OrderStatus.RECEIVED);
-        modifiedObjects.add(orderReceivedMessage(takerOrder));
+        messageSender.send(orderMessage(takerOrder.clone()));
 
         // start matching
         var makerDepth = takerOrder.getSide() == OrderSide.BUY ? asks : bids;
@@ -94,23 +95,20 @@ public class OrderBook {
                     break MATCHING;
                 }
 
-                modifiedObjects.add(orderMatchMessage(takerOrder, makerOrder, trade));
-
                 // exchange account funds
                 accountBook.exchange(takerOrder.getUserId(), makerOrder.getUserId(), product.getBaseCurrency(),
-                        product.getQuoteCurrency(), takerOrder.getSide(), trade.getSize(), trade.getFunds(),
-                        modifiedObjects);
+                        product.getQuoteCurrency(), takerOrder.getSide(), trade.getSize(), trade.getFunds());
 
                 // if the maker order is filled or cancelled, remove it from the order book.
                 if (makerOrder.getStatus() == OrderStatus.FILLED || makerOrder.getStatus() == OrderStatus.CANCELLED) {
                     orderItr.remove();
                     orderById.remove(makerOrder.getId());
-                    modifiedObjects.add(orderDoneMessage(makerOrder));
-                    unholdOrderFunds(makerOrder, product, modifiedObjects);
+                    unholdOrderFunds(makerOrder, product);
                 }
 
-                modifiedObjects.add(makerOrder.clone());
-                modifiedObjects.add(trade);
+                orderBookSequence++;
+                messageSender.send(orderMessage(makerOrder.clone()));
+                messageSender.send(tradeMessage(trade));
             }
 
             // remove price line with empty order list
@@ -125,21 +123,20 @@ public class OrderBook {
         if (takerOrder.getType() == OrderType.LIMIT && takerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
             addOrder(takerOrder);
             takerOrder.setStatus(OrderStatus.OPEN);
-            modifiedObjects.add(orderOpenMessage(takerOrder));
+            orderBookSequence++;
         } else {
             if (takerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
                 takerOrder.setStatus(OrderStatus.CANCELLED);
             } else {
                 takerOrder.setStatus(OrderStatus.FILLED);
             }
-            modifiedObjects.add(orderDoneMessage(takerOrder));
-            unholdOrderFunds(takerOrder, product, modifiedObjects);
+            unholdOrderFunds(takerOrder, product);
         }
-        modifiedObjects.add(takerOrder.clone());
-        modifiedObjects.add(orderBookState());
+
+        messageSender.send(orderMessage(takerOrder.clone()));
     }
 
-    public void cancelOrder(String orderId, ModifiedObjectList modifiedObjects) {
+    public void cancelOrder(String orderId) {
         var order = orderById.remove(orderId);
         if (order == null) {
             return;
@@ -150,13 +147,12 @@ public class OrderBook {
         depth.removeOrder(order);
 
         order.setStatus(OrderStatus.CANCELLED);
-        modifiedObjects.add(order);
-        modifiedObjects.add(orderDoneMessage(order));
-        modifiedObjects.add(orderBookState());
+
+        messageSender.send(orderMessage(order.clone()));
 
         // un-hold funds
         var product = productBook.getProduct(productId);
-        unholdOrderFunds(order, product, modifiedObjects);
+        unholdOrderFunds(order, product);
     }
 
     private Trade trade(Order takerOrder, Order makerOrder) {
@@ -222,90 +218,31 @@ public class OrderBook {
         }
     }
 
-    private void unholdOrderFunds(Order makerOrder, Product product, ModifiedObjectList modifiedObjects) {
+    private void unholdOrderFunds(Order makerOrder, Product product) {
         if (makerOrder.getSide() == OrderSide.BUY) {
             if (makerOrder.getRemainingFunds().compareTo(BigDecimal.ZERO) > 0) {
-                accountBook.unhold(makerOrder.getUserId(), product.getQuoteCurrency(), makerOrder.getRemainingFunds(),
-                        modifiedObjects);
+                accountBook.unhold(makerOrder.getUserId(), product.getQuoteCurrency(), makerOrder.getRemainingFunds());
             }
         } else {
             if (makerOrder.getRemainingSize().compareTo(BigDecimal.ZERO) > 0) {
-                accountBook.unhold(makerOrder.getUserId(), product.getBaseCurrency(), makerOrder.getRemainingSize(),
-                        modifiedObjects);
+                accountBook.unhold(makerOrder.getUserId(), product.getBaseCurrency(), makerOrder.getRemainingSize());
             }
         }
     }
 
-    public OrderReceivedMessage orderReceivedMessage(Order order) {
-        var message = new OrderReceivedMessage();
-        message.setSequence(++messageSequence);
-        message.setProductId(order.getProductId());
-        message.setUserId(order.getUserId());
-        message.setPrice(order.getPrice());
-        message.setFunds(order.getRemainingFunds());
-        message.setSide(order.getSide());
-        message.setSize(order.getRemainingSize());
-        message.setOrderId(order.getId());
-        message.setOrderType(order.getType());
-        message.setTime(new Date());
+
+    private OrderMessage orderMessage(Order order) {
+        OrderMessage message = new OrderMessage();
+        message.setSequence(messageSequence.incrementAndGet());
+        message.setOrderBookSequence(orderBookSequence);
+        message.setOrder(order);
         return message;
     }
 
-    public OrderOpenMessage orderOpenMessage(Order order) {
-        var message = new OrderOpenMessage();
-        message.setSequence(++messageSequence);
-        message.setProductId(order.getProductId());
-        message.setRemainingSize(order.getRemainingSize());
-        message.setPrice(order.getPrice());
-        message.setSide(order.getSide());
-        message.setOrderId(order.getId());
-        message.setUserId(order.getUserId());
-        message.setTime(new Date());
+    private TradeMessage tradeMessage(Trade trade) {
+        TradeMessage message = new TradeMessage();
+        message.setSequence(messageSequence.incrementAndGet());
+        message.setTrade(trade);
         return message;
-    }
-
-    public OrderMatchMessage orderMatchMessage(Order takerOrder, Order makerOrder, Trade trade) {
-        var message = new OrderMatchMessage();
-        message.setSequence(++messageSequence);
-        message.setTradeId(trade.getSequence());
-        message.setProductId(trade.getProductId());
-        message.setTakerOrderId(takerOrder.getId());
-        message.setMakerOrderId(makerOrder.getId());
-        message.setTakerUserId(takerOrder.getUserId());
-        message.setMakerUserId(makerOrder.getUserId());
-        message.setPrice(makerOrder.getPrice());
-        message.setSize(trade.getSize());
-        message.setFunds(trade.getFunds());
-        message.setSide(makerOrder.getSide());
-        message.setTime(takerOrder.getTime());
-        return message;
-    }
-
-    public OrderDoneMessage orderDoneMessage(Order order) {
-        var message = new OrderDoneMessage();
-        message.setSequence(++messageSequence);
-        message.setProductId(order.getProductId());
-        if (order.getType() != OrderType.MARKET) {
-            message.setRemainingSize(order.getRemainingSize());
-            message.setPrice(order.getPrice());
-        }
-        message.setRemainingFunds(order.getRemainingFunds());
-        message.setRemainingSize(order.getRemainingSize());
-        message.setSide(order.getSide());
-        message.setOrderId(order.getId());
-        message.setUserId(order.getUserId());
-        message.setDoneReason(order.getStatus().toString());
-        message.setOrderType(order.getType());
-        message.setTime(new Date());
-        return message;
-    }
-
-    public OrderBookState orderBookState() {
-        var orderBookState = new OrderBookState();
-        orderBookState.setProductId(this.productId);
-        orderBookState.setOrderSequence(this.orderSequence);
-        orderBookState.setTradeSequence(this.tradeSequence);
-        orderBookState.setMessageSequence(this.messageSequence);
-        return orderBookState;
     }
 }

@@ -1,6 +1,6 @@
 package com.gitbitex.marketdata.manager;
 
-import com.gitbitex.marketdata.entity.Order;
+import com.gitbitex.marketdata.entity.OrderEntity;
 import com.gitbitex.marketdata.repository.FillRepository;
 import com.gitbitex.marketdata.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,12 @@ public class OrderManager {
     private final OrderRepository orderRepository;
     private final FillRepository fillRepository;
 
-    public void saveAll(Collection<Order> orders) {
+    public void saveAll(Collection<OrderEntity> orders) {
+        if (orders.isEmpty()) {
+            return;
+        }
+        long t1 = System.currentTimeMillis();
         orderRepository.saveAll(orders);
+        logger.info("saved {} order(s) ({}ms)", orders.size(), System.currentTimeMillis() - t1);
     }
 }

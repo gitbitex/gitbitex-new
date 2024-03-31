@@ -1,6 +1,6 @@
 package com.gitbitex.marketdata.repository;
 
-import com.gitbitex.marketdata.entity.Product;
+import com.gitbitex.marketdata.entity.ProductEntity;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.*;
@@ -12,26 +12,25 @@ import java.util.List;
 
 @Component
 public class ProductRepository {
-    private final MongoCollection<Product> mongoCollection;
+    private final MongoCollection<ProductEntity> mongoCollection;
 
     public ProductRepository(MongoDatabase database) {
-        this.mongoCollection = database.getCollection(Product.class.getSimpleName().toLowerCase(), Product.class);
+        this.mongoCollection = database.getCollection(ProductEntity.class.getSimpleName().toLowerCase(), ProductEntity.class);
     }
 
-    public Product findById(String id) {
+    public ProductEntity findById(String id) {
         return this.mongoCollection.find(Filters.eq("_id", id)).first();
     }
 
-    public List<Product> findAll() {
+    public List<ProductEntity> findAll() {
         return this.mongoCollection.find().into(new ArrayList<>());
     }
 
-    public void save(Product product) {
-        List<WriteModel<Product>> writeModels = new ArrayList<>();
+    public void save(ProductEntity product) {
+        List<WriteModel<ProductEntity>> writeModels = new ArrayList<>();
         Bson filter = Filters.eq("_id", product.getId());
-        WriteModel<Product> writeModel = new ReplaceOneModel<>(filter, product, new ReplaceOptions().upsert(true));
+        WriteModel<ProductEntity> writeModel = new ReplaceOneModel<>(filter, product, new ReplaceOptions().upsert(true));
         writeModels.add(writeModel);
         this.mongoCollection.bulkWrite(writeModels, new BulkWriteOptions().ordered(false));
-
     }
 }

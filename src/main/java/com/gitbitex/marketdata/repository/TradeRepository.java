@@ -1,6 +1,6 @@
 package com.gitbitex.marketdata.repository;
 
-import com.gitbitex.marketdata.entity.Trade;
+import com.gitbitex.marketdata.entity.TradeEntity;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.*;
@@ -13,25 +13,25 @@ import java.util.List;
 
 @Component
 public class TradeRepository {
-    private final MongoCollection<Trade> collection;
+    private final MongoCollection<TradeEntity> collection;
 
     public TradeRepository(MongoDatabase database) {
-        this.collection = database.getCollection(Trade.class.getSimpleName().toLowerCase(), Trade.class);
+        this.collection = database.getCollection(TradeEntity.class.getSimpleName().toLowerCase(), TradeEntity.class);
         this.collection.createIndex(Indexes.descending("productId", "sequence"));
     }
 
-    public List<Trade> findByProductId(String productId, int limit) {
+    public List<TradeEntity> findByProductId(String productId, int limit) {
         return this.collection.find(Filters.eq("productId", productId))
                 .sort(Sorts.descending("sequence"))
                 .limit(limit)
                 .into(new ArrayList<>());
     }
 
-    public void saveAll(Collection<Trade> trades) {
-        List<WriteModel<Trade>> writeModels = new ArrayList<>();
-        for (Trade item : trades) {
+    public void saveAll(Collection<TradeEntity> trades) {
+        List<WriteModel<TradeEntity>> writeModels = new ArrayList<>();
+        for (TradeEntity item : trades) {
             Bson filter = Filters.eq("_id", item.getId());
-            WriteModel<Trade> writeModel = new ReplaceOneModel<>(filter, item, new ReplaceOptions().upsert(true));
+            WriteModel<TradeEntity> writeModel = new ReplaceOneModel<>(filter, item, new ReplaceOptions().upsert(true));
             writeModels.add(writeModel);
         }
         collection.bulkWrite(writeModels, new BulkWriteOptions().ordered(false));

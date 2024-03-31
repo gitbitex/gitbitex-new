@@ -1,26 +1,28 @@
-package com.gitbitex.matchingengine;
+package com.gitbitex.marketdata.orderbook;
 
 import com.gitbitex.enums.OrderSide;
+import com.gitbitex.matchingengine.Depth;
+import com.gitbitex.matchingengine.Order;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Comparator;
 
 @Getter
-public class SimpleOrderBook {
+public class OrderBook {
     private final String productId;
     private final Depth asks = new Depth(Comparator.naturalOrder());
     private final Depth bids = new Depth(Comparator.reverseOrder());
     @Setter
-    private long messageSequence;
+    private long sequence;
 
-    public SimpleOrderBook(String productId) {
+    public OrderBook(String productId) {
         this.productId = productId;
     }
 
-    public SimpleOrderBook(String productId, long messageSequence) {
+    public OrderBook(String productId, long sequence) {
         this.productId = productId;
-        this.messageSequence = messageSequence;
+        this.sequence = sequence;
     }
 
     public void addOrder(Order order) {

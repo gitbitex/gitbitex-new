@@ -7,9 +7,9 @@ import com.gitbitex.feed.message.PongFeedMessage;
 import com.gitbitex.feed.message.TickerFeedMessage;
 import com.gitbitex.marketdata.entity.Ticker;
 import com.gitbitex.marketdata.manager.TickerManager;
-import com.gitbitex.matchingengine.L2OrderBook;
-import com.gitbitex.matchingengine.L2OrderBookChange;
-import com.gitbitex.matchingengine.OrderBookSnapshotStore;
+import com.gitbitex.marketdata.orderbook.L2OrderBook;
+import com.gitbitex.marketdata.orderbook.L2OrderBookChange;
+import com.gitbitex.marketdata.orderbook.OrderBookSnapshotManager;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -33,7 +33,7 @@ public class SessionManager {
     private final ConcurrentHashMap<String, ConcurrentSkipListSet<String>> channelsBySessionId
             = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, WebSocketSession> sessionById = new ConcurrentHashMap<>();
-    private final OrderBookSnapshotStore orderBookSnapshotStore;
+    private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final TickerManager tickerManager;
     private final StripedExecutorService messageSenderExecutor =
             new StripedExecutorService(Runtime.getRuntime().availableProcessors());
@@ -147,7 +147,7 @@ public class SessionManager {
     private void sendL2OrderBookSnapshot(WebSocketSession session, String productId) {
         messageSenderExecutor.execute(session.getId(), () -> {
             try {
-                L2OrderBook l2OrderBook = orderBookSnapshotStore.getL2BatchOrderBook(productId);
+                L2OrderBook l2OrderBook = orderBookSnapshotManager.getL2BatchOrderBook(productId);
                 if (l2OrderBook != null) {
                     doSendL2OrderBook(session, l2OrderBook);
                 }

@@ -4,12 +4,13 @@ import com.gitbitex.matchingengine.Order;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.math.BigDecimal;
-
 @Getter
 @Setter
-public class OrderMessage extends Order {
-    private BigDecimal fillFees;
-    private BigDecimal filledSize;
-    private BigDecimal executedValue;
+public class OrderMessage extends Message {
+    private long orderBookSequence;
+    private Order order;
+
+    public OrderMessage() {
+        this.setMessageType(MessageType.ORDER);
+    }
 }
