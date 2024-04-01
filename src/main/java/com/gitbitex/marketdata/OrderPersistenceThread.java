@@ -3,6 +3,7 @@ package com.gitbitex.marketdata;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.OrderEntity;
 import com.gitbitex.marketdata.manager.OrderManager;
+import com.gitbitex.matchingengine.Order;
 import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.message.OrderMessage;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
@@ -47,9 +48,9 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Message>
         Map<String, OrderEntity> orders = new HashMap<>();
         records.forEach(x -> {
             Message message = x.value();
-            if (message instanceof OrderMessage) {
-                OrderEntity order = order((OrderMessage) message);
-                orders.put(order.getId(), order);
+            if (message instanceof OrderMessage orderMessage) {
+                OrderEntity orderEntity = orderEntity(orderMessage);
+                orders.put(orderEntity.getId(), orderEntity);
             }
         });
         orderManager.saveAll(orders.values());
@@ -57,24 +58,24 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Message>
         consumer.commitAsync();
     }
 
-    private OrderEntity order(OrderMessage message) {
-        com.gitbitex.matchingengine.Order o = message.getOrder();
-        OrderEntity order = new OrderEntity();
-        order.setId(o.getId());
-        order.setSequence(o.getSequence());
-        order.setProductId(o.getProductId());
-        order.setUserId(o.getUserId());
-        order.setStatus(o.getStatus());
-        order.setPrice(o.getPrice());
-        order.setSize(o.getSize());
-        order.setFunds(o.getFunds());
-        order.setClientOid(o.getClientOid());
-        order.setSide(o.getSide());
-        order.setType(o.getType());
-        order.setTime(o.getTime());
-        order.setCreatedAt(new Date());
-        order.setFilledSize(o.getSize().subtract(o.getRemainingSize()));
-        order.setExecutedValue(o.getFunds().subtract(o.getRemainingFunds()));
-        return order;
+    private OrderEntity orderEntity(OrderMessage message) {
+        Order order = message.getOrder();
+        OrderEntity orderEntity = new OrderEntity();
+        orderEntity.setId(order.getId());
+        orderEntity.setSequence(order.getSequence());
+        orderEntity.setProductId(order.getProductId());
+        orderEntity.setUserId(order.getUserId());
+        orderEntity.setStatus(order.getStatus());
+        orderEntity.setPrice(order.getPrice());
+        orderEntity.setSize(order.getSize());
+        orderEntity.setFunds(order.getFunds());
+        orderEntity.setClientOid(order.getClientOid());
+        orderEntity.setSide(order.getSide());
+        orderEntity.setType(order.getType());
+        orderEntity.setTime(order.getTime());
+        orderEntity.setCreatedAt(new Date());
+        orderEntity.setFilledSize(order.getSize().subtract(order.getRemainingSize()));
+        orderEntity.setExecutedValue(order.getFunds().subtract(order.getRemainingFunds()));
+        return orderEntity;
     }
 }

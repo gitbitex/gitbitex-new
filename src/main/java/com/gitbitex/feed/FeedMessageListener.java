@@ -46,8 +46,8 @@ public class FeedMessageListener {
 
         redissonClient.getTopic("trade", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             TradeMessage tradeMessage = JSON.parseObject(msg, TradeMessage.class);
-                String channel = tradeMessage.getTrade().getProductId() + ".match";
-                sessionManager.broadcast(channel, matchMessage(tradeMessage));
+            String channel = tradeMessage.getTrade().getProductId() + ".match";
+            sessionManager.broadcast(channel, matchMessage(tradeMessage));
         });
 
         redissonClient.getTopic("ticker", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
@@ -114,7 +114,7 @@ public class FeedMessageListener {
     }
 
     private OrderMatchFeedMessage matchMessage(TradeMessage tradeMessage) {
-        Trade trade= tradeMessage.getTrade();
+        Trade trade = tradeMessage.getTrade();
         OrderMatchFeedMessage message = new OrderMatchFeedMessage();
         message.setTradeId(trade.getSequence());
         message.setSequence(trade.getSequence());

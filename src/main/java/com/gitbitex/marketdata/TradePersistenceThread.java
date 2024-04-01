@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.TradeEntity;
 import com.gitbitex.marketdata.manager.TradeManager;
+import com.gitbitex.matchingengine.Trade;
 import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.message.TradeMessage;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
@@ -58,8 +59,8 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, Message>
         records.forEach(x -> {
             Message message = x.value();
             if (message instanceof TradeMessage tradeMessage) {
-                TradeEntity trade = trade(tradeMessage);
-                trades.put(trade.getId(), trade);
+                TradeEntity tradeEntity = tradeEntity(tradeMessage);
+                trades.put(tradeEntity.getId(), tradeEntity);
                 tradeTopic.publishAsync(JSON.toJSONString(tradeMessage));
             }
         });
@@ -68,17 +69,18 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, Message>
         consumer.commitAsync();
     }
 
-    private TradeEntity trade(TradeMessage message) {
-        TradeEntity trade = new TradeEntity();
-        trade.setId(message.getTrade().getProductId() + "-" + message.getTrade().getSequence());
-        trade.setSequence(message.getTrade().getSequence());
-        trade.setTime(message.getTrade().getTime());
-        trade.setSize(message.getTrade().getSize());
-        trade.setPrice(message.getTrade().getPrice());
-        trade.setProductId(message.getTrade().getProductId());
-        trade.setMakerOrderId(message.getTrade().getMakerOrderId());
-        trade.setTakerOrderId(message.getTrade().getTakerOrderId());
-        trade.setSide(message.getTrade().getSide());
-        return trade;
+    private TradeEntity tradeEntity(TradeMessage message) {
+        Trade trade = message.getTrade();
+        TradeEntity tradeEntity = new TradeEntity();
+        tradeEntity.setId(trade.getProductId() + "-" + trade.getSequence());
+        tradeEntity.setSequence(trade.getSequence());
+        tradeEntity.setTime(trade.getTime());
+        tradeEntity.setSize(trade.getSize());
+        tradeEntity.setPrice(trade.getPrice());
+        tradeEntity.setProductId(trade.getProductId());
+        tradeEntity.setMakerOrderId(trade.getMakerOrderId());
+        tradeEntity.setTakerOrderId(trade.getTakerOrderId());
+        tradeEntity.setSide(trade.getSide());
+        return tradeEntity;
     }
 }

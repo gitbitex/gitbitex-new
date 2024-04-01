@@ -148,7 +148,7 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Trade1";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
-            var tradePersistenceThread = new TradePersistenceThread(consumer, tradeManager, redissonClient,  appProperties);
+            var tradePersistenceThread = new TradePersistenceThread(consumer, tradeManager, redissonClient, appProperties);
             tradePersistenceThread.setName(groupId + "-" + tradePersistenceThread.getId());
             tradePersistenceThread.start();
             threads.add(tradePersistenceThread);

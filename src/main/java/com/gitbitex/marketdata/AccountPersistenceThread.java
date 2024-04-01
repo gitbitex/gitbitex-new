@@ -3,6 +3,7 @@ package com.gitbitex.marketdata;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.AccountEntity;
 import com.gitbitex.marketdata.manager.AccountManager;
+import com.gitbitex.matchingengine.Account;
 import com.gitbitex.matchingengine.message.AccountMessage;
 import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
@@ -51,8 +52,8 @@ public class AccountPersistenceThread extends KafkaConsumerThread<String, Messag
         records.forEach(x -> {
             Message message = x.value();
             if (message instanceof AccountMessage accountMessage) {
-                AccountEntity account = account(accountMessage);
-                accounts.put(account.getId(), account);
+                AccountEntity accountEntity = accountEntity(accountMessage);
+                accounts.put(accountEntity.getId(), accountEntity);
             }
         });
         accountManager.saveAll(accounts.values());
@@ -60,14 +61,15 @@ public class AccountPersistenceThread extends KafkaConsumerThread<String, Messag
         consumer.commitAsync();
     }
 
-    private AccountEntity account(AccountMessage message) {
-        AccountEntity account = new AccountEntity();
-        account.setId(message.getAccount().getUserId() + "-" + message.getAccount().getCurrency());
-        account.setUserId(message.getAccount().getUserId());
-        account.setCurrency(message.getAccount().getCurrency());
-        account.setAvailable(message.getAccount().getAvailable());
-        account.setHold(message.getAccount().getHold());
-        return account;
+    private AccountEntity accountEntity(AccountMessage message) {
+        Account account = message.getAccount();
+        AccountEntity accountEntity = new AccountEntity();
+        accountEntity.setId(account.getUserId() + "-" + account.getCurrency());
+        accountEntity.setUserId(account.getUserId());
+        accountEntity.setCurrency(account.getCurrency());
+        accountEntity.setAvailable(account.getAvailable());
+        accountEntity.setHold(account.getHold());
+        return accountEntity;
     }
 }
 
