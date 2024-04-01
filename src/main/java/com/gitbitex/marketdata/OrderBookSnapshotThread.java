@@ -10,28 +10,39 @@ import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.message.OrderMessage;
 import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
 import com.gitbitex.matchingengine.snapshot.EngineState;
+import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
+import java.time.Duration;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-public class OrderBookSnapshotThread extends MessageConsumerThread {
+public class OrderBookSnapshotThread extends KafkaConsumerThread<String, Message> implements ConsumerRebalanceListener {
     private final ConcurrentHashMap<String, OrderBook> orderBooks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, L2OrderBook> l2OrderBooks = new ConcurrentHashMap<>();
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final EngineSnapshotManager stateStore;
+    private final AppProperties appProperties;
 
     public OrderBookSnapshotThread(KafkaConsumer<String, Message> consumer,
                                    OrderBookSnapshotManager orderBookSnapshotManager,
                                    EngineSnapshotManager engineSnapshotManager,
                                    AppProperties appProperties) {
-        super(consumer, appProperties, logger);
+        super(consumer, logger);
         this.orderBookSnapshotManager = orderBookSnapshotManager;
         this.stateStore = engineSnapshotManager;
+        this.appProperties = appProperties;
+    }
+
+    @Override
+    public void onPartitionsRevoked(Collection<TopicPartition> collection) {
+
     }
 
     @Override
@@ -39,10 +50,8 @@ public class OrderBookSnapshotThread extends MessageConsumerThread {
         // restore order book from engine state
         stateStore.runInSession(session -> {
             EngineState engineState = stateStore.getEngineState(session);
-            if (engineState != null) {
-                if (engineState.getMessageOffset() != null) {
-                    this.consumer.seek(partitions.iterator().next(), engineState.getMessageOffset() + 1);
-                }
+            if (engineState != null && engineState.getMessageOffset() != null) {
+                this.consumer.seek(partitions.iterator().next(), engineState.getMessageOffset() + 1);
             }
 
             // restore order books
@@ -54,11 +63,16 @@ public class OrderBookSnapshotThread extends MessageConsumerThread {
                 }
             }
         });
-
     }
 
     @Override
-    protected void processRecords(ConsumerRecords<String, Message> records) {
+    protected void doSubscribe() {
+        consumer.subscribe(Collections.singletonList(appProperties.getMatchingEngineMessageTopic()), this);
+    }
+
+    @Override
+    protected void doPoll() {
+        var records = consumer.poll(Duration.ofSeconds(5));
         records.forEach(x -> {
             Message message = x.value();
             if (message instanceof OrderMessage orderMessage) {
@@ -98,4 +112,5 @@ public class OrderBookSnapshotThread extends MessageConsumerThread {
         l2OrderBooks.put(orderBook.getProductId(), l2OrderBook);
         orderBookSnapshotManager.saveL2BatchOrderBook(l2OrderBook);
     }
+
 }
