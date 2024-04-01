@@ -3,48 +3,56 @@ package com.gitbitex.matchingengine.snapshot;
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.*;
 import com.gitbitex.matchingengine.message.*;
-import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
-import com.gitbitex.matchingengine.snapshot.EngineState;
+import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-public class MatchingEngineSnapshotThread extends MessageConsumerThread {
-    private final EngineSnapshotManager snapshotStore;
+public class MatchingEngineSnapshotThread extends KafkaConsumerThread<String, Message> implements ConsumerRebalanceListener {
+    private final EngineSnapshotManager engineSnapshotManager;
     private final AppProperties appProperties;
     private final Map<String, Account> accounts = new HashMap<>();
     private final Map<String, Order> orders = new HashMap<>();
     private final Map<String, Product> products = new HashMap<>();
-    private Long lastSnapshotCommandOffset;
-    private EngineState lastEngineState;
+    private EngineState engineState;
 
-    public MatchingEngineSnapshotThread(KafkaConsumer<String, Message> consumer, EngineSnapshotManager engineSnapshotManager, AppProperties appProperties) {
-        super(consumer, appProperties, logger);
-        this.snapshotStore = engineSnapshotManager;
+    public MatchingEngineSnapshotThread(KafkaConsumer<String, Message> consumer,
+                                        EngineSnapshotManager engineSnapshotManager, AppProperties appProperties) {
+        super(consumer, logger);
+        this.engineSnapshotManager = engineSnapshotManager;
         this.appProperties = appProperties;
     }
 
     @Override
-    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-        super.onPartitionsAssigned(partitions);
+    public void onPartitionsRevoked(Collection<TopicPartition> collection) {
 
-        snapshotStore.runInSession(session -> {
-            EngineState engineState = snapshotStore.getEngineState(session);
-            if (engineState != null) {
-                lastEngineState = engineState;
-                lastSnapshotCommandOffset = engineState.getCommandOffset();
-            } else {
-                lastEngineState = new EngineState();
+    }
+
+    @Override
+    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+        engineSnapshotManager.runInSession(session -> {
+            engineState = engineSnapshotManager.getEngineState(session);
+            if (engineState == null) {
+                engineState = new EngineState();
             }
         });
+        cleanBuffers();
+
+        if (engineState.getMessageOffset() != null) {
+            long offset = engineState.getMessageOffset() + 1;
+            logger.info("seek to offset: {}", offset);
+            consumer.seek(partitions.iterator().next(), offset);
+        }
     }
 
     @Override
@@ -53,24 +61,31 @@ public class MatchingEngineSnapshotThread extends MessageConsumerThread {
     }
 
     @Override
-    protected void processRecords(ConsumerRecords<String, Message> records) {
+    protected void doPoll() {
+        var records = consumer.poll(Duration.ofSeconds(5));
         for (ConsumerRecord<String, Message> record : records) {
             Message message = record.value();
 
-            checkMessageSequence(new TopicPartition(record.topic(), record.partition()), message);
+            long expectedSequence = engineState.getMessageSequence() != null
+                    ? engineState.getMessageSequence() + 1 : 0;
+            if (message.getSequence() < expectedSequence) {
+                continue;
+            } else if (message.getSequence() > expectedSequence) {
+                throw new RuntimeException(String.format("out of sequence: sequence=%s, expectedSequence=%s", message.getSequence(), expectedSequence));
+            }
 
-            lastEngineState.setMessageOffset(record.offset());
-            lastEngineState.setMessageSequence(message.getSequence());
+            engineState.setMessageOffset(record.offset());
+            engineState.setMessageSequence(message.getSequence());
 
             if (message instanceof OrderMessage orderMessage) {
                 Order order = orderMessage.getOrder();
                 orders.put(order.getId(), order);
-                lastEngineState.getOrderSequences().put(order.getProductId(), order.getSequence());
-                lastEngineState.getOrderBookSequences().put(order.getProductId(), orderMessage.getOrderBookSequence());
+                engineState.getOrderSequences().put(order.getProductId(), order.getSequence());
+                engineState.getOrderBookSequences().put(order.getProductId(), orderMessage.getOrderBookSequence());
 
             } else if (message instanceof TradeMessage tradeMessage) {
                 Trade trade = tradeMessage.getTrade();
-                lastEngineState.getTradeSequences().put(trade.getProductId(), trade.getSequence());
+                engineState.getTradeSequences().put(trade.getProductId(), trade.getSequence());
 
             } else if (message instanceof AccountMessage accountMessage) {
                 Account account = accountMessage.getAccount();
@@ -81,10 +96,10 @@ public class MatchingEngineSnapshotThread extends MessageConsumerThread {
                 products.put(product.getId(), product);
 
             } else if (message instanceof CommandStartMessage commandStartMessage) {
-                lastEngineState.setCommandOffset(null);
+                engineState.setCommandOffset(null);
 
             } else if (message instanceof CommandEndMessage commandEndMessage) {
-                lastEngineState.setCommandOffset(commandEndMessage.getCommandOffset());
+                engineState.setCommandOffset(commandEndMessage.getCommandOffset());
 
                 saveState();
             }
@@ -92,9 +107,11 @@ public class MatchingEngineSnapshotThread extends MessageConsumerThread {
     }
 
     private void saveState() {
-        snapshotStore.save(lastEngineState, accounts.values(), orders.values(), products.values());
-        lastSnapshotCommandOffset = lastEngineState.getCommandOffset();
+        engineSnapshotManager.save(engineState, accounts.values(), orders.values(), products.values());
+        cleanBuffers();
+    }
 
+    private void cleanBuffers() {
         accounts.clear();
         orders.clear();
         products.clear();
