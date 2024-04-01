@@ -67,7 +67,7 @@ public class MatchingEngineSnapshotThread extends KafkaConsumerThread<String, Me
             Message message = record.value();
 
             long expectedSequence = engineState.getMessageSequence() != null
-                    ? engineState.getMessageSequence() + 1 : 0;
+                    ? engineState.getMessageSequence() + 1 : 1;
             if (message.getSequence() < expectedSequence) {
                 continue;
             } else if (message.getSequence() > expectedSequence) {
