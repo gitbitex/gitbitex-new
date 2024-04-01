@@ -3,40 +3,61 @@ package com.gitbitex.marketdata;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.AccountEntity;
 import com.gitbitex.marketdata.manager.AccountManager;
-import com.gitbitex.matchingengine.MessageConsumerThread;
 import com.gitbitex.matchingengine.message.AccountMessage;
 import com.gitbitex.matchingengine.message.Message;
+import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-public class AccountPersistenceThread extends MessageConsumerThread {
+public class AccountPersistenceThread extends KafkaConsumerThread<String, Message> implements ConsumerRebalanceListener {
     private final AccountManager accountManager;
     private final AppProperties appProperties;
 
     public AccountPersistenceThread(KafkaConsumer<String, Message> consumer, AccountManager accountManager,
                                     AppProperties appProperties) {
-        super(consumer, appProperties, logger);
+        super(consumer, logger);
         this.accountManager = accountManager;
         this.appProperties = appProperties;
     }
 
     @Override
-    protected void processRecords(ConsumerRecords<String, Message> records) {
+    public void onPartitionsRevoked(Collection<TopicPartition> collection) {
+
+    }
+
+    @Override
+    public void onPartitionsAssigned(Collection<TopicPartition> collection) {
+
+    }
+
+    @Override
+    protected void doSubscribe() {
+        consumer.subscribe(Collections.singletonList(appProperties.getMatchingEngineMessageTopic()), this);
+    }
+
+    @Override
+    protected void doPoll() {
+        var records = consumer.poll(Duration.ofSeconds(5));
         Map<String, AccountEntity> accounts = new HashMap<>();
-        for (ConsumerRecord<String, Message> record : records) {
-            Message message = record.value();
+        records.forEach(x -> {
+            Message message = x.value();
             if (message instanceof AccountMessage accountMessage) {
                 AccountEntity account = account(accountMessage);
                 accounts.put(account.getId(), account);
             }
-        }
+        });
         accountManager.saveAll(accounts.values());
+
+        consumer.commitAsync();
     }
 
     private AccountEntity account(AccountMessage message) {
@@ -48,7 +69,6 @@ public class AccountPersistenceThread extends MessageConsumerThread {
         account.setHold(message.getAccount().getHold());
         return account;
     }
-
 }
 
 

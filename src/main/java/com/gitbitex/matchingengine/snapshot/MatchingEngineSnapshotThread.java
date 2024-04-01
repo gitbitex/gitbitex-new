@@ -1,13 +1,15 @@
 package com.gitbitex.matchingengine.snapshot;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.matchingengine.*;
+import com.gitbitex.matchingengine.Account;
+import com.gitbitex.matchingengine.Order;
+import com.gitbitex.matchingengine.Product;
+import com.gitbitex.matchingengine.Trade;
 import com.gitbitex.matchingengine.message.*;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 

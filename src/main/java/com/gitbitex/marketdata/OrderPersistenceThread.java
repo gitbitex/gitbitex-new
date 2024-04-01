@@ -3,32 +3,47 @@ package com.gitbitex.marketdata;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.OrderEntity;
 import com.gitbitex.marketdata.manager.OrderManager;
-import com.gitbitex.matchingengine.MessageConsumerThread;
 import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.message.OrderMessage;
+import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.time.Duration;
+import java.util.*;
 
 @Slf4j
-public class OrderPersistenceThread extends MessageConsumerThread {
+public class OrderPersistenceThread extends KafkaConsumerThread<String, Message> implements ConsumerRebalanceListener {
     private final AppProperties appProperties;
     private final OrderManager orderManager;
 
     public OrderPersistenceThread(KafkaConsumer<String, Message> kafkaConsumer, OrderManager orderManager,
                                   AppProperties appProperties) {
-        super(kafkaConsumer, appProperties, logger);
+        super(kafkaConsumer, logger);
         this.appProperties = appProperties;
         this.orderManager = orderManager;
     }
 
+    @Override
+    public void onPartitionsRevoked(Collection<TopicPartition> collection) {
+
+    }
 
     @Override
-    protected void processRecords(ConsumerRecords<String, Message> records) {
+    public void onPartitionsAssigned(Collection<TopicPartition> collection) {
+
+    }
+
+    @Override
+    protected void doSubscribe() {
+        consumer.subscribe(Collections.singletonList(appProperties.getMatchingEngineMessageTopic()), this);
+    }
+
+    @Override
+    protected void doPoll() {
+        var records = consumer.poll(Duration.ofSeconds(5));
         Map<String, OrderEntity> orders = new HashMap<>();
         records.forEach(x -> {
             Message message = x.value();
@@ -38,6 +53,8 @@ public class OrderPersistenceThread extends MessageConsumerThread {
             }
         });
         orderManager.saveAll(orders.values());
+
+        consumer.commitAsync();
     }
 
     private OrderEntity order(OrderMessage message) {

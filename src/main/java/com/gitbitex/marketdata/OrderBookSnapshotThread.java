@@ -5,7 +5,8 @@ import com.gitbitex.enums.OrderStatus;
 import com.gitbitex.marketdata.orderbook.L2OrderBook;
 import com.gitbitex.marketdata.orderbook.OrderBook;
 import com.gitbitex.marketdata.orderbook.OrderBookSnapshotManager;
-import com.gitbitex.matchingengine.*;
+import com.gitbitex.matchingengine.Order;
+import com.gitbitex.matchingengine.Product;
 import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.message.OrderMessage;
 import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
@@ -13,7 +14,6 @@ import com.gitbitex.matchingengine.snapshot.EngineState;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 

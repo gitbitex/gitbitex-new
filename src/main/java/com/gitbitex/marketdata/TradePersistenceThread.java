@@ -3,30 +3,50 @@ package com.gitbitex.marketdata;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.TradeEntity;
 import com.gitbitex.marketdata.manager.TradeManager;
-import com.gitbitex.matchingengine.MessageConsumerThread;
 import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.message.TradeMessage;
+import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-public class TradePersistenceThread extends MessageConsumerThread {
+public class TradePersistenceThread extends KafkaConsumerThread<String, Message> implements ConsumerRebalanceListener {
     private final TradeManager tradeManager;
     private final AppProperties appProperties;
 
     public TradePersistenceThread(KafkaConsumer<String, Message> consumer, TradeManager tradeManager,
                                   AppProperties appProperties) {
-        super(consumer, appProperties, logger);
+        super(consumer, logger);
         this.tradeManager = tradeManager;
         this.appProperties = appProperties;
     }
 
     @Override
-    protected void processRecords(ConsumerRecords<String, Message> records) {
+    public void onPartitionsRevoked(Collection<TopicPartition> collection) {
+
+    }
+
+    @Override
+    public void onPartitionsAssigned(Collection<TopicPartition> collection) {
+
+    }
+
+    @Override
+    protected void doSubscribe() {
+        consumer.subscribe(Collections.singletonList(appProperties.getMatchingEngineMessageTopic()), this);
+    }
+
+    @Override
+    protected void doPoll() {
+        var records = consumer.poll(Duration.ofSeconds(5));
         Map<String, TradeEntity> trades = new HashMap<>();
         records.forEach(x -> {
             Message message = x.value();
@@ -36,6 +56,8 @@ public class TradePersistenceThread extends MessageConsumerThread {
             }
         });
         tradeManager.saveAll(trades.values());
+
+        consumer.commitAsync();
     }
 
     private TradeEntity trade(TradeMessage message) {
@@ -51,5 +73,4 @@ public class TradePersistenceThread extends MessageConsumerThread {
         trade.setSide(message.getTrade().getSide());
         return trade;
     }
-
 }
