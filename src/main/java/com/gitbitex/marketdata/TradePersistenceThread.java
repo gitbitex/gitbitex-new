@@ -1,5 +1,6 @@
 package com.gitbitex.marketdata;
 
+import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.TradeEntity;
 import com.gitbitex.marketdata.manager.TradeManager;
@@ -10,6 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.redisson.api.RTopic;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -21,12 +25,15 @@ import java.util.Map;
 public class TradePersistenceThread extends KafkaConsumerThread<String, Message> implements ConsumerRebalanceListener {
     private final TradeManager tradeManager;
     private final AppProperties appProperties;
+    private final RTopic tradeTopic;
 
     public TradePersistenceThread(KafkaConsumer<String, Message> consumer, TradeManager tradeManager,
+                                  RedissonClient redissonClient,
                                   AppProperties appProperties) {
         super(consumer, logger);
         this.tradeManager = tradeManager;
         this.appProperties = appProperties;
+        this.tradeTopic = redissonClient.getTopic("trade", StringCodec.INSTANCE);
     }
 
     @Override
@@ -50,9 +57,10 @@ public class TradePersistenceThread extends KafkaConsumerThread<String, Message>
         Map<String, TradeEntity> trades = new HashMap<>();
         records.forEach(x -> {
             Message message = x.value();
-            if (message instanceof TradeMessage) {
-                TradeEntity trade = trade((TradeMessage) message);
+            if (message instanceof TradeMessage tradeMessage) {
+                TradeEntity trade = trade(tradeMessage);
                 trades.put(trade.getId(), trade);
+                tradeTopic.publishAsync(JSON.toJSONString(tradeMessage));
             }
         });
         tradeManager.saveAll(trades.values());

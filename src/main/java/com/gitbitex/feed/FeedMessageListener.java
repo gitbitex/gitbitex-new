@@ -6,6 +6,7 @@ import com.gitbitex.marketdata.entity.Candle;
 import com.gitbitex.marketdata.orderbook.L2OrderBook;
 import com.gitbitex.matchingengine.Account;
 import com.gitbitex.matchingengine.Order;
+import com.gitbitex.matchingengine.Trade;
 import com.gitbitex.matchingengine.message.*;
 import com.gitbitex.stripexecutor.StripedExecutorService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,12 @@ public class FeedMessageListener {
             });
         });
 
+        redissonClient.getTopic("trade", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
+            TradeMessage tradeMessage = JSON.parseObject(msg, TradeMessage.class);
+                String channel = tradeMessage.getTrade().getProductId() + ".match";
+                sessionManager.broadcast(channel, matchMessage(tradeMessage));
+        });
+
         redissonClient.getTopic("ticker", StringCodec.INSTANCE).addListener(String.class, (c, msg) -> {
             TickerMessage tickerMessage = JSON.parseObject(msg, TickerMessage.class);
             callbackExecutor.execute(tickerMessage.getProductId(), () -> {
@@ -76,13 +83,6 @@ public class FeedMessageListener {
                         sessionManager.broadcast(orderReceivedMessage.getProductId() + ".full",
                                 (orderReceivedMessage(orderReceivedMessage)));
                         break;
-                    case ORDER_MATCH:
-                        OrderMatchMessage orderMatchMessage = JSON.parseObject(msg, OrderMatchMessage.class);
-                        String matchChannel = orderMatchMessage.getProductId() + ".match";
-                        sessionManager.broadcast(matchChannel, (matchMessage(orderMatchMessage)));
-                        sessionManager.broadcast(orderMatchMessage.getProductId() + ".full",
-                                (matchMessage(orderMatchMessage)));
-                        break;
                     case ORDER_OPEN:
                         OrderOpenMessage orderOpenMessage = JSON.parseObject(msg, OrderOpenMessage.class);
                         sessionManager.broadcast(orderOpenMessage.getProductId() + ".full",
@@ -113,17 +113,18 @@ public class FeedMessageListener {
         return message;
     }
 
-    private OrderMatchFeedMessage matchMessage(OrderMatchMessage log) {
+    private OrderMatchFeedMessage matchMessage(TradeMessage tradeMessage) {
+        Trade trade= tradeMessage.getTrade();
         OrderMatchFeedMessage message = new OrderMatchFeedMessage();
-        message.setTradeId(log.getTradeId());
-        message.setSequence(log.getSequence());
-        message.setTakerOrderId(log.getTakerOrderId());
-        message.setMakerOrderId(log.getMakerOrderId());
-        message.setTime(log.getTime().toInstant().toString());
-        message.setProductId(log.getProductId());
-        message.setSize(log.getSize().stripTrailingZeros().toPlainString());
-        message.setPrice(log.getPrice().stripTrailingZeros().toPlainString());
-        message.setSide(log.getSide().name().toLowerCase());
+        message.setTradeId(trade.getSequence());
+        message.setSequence(trade.getSequence());
+        message.setTakerOrderId(trade.getTakerOrderId());
+        message.setMakerOrderId(trade.getMakerOrderId());
+        message.setTime(trade.getTime().toInstant().toString());
+        message.setProductId(trade.getProductId());
+        message.setSize(trade.getSize().stripTrailingZeros().toPlainString());
+        message.setPrice(trade.getPrice().stripTrailingZeros().toPlainString());
+        message.setSide(trade.getSide().name().toLowerCase());
         return message;
     }
 

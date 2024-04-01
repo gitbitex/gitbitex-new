@@ -19,6 +19,7 @@ import com.gitbitex.middleware.kafka.KafkaProperties;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -42,6 +43,7 @@ public class Bootstrap {
     private final EngineSnapshotManager engineSnapshotManager;
     private final MessageSender messageSender;
     private final OrderBookSnapshotManager orderBookSnapshotManager;
+    private final RedissonClient redissonClient;
 
     @PostConstruct
     public void init() {
@@ -146,7 +148,7 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Trade1";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
-            var tradePersistenceThread = new TradePersistenceThread(consumer, tradeManager, appProperties);
+            var tradePersistenceThread = new TradePersistenceThread(consumer, tradeManager, redissonClient,  appProperties);
             tradePersistenceThread.setName(groupId + "-" + tradePersistenceThread.getId());
             tradePersistenceThread.start();
             threads.add(tradePersistenceThread);
