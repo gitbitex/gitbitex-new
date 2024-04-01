@@ -103,7 +103,7 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Account";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
-            var accountPersistenceThread = new AccountPersistenceThread(consumer, accountManager,
+            var accountPersistenceThread = new AccountPersistenceThread(consumer, accountManager, redissonClient,
                     appProperties);
             accountPersistenceThread.setName(groupId + "-" + accountPersistenceThread.getId());
             accountPersistenceThread.start();
@@ -126,7 +126,7 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Order";
             var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
-            var orderPersistenceThread = new OrderPersistenceThread(consumer, orderManager, appProperties);
+            var orderPersistenceThread = new OrderPersistenceThread(consumer, orderManager, redissonClient, appProperties);
             orderPersistenceThread.setName(groupId + "-" + orderPersistenceThread.getId());
             orderPersistenceThread.start();
             threads.add(orderPersistenceThread);

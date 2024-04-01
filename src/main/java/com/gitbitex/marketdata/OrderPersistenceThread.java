@@ -1,5 +1,6 @@
 package com.gitbitex.marketdata;
 
+import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.OrderEntity;
 import com.gitbitex.marketdata.manager.OrderManager;
@@ -11,6 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.redisson.api.RTopic;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 
 import java.time.Duration;
 import java.util.*;
@@ -19,12 +23,15 @@ import java.util.*;
 public class OrderPersistenceThread extends KafkaConsumerThread<String, Message> implements ConsumerRebalanceListener {
     private final AppProperties appProperties;
     private final OrderManager orderManager;
+    private final RTopic orderTopic;
 
     public OrderPersistenceThread(KafkaConsumer<String, Message> kafkaConsumer, OrderManager orderManager,
+                                  RedissonClient redissonClient,
                                   AppProperties appProperties) {
         super(kafkaConsumer, logger);
         this.appProperties = appProperties;
         this.orderManager = orderManager;
+        this.orderTopic = redissonClient.getTopic("order", StringCodec.INSTANCE);
     }
 
     @Override
@@ -51,6 +58,7 @@ public class OrderPersistenceThread extends KafkaConsumerThread<String, Message>
             if (message instanceof OrderMessage orderMessage) {
                 OrderEntity orderEntity = orderEntity(orderMessage);
                 orders.put(orderEntity.getId(), orderEntity);
+                orderTopic.publishAsync(JSON.toJSONString(orderMessage));
             }
         });
         orderManager.saveAll(orders.values());

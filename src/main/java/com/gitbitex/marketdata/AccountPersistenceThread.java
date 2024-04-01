@@ -1,5 +1,6 @@
 package com.gitbitex.marketdata;
 
+import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.marketdata.entity.AccountEntity;
 import com.gitbitex.marketdata.manager.AccountManager;
@@ -11,6 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.redisson.api.RTopic;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -22,12 +26,15 @@ import java.util.Map;
 public class AccountPersistenceThread extends KafkaConsumerThread<String, Message> implements ConsumerRebalanceListener {
     private final AccountManager accountManager;
     private final AppProperties appProperties;
+    private final RTopic accountTopic;
 
     public AccountPersistenceThread(KafkaConsumer<String, Message> consumer, AccountManager accountManager,
+                                    RedissonClient redissonClient,
                                     AppProperties appProperties) {
         super(consumer, logger);
         this.accountManager = accountManager;
         this.appProperties = appProperties;
+        this.accountTopic = redissonClient.getTopic("account", StringCodec.INSTANCE);
     }
 
     @Override
@@ -54,6 +61,7 @@ public class AccountPersistenceThread extends KafkaConsumerThread<String, Messag
             if (message instanceof AccountMessage accountMessage) {
                 AccountEntity accountEntity = accountEntity(accountMessage);
                 accounts.put(accountEntity.getId(), accountEntity);
+                accountTopic.publishAsync(JSON.toJSONString(accountMessage));
             }
         });
         accountManager.saveAll(accounts.values());
