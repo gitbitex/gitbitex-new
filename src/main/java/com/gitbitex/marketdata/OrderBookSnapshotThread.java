@@ -87,7 +87,9 @@ public class OrderBookSnapshotThread extends KafkaConsumerThread<String, Message
             }
         });
 
-        orderBooks.forEach((productId, orderBook) -> {
+        orderBooks.entrySet().parallelStream().forEach(e -> {
+            String productId=e.getKey();
+            OrderBook orderBook= e.getValue();
             L2OrderBook l2OrderBook = l2OrderBooks.get(productId);
             if (l2OrderBook == null ||
                     orderBook.getSequence() - l2OrderBook.getSequence() > 1000 ||
