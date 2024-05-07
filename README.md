@@ -62,5 +62,5 @@ The metrics are as follows:
 http://127.0.0.1/swagger-ui/index.html#/
 
 ## Contact Me
-email：greensheng2001@gmail.com
-telegram：https://t.me/greensheng
+- email：greensheng2001@gmail.com
+- telegram：https://t.me/greensheng
