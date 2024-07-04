@@ -13,6 +13,8 @@ GitBitEX is an open source cryptocurrency exchange.
 
 ## Architecture
 ![gitbitex-architecture](https://github.com/gitbitex/gitbitex-new/assets/4486680/ba27e7a1-00f5-46b8-aa7d-6015d6fcd50b)
+![gitbitex-architecture](https://github.com/gitbitex/gitbitex-new/assets/4486680/e9b0fc7c-cde4-4b9f-baba-2389d53705ca)
+
 
 ## Quick Start
 ### Prerequisites
