@@ -11,6 +11,8 @@ GitBitEX is an open source cryptocurrency exchange.
 - Support 100000 orders per second (Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz   3.79 GHz  32.0 GB RAM 1T SSD)
 - Support the replay of matching engine commands and ensure that each result is completely consistent
 
+## Architecture
+![gitbitex-architecture](https://github.com/gitbitex/gitbitex-new/assets/4486680/ba27e7a1-00f5-46b8-aa7d-6015d6fcd50b)
 
 ## Quick Start
 ### Prerequisites
