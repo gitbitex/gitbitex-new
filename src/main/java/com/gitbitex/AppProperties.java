@@ -12,11 +12,4 @@ import org.springframework.validation.annotation.Validated;
 public class AppProperties {
     private String matchingEngineCommandTopic;
     private String matchingEngineMessageTopic;
-    private String tradeMessageTopic;
-    private String accountMessageTopic;
-    private String orderMessageTopic;
-    private int l2BatchOrderBookPersistenceInterval = 20;
-    private int l2BatchOrderBookSize = 50;
-    private int l2OrderBookPersistenceInterval = 10000;
-    private int l3OrderBookPersistenceInterval = 10000;
 }
