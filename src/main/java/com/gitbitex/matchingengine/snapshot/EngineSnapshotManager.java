@@ -65,7 +65,7 @@ public class EngineSnapshotManager {
 
     public EngineState getEngineState(ClientSession session) {
         return engineStateCollection
-                .find(Filters.eq("_id", "default"))
+                .find(session, Filters.eq("_id", "default"))
                 .first();
     }
 
