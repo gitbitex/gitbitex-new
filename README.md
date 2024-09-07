@@ -47,9 +47,6 @@ curl -X PUT -H "Content-Type:application/json" http://127.0.0.1/api/admin/produc
 ### Does the project include blockchain wallets?
 No, you need to implement it yourself, and then connect to gitbiex.
 For example, after users recharge/withdraw, send **_DepositCommand_**/**_WithdrawalCommand_** to the matching engine
-### Can I use this project for production?
-Probably not. Some customers I know use this project in production, but they all have professional technicians. 
-If you want to use it in production, you need professional technicians to help you. Like me . 
 
 ### How can I monitor the performance of the matching engine?
 Some prometheus metrics for measuring performance have been built into the project. 
