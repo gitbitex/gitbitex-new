@@ -1,13 +1,11 @@
 package com.gitbitex.matchingengine;
 
-import com.alibaba.fastjson.JSON;
 import com.gitbitex.AppProperties;
 import com.gitbitex.matchingengine.command.*;
 import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 
@@ -57,49 +55,7 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
 
     @Override
     protected void doPoll() {
-        ConsumerRecords<String, Command> records = consumer.poll(Duration.ofSeconds(5));
-        if (records.isEmpty()) {
-            return;
-        }
-        records.forEach(x -> {
-            Command command = x.value();
-            command.setOffset(x.offset());
-            //logger.info("{}", JSON.toJSONString(command));
-
-            if (command instanceof PlaceOrderCommand placeOrderCommand) {
-                on(placeOrderCommand);
-            } else if (command instanceof CancelOrderCommand cancelOrderCommand) {
-                on(cancelOrderCommand);
-            } else if (command instanceof DepositCommand depositCommand) {
-                on(depositCommand);
-            } else if (command instanceof PutProductCommand putProductCommand) {
-                on(putProductCommand);
-            } else {
-                logger.warn("Unhandled command: {} {}", command.getClass().getName(), JSON.toJSONString(command));
-            }
-            /*try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }*/
-        });
+        consumer.poll(Duration.ofSeconds(5))
+                .forEach(x -> matchingEngine.executeCommand(x.value(), x.offset()));
     }
-
-
-    public void on(PutProductCommand command) {
-        matchingEngine.executeCommand(command);
-    }
-
-    public void on(DepositCommand command) {
-        matchingEngine.executeCommand(command);
-    }
-
-    public void on(PlaceOrderCommand command) {
-        matchingEngine.executeCommand(command);
-    }
-
-    public void on(CancelOrderCommand command) {
-        matchingEngine.executeCommand(command);
-    }
-
 }

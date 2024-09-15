@@ -6,6 +6,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Command {
-    private long offset;
     private CommandType type;
 }

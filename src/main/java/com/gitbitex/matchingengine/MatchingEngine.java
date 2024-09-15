@@ -35,7 +35,70 @@ public class MatchingEngine {
         this.productBook = new ProductBook(messageSender, this.messageSequence);
         this.accountBook = new AccountBook(messageSender, this.messageSequence);
 
+        restoreSnapshot(stateStore, messageSender);
+    }
 
+    public void executeCommand(Command command, long offset) {
+        commandProcessedCounter.increment();
+
+        sendCommandStartMessage(command, offset);
+        if (command instanceof PlaceOrderCommand placeOrderCommand) {
+            executeCommand(placeOrderCommand);
+        } else if (command instanceof CancelOrderCommand cancelOrderCommand) {
+            executeCommand(cancelOrderCommand);
+        } else if (command instanceof DepositCommand depositCommand) {
+            executeCommand(depositCommand);
+        } else if (command instanceof PutProductCommand putProductCommand) {
+            executeCommand(putProductCommand);
+        } else {
+            logger.warn("Unhandled command: {} {}", command.getClass().getName(), JSON.toJSONString(command));
+        }
+        sendCommandEndMessage(command, offset);
+    }
+
+    private void executeCommand(DepositCommand command) {
+        accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
+                command.getTransactionId());
+    }
+
+    private void executeCommand(PutProductCommand command) {
+        productBook.putProduct(new Product(command));
+        createOrderBook(command.getProductId());
+    }
+
+    private void executeCommand(PlaceOrderCommand command) {
+        OrderBook orderBook = orderBooks.get(command.getProductId());
+        if (orderBook == null) {
+            logger.warn("no such order book: {}", command.getProductId());
+            return;
+        }
+        orderBook.placeOrder(new Order(command));
+    }
+
+    private void executeCommand(CancelOrderCommand command) {
+        OrderBook orderBook = orderBooks.get(command.getProductId());
+        if (orderBook == null) {
+            logger.warn("no such order book: {}", command.getProductId());
+            return;
+        }
+        orderBook.cancelOrder(command.getOrderId());
+    }
+
+    private void sendCommandStartMessage(Command command, long offset) {
+        CommandStartMessage message = new CommandStartMessage();
+        message.setSequence(messageSequence.incrementAndGet());
+        message.setCommandOffset(offset);
+        messageSender.send(message);
+    }
+
+    private void sendCommandEndMessage(Command command, long offset) {
+        CommandEndMessage message = new CommandEndMessage();
+        message.setSequence(messageSequence.incrementAndGet());
+        message.setCommandOffset(offset);
+        messageSender.send(message);
+    }
+
+    private void restoreSnapshot(EngineSnapshotManager stateStore, MessageSender messageSender) {
         logger.info("restoring snapshot");
         stateStore.runInSession(session -> {
             // restore engine states
@@ -77,63 +140,6 @@ public class MatchingEngine {
             }
         });
         logger.info("snapshot restored");
-    }
-
-    private CommandStartMessage commandStartMessage(Command command) {
-        CommandStartMessage message = new CommandStartMessage();
-        message.setSequence(messageSequence.incrementAndGet());
-        return message;
-    }
-
-    private CommandEndMessage commandEndMessage(Command command) {
-        CommandEndMessage message = new CommandEndMessage();
-        message.setSequence(messageSequence.incrementAndGet());
-        message.setCommandOffset(command.getOffset());
-        return message;
-    }
-
-    public void executeCommand(DepositCommand command) {
-        commandProcessedCounter.increment();
-
-        messageSender.send(commandStartMessage(command));
-        accountBook.deposit(command.getUserId(), command.getCurrency(), command.getAmount(),
-                command.getTransactionId());
-        messageSender.send(commandEndMessage(command));
-    }
-
-    public void executeCommand(PutProductCommand command) {
-        commandProcessedCounter.increment();
-
-        messageSender.send(commandStartMessage(command));
-        productBook.putProduct(new Product(command));
-        createOrderBook(command.getProductId());
-        messageSender.send(commandEndMessage(command));
-    }
-
-    public void executeCommand(PlaceOrderCommand command) {
-        commandProcessedCounter.increment();
-        OrderBook orderBook = orderBooks.get(command.getProductId());
-        if (orderBook == null) {
-            logger.warn("no such order book: {}", command.getProductId());
-            return;
-        }
-
-        messageSender.send(commandStartMessage(command));
-        orderBook.placeOrder(new Order(command));
-        messageSender.send(commandEndMessage(command));
-    }
-
-    public void executeCommand(CancelOrderCommand command) {
-        commandProcessedCounter.increment();
-        OrderBook orderBook = orderBooks.get(command.getProductId());
-        if (orderBook == null) {
-            logger.warn("no such order book: {}", command.getProductId());
-            return;
-        }
-
-        messageSender.send(commandStartMessage(command));
-        orderBook.cancelOrder(command.getOrderId());
-        messageSender.send(commandEndMessage(command));
     }
 
     private void createOrderBook(String productId) {
