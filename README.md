@@ -65,5 +65,4 @@ http://127.0.0.1/swagger-ui/index.html#/
 https://github.com/gitbitex/gitbitex-web
 
 ## Contact Me
-- email：greensheng2001@gmail.com
 - telegram：https://t.me/greensheng
