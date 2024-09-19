@@ -7,43 +7,43 @@ import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.marketdata.manager.TradeManager;
 import com.gitbitex.marketdata.orderbook.OrderBookSnapshotManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
-import com.gitbitex.marketdata.repository.TradeRepository;
 import com.gitbitex.matchingengine.MatchingEngineThread;
 import com.gitbitex.matchingengine.MessageSender;
+import com.gitbitex.matchingengine.command.Command;
 import com.gitbitex.matchingengine.command.CommandDeserializer;
 import com.gitbitex.matchingengine.message.MatchingEngineMessageDeserializer;
+import com.gitbitex.matchingengine.message.Message;
 import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
 import com.gitbitex.matchingengine.snapshot.MatchingEngineSnapshotThread;
-import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import com.gitbitex.middleware.kafka.KafkaProperties;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class Bootstrap {
     private final OrderManager orderManager;
     private final AccountManager accountManager;
-    private final TradeRepository tradeRepository;
     private final TradeManager tradeManager;
     private final CandleRepository candleRepository;
     private final TickerManager tickerManager;
     private final AppProperties appProperties;
     private final KafkaProperties kafkaProperties;
-    private final List<Thread> threads = new ArrayList<>();
     private final EngineSnapshotManager engineSnapshotManager;
     private final MessageSender messageSender;
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final RedissonClient redissonClient;
+    private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(8);
 
     @PostConstruct
     public void init() {
@@ -57,105 +57,124 @@ public class Bootstrap {
         startOrderBookSnapshotThread(1);
     }
 
-    @PreDestroy
-    public void destroy() {
-        for (Thread thread : threads) {
-            if (thread instanceof KafkaConsumerThread) {
-                ((KafkaConsumerThread<?, ?>) thread).shutdown();
-            }
-        }
-    }
-
     private void startMatchingEngine(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "MatchingEngine";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new CommandDeserializer());
-            var matchingEngineThread = new MatchingEngineThread(consumer, engineSnapshotManager, messageSender, appProperties);
-            matchingEngineThread.setName(groupId + "-" + matchingEngineThread.getId());
-            matchingEngineThread.start();
-            threads.add(matchingEngineThread);
+            var consumer = getEngineCommandKafkaConsumer(groupId);
+            var thread = new MatchingEngineThread(consumer, engineSnapshotManager, messageSender, appProperties);
+            thread.setName(groupId + "-" + thread.getId());
+            thread.setUncaughtExceptionHandler(getUncaughtExceptionHandler(() -> startMatchingEngine(1)));
+            thread.start();
         }
     }
 
     private void startSnapshotThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "EngineSnapshot";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
+            var consumer = getEngineMessageKafkaConsumer(groupId);
             var thread = new MatchingEngineSnapshotThread(consumer, engineSnapshotManager, appProperties);
             thread.setName(groupId + "-" + thread.getId());
+            thread.setUncaughtExceptionHandler(getUncaughtExceptionHandler(() -> startSnapshotThread(1)));
             thread.start();
-            threads.add(thread);
         }
     }
 
     private void startOrderBookSnapshotThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "OrderBookSnapshot";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
-            var thread = new OrderBookSnapshotThread(consumer, orderBookSnapshotManager, engineSnapshotManager, appProperties);
+            var consumer = getEngineMessageKafkaConsumer(groupId);
+            var thread = new OrderBookSnapshotThread(consumer, orderBookSnapshotManager, engineSnapshotManager,
+                    appProperties);
             thread.setName(groupId + "-" + thread.getId());
+            thread.setUncaughtExceptionHandler(getUncaughtExceptionHandler(() ->
+                    startOrderBookSnapshotThread(1)));
             thread.start();
-            threads.add(thread);
         }
     }
 
     private void startAccountPersistenceThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Account";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
-            var accountPersistenceThread = new AccountPersistenceThread(consumer, accountManager, redissonClient,
+            var consumer = getEngineMessageKafkaConsumer(groupId);
+            var thread = new AccountPersistenceThread(consumer, accountManager, redissonClient,
                     appProperties);
-            accountPersistenceThread.setName(groupId + "-" + accountPersistenceThread.getId());
-            accountPersistenceThread.start();
-            threads.add(accountPersistenceThread);
+            thread.setName(groupId + "-" + thread.getId());
+            thread.setUncaughtExceptionHandler(getUncaughtExceptionHandler(() ->
+                    startAccountPersistenceThread(1)));
+            thread.start();
         }
     }
 
     private void startTickerThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Ticker";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
-            var tickerThread = new TickerThread(consumer, tickerManager, appProperties);
-            tickerThread.setName(groupId + "-" + tickerThread.getId());
-            tickerThread.start();
-            threads.add(tickerThread);
+            var consumer = getEngineMessageKafkaConsumer(groupId);
+            var thread = new TickerThread(consumer, tickerManager, appProperties);
+            thread.setName(groupId + "-" + thread.getId());
+            thread.setUncaughtExceptionHandler(getUncaughtExceptionHandler(() -> startTickerThread(1)));
+            thread.start();
         }
     }
 
     private void startOrderPersistenceThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Order";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
-            var orderPersistenceThread = new OrderPersistenceThread(consumer, orderManager, redissonClient, appProperties);
-            orderPersistenceThread.setName(groupId + "-" + orderPersistenceThread.getId());
-            orderPersistenceThread.start();
-            threads.add(orderPersistenceThread);
+            var consumer = getEngineMessageKafkaConsumer(groupId);
+            var thread = new OrderPersistenceThread(consumer, orderManager, redissonClient, appProperties);
+            thread.setName(groupId + "-" + thread.getId());
+            thread.setUncaughtExceptionHandler(getUncaughtExceptionHandler(() ->
+                    startOrderPersistenceThread(1)));
+            thread.start();
         }
     }
 
     private void startCandleMaker(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "CandlerMaker";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
-            var candleMakerThread = new CandleMakerThread(consumer, candleRepository, appProperties);
-            candleMakerThread.setName(groupId + "-" + candleMakerThread.getId());
-            candleMakerThread.start();
-            threads.add(candleMakerThread);
+            var consumer = getEngineMessageKafkaConsumer(groupId);
+            var thread = new CandleMakerThread(consumer, candleRepository, appProperties);
+            thread.setName(groupId + "-" + thread.getId());
+            thread.setUncaughtExceptionHandler(getUncaughtExceptionHandler(() -> startCandleMaker(1)));
+            thread.start();
         }
     }
 
     private void startTradePersistenceThread(int nThreads) {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "Trade1";
-            var consumer = new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new MatchingEngineMessageDeserializer());
-            var tradePersistenceThread = new TradePersistenceThread(consumer, tradeManager, redissonClient, appProperties);
-            tradePersistenceThread.setName(groupId + "-" + tradePersistenceThread.getId());
-            tradePersistenceThread.start();
-            threads.add(tradePersistenceThread);
+            var consumer = getEngineMessageKafkaConsumer(groupId);
+            var thread = new TradePersistenceThread(consumer, tradeManager, redissonClient, appProperties);
+            thread.setName(groupId + "-" + thread.getId());
+            thread.setUncaughtExceptionHandler(getUncaughtExceptionHandler(() ->
+                    startTradePersistenceThread(1)));
+            thread.start();
         }
     }
 
-    public Properties getProperties(String groupId) {
+    private Thread.UncaughtExceptionHandler getUncaughtExceptionHandler(Runnable runnable) {
+        return (t, ex) -> {
+            logger.error("Thread {} triggered an uncaught exception and will start a new thread in " +
+                    "3 seconds, ex:{}", t.getName(), ex.getMessage(), ex);
+            executor.schedule(() -> {
+                try {
+                    runnable.run();
+                } catch (Exception e) {
+                    logger.error("start thread failed", e);
+                }
+            }, 3, java.util.concurrent.TimeUnit.SECONDS);
+        };
+    }
+
+    private KafkaConsumer<String, Message> getEngineMessageKafkaConsumer(String groupId) {
+        return new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(),
+                new MatchingEngineMessageDeserializer());
+    }
+
+    private KafkaConsumer<String, Command> getEngineCommandKafkaConsumer(String groupId) {
+        return new KafkaConsumer<>(getProperties(groupId), new StringDeserializer(), new CommandDeserializer());
+    }
+
+    private Properties getProperties(String groupId) {
         Properties properties = new Properties();
         properties.put("bootstrap.servers", kafkaProperties.getBootstrapServers());
         properties.put("group.id", groupId);
