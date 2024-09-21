@@ -1,8 +1,7 @@
 package com.gitbitex.matchingengine;
 
 import com.gitbitex.AppProperties;
-import com.gitbitex.matchingengine.command.*;
-import com.gitbitex.matchingengine.snapshot.EngineSnapshotManager;
+import com.gitbitex.matchingengine.command.Command;
 import com.gitbitex.middleware.kafka.KafkaConsumerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -17,16 +16,15 @@ import java.util.Collections;
 public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
         implements ConsumerRebalanceListener {
     private final AppProperties appProperties;
-    private final EngineSnapshotManager engineSnapshotManager;
-    private final MessageSender messageSender;
+    private final MatchingEngineLoader matchingEngineLoader;
     private MatchingEngine matchingEngine;
 
-    public MatchingEngineThread(KafkaConsumer<String, Command> consumer, EngineSnapshotManager engineSnapshotManager, MessageSender messageSender,
+    public MatchingEngineThread(KafkaConsumer<String, Command> consumer, MatchingEngineLoader matchingEngineLoader,
                                 AppProperties appProperties) {
         super(consumer, logger);
         this.appProperties = appProperties;
-        this.engineSnapshotManager = engineSnapshotManager;
-        this.messageSender = messageSender;
+        this.matchingEngineLoader = matchingEngineLoader;
+
     }
 
     @Override
@@ -40,7 +38,10 @@ public class MatchingEngineThread extends KafkaConsumerThread<String, Command>
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             logger.info("partition assigned: {}", partition.toString());
-            matchingEngine = new MatchingEngine(engineSnapshotManager, messageSender);
+            matchingEngine = matchingEngineLoader.getPreperedMatchingEngine();
+            if (matchingEngine == null) {
+                throw new RuntimeException("no prepared matching engine");
+            }
             if (matchingEngine.getStartupCommandOffset() != null) {
                 logger.info("seek to offset: {}", matchingEngine.getStartupCommandOffset() + 1);
                 consumer.seek(partition, matchingEngine.getStartupCommandOffset() + 1);

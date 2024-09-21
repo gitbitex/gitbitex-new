@@ -7,6 +7,7 @@ import com.gitbitex.marketdata.manager.TickerManager;
 import com.gitbitex.marketdata.manager.TradeManager;
 import com.gitbitex.marketdata.orderbook.OrderBookSnapshotManager;
 import com.gitbitex.marketdata.repository.CandleRepository;
+import com.gitbitex.matchingengine.MatchingEngineLoader;
 import com.gitbitex.matchingengine.MatchingEngineThread;
 import com.gitbitex.matchingengine.MessageSender;
 import com.gitbitex.matchingengine.command.Command;
@@ -40,6 +41,7 @@ public class Bootstrap {
     private final AppProperties appProperties;
     private final KafkaProperties kafkaProperties;
     private final EngineSnapshotManager engineSnapshotManager;
+    private final MatchingEngineLoader matchingEngineLoader;
     private final MessageSender messageSender;
     private final OrderBookSnapshotManager orderBookSnapshotManager;
     private final RedissonClient redissonClient;
@@ -61,7 +63,7 @@ public class Bootstrap {
         for (int i = 0; i < nThreads; i++) {
             String groupId = "MatchingEngine";
             var consumer = getEngineCommandKafkaConsumer(groupId);
-            var thread = new MatchingEngineThread(consumer, engineSnapshotManager, messageSender, appProperties);
+            var thread = new MatchingEngineThread(consumer, matchingEngineLoader, appProperties);
             thread.setName(groupId + "-" + thread.getId());
             thread.setUncaughtExceptionHandler(getUncaughtExceptionHandler(() -> startMatchingEngine(1)));
             thread.start();
