@@ -14078,10 +14078,10 @@ var TradeStore = /** @class */ (function (_super) {
             });
             changes[productId].forEach(function (change) {
                 if (change[0] == 'buy') {
-                    change[2] == 0 ? delete bids[change[1]] : bids[change[1]] = [change[1], change[2]];
+                    change[2] == 0 ? delete bids[Number(change[1])] : bids[Number(change[1])] = [change[1], change[2]];
                 }
                 else {
-                    change[2] == 0 ? delete asks[change[1]] : asks[change[1]] = [change[1], change[2]];
+                    change[2] == 0 ? delete asks[Number(change[1])] : asks[Number(change[1])] = [change[1], change[2]];
                 }
             });
             var bidsArr = helper_1.Helper.Object_values(bids).sort(function (a, b) {
