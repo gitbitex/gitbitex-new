@@ -1,17 +1,11 @@
-version: '3'
-
 services:
   redis:
     image: redis:7.0-alpine
     container_name: redis
-    ports:
-      - "6379:6379"
   mongo1:
     image: mongo:5
     container_name: mongo1
     command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30001" ]
-    ports:
-      - 30001:30001
     healthcheck:
       test: test $$(echo "rs.initiate({_id:'my-replica-set',members:[{_id:0,host:\"mongo1:30001\"},{_id:1,host:\"mongo2:30002\"},{_id:2,host:\"mongo3:30003\"}]}).ok || rs.status().ok" | mongo --port 30001 --quiet) -eq 1
       interval: 10s
@@ -19,20 +13,14 @@ services:
     image: mongo:5
     container_name: mongo2
     command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30002" ]
-    ports:
-      - 30002:30002
   mongo3:
     image: mongo:5
     container_name: mongo3
     command: [ "--replSet", "my-replica-set", "--bind_ip_all", "--port", "30003" ]
-    ports:
-      - 30003:30003
   mongo-express:
     image: mongo-express
     container_name: mongo-express
     restart: always
-    ports:
-      - 8082:8081
     environment:
       ME_CONFIG_MONGODB_URL: mongodb://mongo1:30001,mongo2:30002,mongo3:30003/?replicaSet=my-replica-set
     depends_on:
@@ -40,24 +28,34 @@ services:
       - mongo2
       - mongo3
   kafka:
-    image: 'bitnami/kafka:3.4.0'
+    image: confluentinc/cp-kafka:8.0.0
+    hostname: kafka
     container_name: kafka
-    ports:
-      - '19092:19092'
     environment:
-      - KAFKA_ENABLE_KRAFT=yes
-      - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:19092,CONTROLLER://:2181
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:19092
-      - KAFKA_BROKER_ID=1
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@127.0.0.1:2181
-      - ALLOW_PLAINTEXT_LISTENER=yes
-volumes:
-  mongo1_data:
-  mongo2_data:
-  mongo3_data:
-  mongo1_config:
-  mongo2_config:
-  mongo3_config:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9099"
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9092,DOCKER://0.0.0.0:29092,CONTROLLER://0.0.0.0:9099
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:19092,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092,DOCKER://host.docker.internal:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,DOCKER:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+  app:
+    build: .
+    container_name: app
+    ports:
+      - "80:80"
+      - "7002:7002"
+    depends_on:
+      - redis
+      - mongo1
+      - mongo2
+      - mongo3
+      - kafka
