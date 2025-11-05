@@ -17,25 +17,14 @@ GitBitEX is an open source cryptocurrency exchange.
 
 ## Quick Start
 ### Prerequisites
-- Install docker
-- Install jdk
-- Install maven
-- Update your **/etc/hosts** file. (required for mongodb-replica-set：https://github.com/UpSync-Dev/docker-compose-mongo-replica-set)
-```text
-127.0.0.1       mongo1
-127.0.0.1       mongo2
-127.0.0.1       mongo3
-```
+- Install docker / docker compose
 
 ### Run
 
 ```shell
 git clone https://github.com/gitbitex/gitbitex-new.git
 cd gitbitex-new
-docker compose up -d
-mvn clean package -Dmaven.test.skip=true
-cd target
-java -jar gitbitex-0.0.1-SNAPSHOT.jar
+docker compose up -d --build app
 #visit http://127.0.0.1/
 ```
 
