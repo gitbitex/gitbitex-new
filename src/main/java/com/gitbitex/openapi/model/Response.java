@@ -11,4 +11,12 @@ public class Response<T> {
     public Response(T data) {
         this.data = data;
     }
+    
+    public static <T> Response<T> success() {
+        return new Response<>(null);
+    }
+    
+    public static <T> Response<T> success(T data) {
+        return new Response<>(data);
+    }
 }

@@ -1,35 +1,49 @@
-README.md
+```
+# Compiled and binary files
+*.class
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
 target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+.gradle/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
+# Build artifacts
+dist/
 build/
-!**/src/main/**/build/
-!**/src/test/**/build/
 
-### VS Code ###
+# IDE/Editor files
 .vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
 
+# Logs
 *.log
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# System files
+.DS_Store
+Thumbs.db
+```
